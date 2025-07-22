@@ -1,12 +1,13 @@
 #include "integrator.h"
 
 void Hernandez::step(std::vector<Body>& bodies, double dt) {
-    // Implement the step method for the Hernandez integrator
-    // This is a placeholder implementation; actual logic will depend on the specific algorithm
-    for (auto& body : bodies) {
-        body.updateAcceleration(bodies);
-        body.updateVelocity(dt);
-        body.updatePosition(dt);
-    }git push -u origin main  # or 'master' or whatever your branch is called
-
+    for (auto& Body : bodies) {
+        // Drift bodies forward by dt/2
+        // Use Propagate on Bodies
+        // Move Center of Mass according to position and velocity
+        // Drift bodies backward by dt/2
+    }
+    // Return values for position and velocity
 }
+
+//Drift should be body.updatePosition(dt/2) and body.updateVelocity(dt/2) for each body
