@@ -7,5 +7,6 @@ void Hernandez::step(std::vector<Body>& bodies, double dt) {
         body.updateAcceleration(bodies);
         body.updateVelocity(dt);
         body.updatePosition(dt);
-    }
+    }git push -u origin main  # or 'master' or whatever your branch is called
+
 }
