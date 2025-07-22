@@ -15,4 +15,10 @@ public:
     void step(std::vector<Body>& bodies, double dt) override;
 };
 
+class Hernandez : public Integrator {
+public:
+    virtual void step(std::vector<Body>& bodies, double dt) = 0;
+    virtual ~Hernandez() {}
+};
+
 #endif // INTEGRATOR_H
