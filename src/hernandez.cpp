@@ -1,13 +1,33 @@
 #include "integrator.h"
 
 void Hernandez::step(std::vector<Body>& bodies, double dt) {
-    for (auto& Body : bodies) {
-        // Drift bodies forward by dt/2
-        // Use Propagate on Bodies
-        // Move Center of Mass according to position and velocity
-        // Drift bodies backward by dt/2
+    // Step 1: Update all accelerations (global)
+    for (auto& body : bodies) {
+        body.updateAcceleration(bodies);  // full pairwise update
     }
-    // Return values for position and velocity
-}
 
-//Drift should be body.updatePosition(dt/2) and body.updateVelocity(dt/2) for each body
+    // Step 2: Kick - half velocity step
+    for (auto& body : bodies) {
+        body.updateVelocity(+0.5 * dt);
+    }
+
+    // Step 3: Drift - full position step
+    for (auto& body : bodies) {
+        body.updatePosition(dt);
+    }
+
+
+    // Custom Propagator
+
+
+    // Step 4: Recompute acceleration at new positions
+    for (auto& body : bodies) {
+        body.updateAcceleration(bodies);
+    }
+
+    // Step 5: Kick - remaining half velocity step
+    for (auto& body : bodies) {
+        body.updateVelocity(+0.5 * dt);
+    }
+}
+    // Return values for position and velocity

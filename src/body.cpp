@@ -25,6 +25,20 @@ void Body::updateAcceleration(const std::vector<Body>& bodies) {
     }
 }
 
+void Body::updateCenterofMass(const std::vector<Body>& bodies) {
+    double total_mass = 0.0;
+    std::vector<double> center_of_mass(3, 0.0);
+    
+    for (const auto& body : bodies) {
+        total_mass += body.mass;
+        for (int i = 0; i < 3; ++i)
+            center_of_mass[i] += body.position[i] * body.mass;
+    }
+    
+    for (int i = 0; i < 3; ++i)
+        center_of_mass[i] /= total_mass;
+}
+
 void Body::updatePosition(double dt) {
   for (int i = 0; i < 3; ++i)
     position[i] += velocity[i] * dt;
