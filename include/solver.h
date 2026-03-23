@@ -4,7 +4,10 @@
 #include <memory>
 
 #include "body.h"
+#include "csv_output_writer.h"
 #include "integrator.h"
+#include "leapfrog.h"
+#include "hernandez.h"
 
 class CSVOutputWriter;
 

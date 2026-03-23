@@ -72,4 +72,4 @@ def write_manual_conditions(bodies, filename=DEFAULT_FILE):
     print(f"Wrote {len(bodies)} manual bodies → {filename}")
     
 if __name__ == '__main__':
-    write_nbody_orbits(7)
+    write_nbody_orbits(2)

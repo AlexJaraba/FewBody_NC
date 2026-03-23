@@ -16,6 +16,10 @@ Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodi
         integrator = std::make_unique<Leapfrog>();
     }
 
+    if (params.integrator == "hernandez") {
+        integrator = std::make_unique<Hernandez>();
+    }
+
     if (!integrator) {
         throw std::runtime_error("Invalid integrator specified");
     }

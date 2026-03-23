@@ -55,20 +55,18 @@ def read_output(filename):
 
 def plot_output(x,y,z):
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111)
 
     nbodies = x.shape[0]
 
     for i in range(nbodies):
-        ax.plot(x[i], y[i], z[i])  # Plot the trajectory of each body
+        ax.plot(x[i], y[i])  # Plot the trajectory of each body
 
         if len(x[i]) > 0:
-            ax.scatter(x[i][0], y[i][0], z[i][0], marker='o')  # Plot the trajectory of each body
+            ax.scatter(x[i][0], y[i][0], marker='o')  # Plot the trajectory of each body
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_box_aspect([1,1,1])
 
     plt.title('Orbits of Bodies')
     plt.show()

@@ -1,4 +1,4 @@
-#include "integrator.h"
+#include "leapfrog.h"
 #include "body.h"
 
 void Leapfrog::step(std::vector<Body>& bodies, double dt) {

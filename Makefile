@@ -10,18 +10,22 @@ BUILD_DIR = build
 SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/io/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/integrators/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/numerics/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/propagator/*.cpp) 
 #SRCS+= src/io/io.cpp src/io/output.cpp src/io/input.cpp
 
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))
 
 OBJS := $(OBJS:io/%=$(BUILD_DIR)/io/%)
 OBJS := $(OBJS:integrators/%=$(BUILD_DIR)/integrators/%)
+OBJS := $(OBJS:propagator/%=$(BUILD_DIR)/propagator/%)
+OBJS := $(OBJS:numerics/%=$(BUILD_DIR)/numerics/%)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@if not exist "$(dir $@)" mkdir "$(dir $@)"
+	@if not exist "$(dir $@)" mkdir "$(dir $@)" 2>nul || true
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
