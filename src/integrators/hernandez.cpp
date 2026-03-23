@@ -1,4 +1,5 @@
 #include "integrator.h"
+#include "body.h"
 
 void Hernandez::step(std::vector<Body>& bodies, double dt) {
     // Step 1: Update all accelerations (global)

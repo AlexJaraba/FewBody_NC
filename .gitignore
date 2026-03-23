@@ -1,0 +1,20 @@
+# Build files
+build/
+*.o
+*.out
+*.exe
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Python cache (for your python folder)
+__pycache__/
+*.pyc

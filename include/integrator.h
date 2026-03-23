@@ -1,13 +1,13 @@
-#ifndef INTEGRATOR_H
-#define INTEGRATOR_H
+#pragma once
 
 #include <vector>
-#include "body.h"
+
+class Body;
 
 class Integrator {
 public:
     virtual void step(std::vector<Body>& bodies, double dt) = 0;
-    virtual ~Integrator() {}
+    virtual ~Integrator() = default;
 };
 
 class Leapfrog : public Integrator {
@@ -17,8 +17,6 @@ public:
 
 class Hernandez : public Integrator {
 public:
-    virtual void step(std::vector<Body>& bodies, double dt) = 0;
-    virtual ~Hernandez() {}
+    void step(std::vector<Body>& bodies, double dt) override;
+    virtual ~Hernandez() override = default;
 };
-
-#endif // INTEGRATOR_H

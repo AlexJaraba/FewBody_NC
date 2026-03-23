@@ -1,4 +1,5 @@
 #include "integrator.h"
+#include "body.h"
 
 void Leapfrog::step(std::vector<Body>& bodies, double dt) {
     // Initialize half-step velocities for the leapfrog integrator

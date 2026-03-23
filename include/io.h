@@ -1,5 +1,4 @@
-#ifndef IO_H
-#define IO_H
+#pragma once
 
 #include <vector>
 #include <string>  // Correct inclusion of string header
@@ -16,6 +15,3 @@ struct SolverParams {
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies);
 void writeOutput(const std::string& filename, const std::vector<Body>& bodies, double time);
 SolverParams readParams(const std::string& filename);
-
-#endif // IO_H
-

@@ -1,41 +1,55 @@
-#include "solver.h"
-#include "integrator.h"
-#include "io/io.h"
-#include "globals.h"
+#include <memory>
 #include <iostream>
+#include <stdexcept>
 
-Solver::Solver(std::vector<Body>& bodies) : bodies(bodies), integrator(nullptr) {
+#include "solver.h"
+#include "io.h"
+#include "globals.h"
+#include "body.h"
+#include "csv_output_writer.h"
+
+Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
+
     SolverParams params = readParams("data/param.txt");
 
     if (params.integrator == "leapfrog") {
-        integrator = new Leapfrog();
+        integrator = std::make_unique<Leapfrog>();
+    }
+
+    if (!integrator) {
+        throw std::runtime_error("Invalid integrator specified");
     }
     // Add more integrator options here as needed
 }
 
-Solver::~Solver() {
-    delete integrator;
-}
-
-void Solver::run(int steps, double dt) {
+void Solver::run() {
     SolverParams params = readParams("data/param.txt");
 
     int output_frequency = params.output_frequency;
     double runtime = params.runtime;
-    dt = params.timestep;
-    steps = static_cast<int>(runtime / dt);
-    G = params.gravitational_constant;  // Set the global gravitational constant
+    double dt = params.timestep;
+    int steps = static_cast<int>(runtime / dt);
 
+    G = params.gravitational_constant;  // Set the global gravitational constant
 
     for (int step = 0; step < steps; ++step) {
         integrator->step(bodies, dt);
+
         // Write output at the specified frequency
         if (step % output_frequency == 0) {
-	  writeOutput("data/output.txt", bodies, step * dt);
+            std::vector<BodyState> states;
+            for (const auto& body : bodies) {
+                states.push_back(body.toState(step * dt));
+            }
+	        writer.write(states);
         }
     }
 
+    std::vector<BodyState> states;
+    for (const auto& b : bodies) {
+        states.push_back(b.toState(steps * dt));
+    }
     // Write final output
-    writeOutput("data/output.txt", bodies, steps * dt);
+    writer.write(states);
 }
 

@@ -30,63 +30,49 @@ def plot_initial_conditions(positions):
     plt.show()
 
 def read_output(filename):
+    import csv
+    from collections import defaultdict
 
+    data_by_body = defaultdict(lambda: {'x': [], 'y': [], 'z': []})
 
-    nbodies = 0
-    f = open(filename)
-    firstline = f.readline()
-    data = firstline.split()
-    while (len(data) > (nbodies*7 + 1)): nbodies += 1
-    f.close()
-
-    masses = []
-    x,y,z = [],[],[]
-    vx,vy,vz = [],[],[]
-    nlines = 0
-    
     with open(filename, 'r') as f:
-        for line in f:
-            data = line.split()
-            xx,yy,zz = [],[],[]
-            vvxx,vvyy,vvzz = [],[],[]
-            for n in range(nbodies):
-                masses.append(float(data[n*7 + 1]))
-                xx.append(float(data[n*7 + 2]))
-                yy.append(float(data[n*7 + 3]))
-                zz.append(float(data[n*7 + 4]))
-                vvxx.append(float(data[n*7 + 5]))
-                vvyy.append(float(data[n*7 + 6]))
-                vvzz.append(float(data[n*7 + 7]))
-            x.append(xx)
-            y.append(yy)
-            z.append(zz)
-            vx.append(vvxx)
-            vy.append(vvyy)
-            vz.append(vvzz)
-            nlines += 1
-    print(nlines,nbodies)
-    return np.array(masses), np.array(x), np.array(y), np.array(z), np.array(vx), np.array(vy), np.array(vz) 
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            i = int(row['id'])
+
+            data_by_body[i]['x'].append(float(row['x']))
+            data_by_body[i]['y'].append(float(row['y']))
+            data_by_body[i]['z'].append(float(row['z']))
+    
+    x = np.array([data_by_body[i]['x'] for i in sorted(data_by_body)])
+    y = np.array([data_by_body[i]['y'] for i in sorted(data_by_body)])
+    z = np.array([data_by_body[i]['z'] for i in sorted(data_by_body)])
+
+    print("Shape:", x.shape)
+
+    return x, y, z
 
 def plot_output(x,y,z):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    for xx,yy,zz in zip(x.T,y.T,z.T):
-        print(xx)
-        ax.plot(xx,yy,zz)
+    nbodies = x.shape[0]
+
+    for i in range(nbodies):
+        ax.plot(x[i], y[i], z[i])  # Plot the trajectory of each body
+
+        if len(x[i]) > 0:
+            ax.scatter(x[i][0], y[i][0], z[i][0], marker='o')  # Plot the trajectory of each body
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.set_aspect('equal')
-    plt.title('Final Positions of Bodies')
+    ax.set_box_aspect([1,1,1])
 
+    plt.title('Orbits of Bodies')
     plt.show()
 
 if __name__ == "__main__":
-    initial_masses, initial_positions, initial_velocities = read_initial_conditions('../data/initial_conditions.txt')
-    #plot_initial_conditions(initial_positions)
-    
-    masses, x,y,z,vx,vy,vz = read_output('../data/output.txt')
-
+    x, y, z = read_output('output.csv')
     plot_output(x,y,z)

@@ -1,28 +1,75 @@
 import numpy as np
+import os
+
+DATA_DIR = "data"
+DEFAULT_FILE = os.path.join(DATA_DIR, "initial_conditions.txt")
+
+def ensure_data_dir():
+    os.makedirs(DATA_DIR, exist_ok=True)
 
 G=0.000296014912
 
+def write_conditions(masses, positions, velocities, filename=DEFAULT_FILE):
+    ensure_data_dir()
 
-def writeInitialConditions():
-    m1,m2 = 1.0, 0.5
-    M = m1+ m2
-    mu = m1*m2/M
-    phi = 0.5 * np.pi
-    a, e = 1.0, 0.8
-    r = a * (1-e**2) / (1 + e*np.cos(phi))
-    x,y,z = r * np.cos(phi) ,r * np.sin(phi),0
-    vx,vy,vz = np.sqrt(G * M/a**3) * a / np.sqrt(1-e**2)* np.sin(phi),\
-        np.sqrt(G * M/a**3) * a / np.sqrt(1-e**2)* (e + np.cos(phi)),\
-        0
-    
-    
-    x1,y1,z1 = -m2/M * x ,-m2/M * y ,-m2/M * z
-    x2,y2,z2 = m1/M * x ,m1/M * y , m1/M * z
-    vx1,vy1,vz1 = -m2/M * vx ,-m2/M * vy ,-m2/M * vz
-    vx2,vy2,vz2 = m1/M * vx ,m1/M * vy , m1/M * vz
+    with open(filename, 'w') as f:
+        for i in range(len(masses)):
+            f.write(f"{masses[i]} "
+                    f"{positions[i,0]} {positions[i,1]} {positions[i,2]} "
+                    f"{velocities[i,0]} {velocities[i,1]} {velocities[i,2]}\n")
+    print(f"Wrote {len(masses)} bodies to {filename}")
 
-    print(m1,x1,y1,z1,vx1,vy1,vz1)
-    print(m2,x2,y2,z2,vx2,vy2,vz2)
+def write_nbody_random(n, filename=DEFAULT_FILE):
+    masses = np.random.uniform(0.1, 1.0, n)
+    positions = np.random.uniform(-1.0, 1.0, (n, 3))
+    velocities = np.random.uniform(-0.5, 0.5, (n, 3))
+
+    # Remove center-of-mass motion
+    total_mass = np.sum(masses)
+    v_cm = np.sum(masses[:, None] * velocities, axis=0) / total_mass
+    velocities -= v_cm
+
+    write_conditions(masses, positions, velocities, filename)
+
+def write_nbody_orbits(n, filename=DEFAULT_FILE):
+    masses = np.ones(n)
+    masses[0] = 10.0  # central mass
+
+    positions = np.zeros((n, 3))
+    velocities = np.zeros((n, 3))
+
+    for i in range(1, n):
+        r = np.random.uniform(0.5, 5.0)
+        theta = np.random.uniform(0, 2*np.pi)
+
+        positions[i] = [r*np.cos(theta), r*np.sin(theta), 0]
+
+        v = np.sqrt(G * masses[0] / r)
+        velocities[i] = [-v*np.sin(theta), v*np.cos(theta), 0]
+
+    # center-of-mass correction
+    total_mass = np.sum(masses)
+    v_cm = np.sum(masses[:, None] * velocities, axis=0) / total_mass
+    velocities -= v_cm
+
+    write_conditions(masses, positions, velocities, filename)
+
+def write_manual_conditions(bodies, filename=DEFAULT_FILE):
+    """
+    bodies = [
+        (mass, [x,y,z], [vx,vy,vz]),
+        ...
+    ]
+    """
+    ensure_data_dir()
+
+    with open(filename, 'w') as f:
+        for mass, pos, vel in bodies:
+            f.write(f"{mass} "
+                    f"{pos[0]} {pos[1]} {pos[2]} "
+                    f"{vel[0]} {vel[1]} {vel[2]}\n")
+
+    print(f"Wrote {len(bodies)} manual bodies → {filename}")
     
 if __name__ == '__main__':
-    writeInitialConditions()
+    write_nbody_orbits(7)
