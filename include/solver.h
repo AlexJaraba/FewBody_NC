@@ -15,6 +15,7 @@ class Solver {
 public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
     void run();
+    void ReversibilityTest();
 
 private:
     std::vector<Body>& bodies;

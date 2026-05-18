@@ -72,4 +72,13 @@ def write_manual_conditions(bodies, filename=DEFAULT_FILE):
     print(f"Wrote {len(bodies)} manual bodies → {filename}")
     
 if __name__ == '__main__':
-    write_nbody_orbits(2)
+
+    scale = np.sqrt(G)
+
+    bodies = [
+    (1.0, [-0.97000436, 0.24308753, 0.0], [0.4662036850 * scale, 0.4323657300 * scale, 0.0]),
+    (1.0, [ 0.97000436,-0.24308753, 0.0], [0.4662036850 * scale, 0.4323657300 * scale, 0.0]),
+    (1.0, [0.0, 0.0, 0.0], [-0.93240737 * scale, -0.86473146 * scale, 0.0])
+    ]
+
+    write_manual_conditions(bodies)

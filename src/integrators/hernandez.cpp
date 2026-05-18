@@ -1,20 +1,10 @@
 #include <vector> 
 #include <cmath>
+#include <stdexcept>
 
 #include "hernandez.h"
-#include "../numerics/pairing.h"
-#include "../propagator/propagator.h"
-
-static std::vector<Body> clone_bodies(const std::vector<Body>& bodies) {
-    return bodies;
-}
-
-static void predict_bodies(std::vector<Body>& bodies, double dt)
-{
-    for (auto& b : bodies) {
-        b.updatePosition(dt);
-    }
-}
+#include "pairing.h"
+#include "propagator.h"
 
 static void updateAccelerationPerturbation(
     Body& body,
@@ -26,7 +16,7 @@ static void updateAccelerationPerturbation(
     std::vector<double> acc(3, 0.0);
 
     for (size_t j = 0; j < bodies.size(); ++j) {
-        if (j == size_t index) continue;
+        if (j == size_t(index)) continue;
 
         if (is_kepler_pair(index, j, pairs)) continue;
 
@@ -56,13 +46,18 @@ static void kepler_pair_step(Body& bi, Body& bj, double dt, double G)
 
     StateVector result = propagate_universal(mu, r_rel, v_rel, dt);
 
-    if (!result.converged) return;
-        double m_tot = bi.mass + bj.mass;
+    if (!result.converged) {
+        throw std::runtime_error("Kepler solve failed.");
+    }
+    
+    double m_tot = bi.mass + bj.mass;
 
     std::vector<double> r_cm(3), v_cm(3);
     for (int k = 0; k < 3; ++k) {
-        r_cm[k] = (bi.mass * bi.position[k] + bj.mass * bj.position[k]) / m_tot;
-        v_cm[k] = (bi.mass * bi.velocity[k] + bj.mass * bj.velocity[k]) / m_tot;
+        r_cm[k] = (bi.mass * bi.position[k] + bj.mass * bj.position[k]) / (bi.mass + bj.mass);
+        v_cm[k] = (bi.mass * bi.velocity[k] + bj.mass * bj.velocity[k]) / (bi.mass + bj.mass);
+
+        r_cm[k] += v_cm[k] * dt; // Drift center of mass
     }
 
     for (int k = 0; k < 3; ++k) {
@@ -74,17 +69,16 @@ static void kepler_pair_step(Body& bi, Body& bj, double dt, double G)
     }
 }
 
+Hernandez::Hernandez(const std::vector<Pair>& fixed_pairs) : pairs_(fixed_pairs) {}
+
 void Hernandez::step(std::vector<Body>& bodies, double dt)
 {
     extern double G;
     int N = bodies.size();
 
-    std::vector<Body> predicted = clone_bodies(bodies);
-    predict_bodies(predicted, dt);
+    const std::vector<Pair>& pairs = pairs_;
 
-    std::vector<Pair> pairs = build_kepler_pairs(predicted, G);
-
-    // Kick
+    // Half Kick
     for (int i = 0; i < N; ++i) {
         updateAccelerationPerturbation(bodies[i], bodies, pairs, i, G);
     }
@@ -93,11 +87,12 @@ void Hernandez::step(std::vector<Body>& bodies, double dt)
         body.updateVelocity(0.5 * dt);
     }
 
-    // Kepler Drift
+    // Kepler Half Step
     for (const auto& p : pairs) {
-        kepler_pair_step(bodies[p.i], bodies[p.j], dt, G);
+        kepler_pair_step(bodies[p.i], bodies[p.j], 0.5 * dt, G);
     }
 
+    // Drift Unpaired Bodies
     std::vector<bool> paired(N, false);
     for (const auto& p : pairs) {
         paired[p.i] = true;
@@ -110,7 +105,12 @@ void Hernandez::step(std::vector<Body>& bodies, double dt)
         }
     }
 
-    // Kick
+    // Kepler Half Step
+    for (const auto& p : pairs) {
+        kepler_pair_step(bodies[p.i], bodies[p.j], 0.5 * dt, G);
+    }
+
+    // Half Kick
     for (int i = 0; i < N; ++i) {
         updateAccelerationPerturbation(bodies[i], bodies, pairs, i, G);
     }

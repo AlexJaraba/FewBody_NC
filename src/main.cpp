@@ -17,6 +17,7 @@ int main() {
     
     Solver sim(bodies, output);
     sim.run();
+    sim.ReversibilityTest();
 
     output.close();
     

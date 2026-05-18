@@ -2,7 +2,7 @@
 #include <vector>
 #include <iostream>
 
-#include "../numerics/univ_vari_solve.h"
+#include "univ_vari_solve.h"
 #include "propagator.h"
 
 // dot product
