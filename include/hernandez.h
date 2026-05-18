@@ -3,8 +3,10 @@
 #include <vector>
 
 #include "body.h"
+#include "composition.h"
 #include "integrator.h"
 #include "pairing.h"
+#include "corrector.h"
 
 class Hernandez : public Integrator {
 public:
@@ -14,4 +16,5 @@ public:
 
 private:
     std::vector<Pair> pairs_;
+    SymmetricComposition composition_;
 };

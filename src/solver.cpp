@@ -8,6 +8,7 @@
 #include "globals.h"
 #include "body.h"
 #include "csv_output_writer.h"
+#include "diagnostics.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
@@ -28,6 +29,33 @@ Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodi
     // Add more integrator options here as needed
 }
 
+void recenter_system(std::vector<Body>& bodies) {
+    double total_mass = 0.0;
+    std::vector<double> com(3, 0.0);
+    std::vector<double> com_velocity(3, 0.0);
+
+    for (const auto& body : bodies) {
+        total_mass += body.mass;
+        for (int k = 0; k < 3; ++k) {
+            com[k] += body.position[k] * body.mass;
+            com_velocity[k] += body.velocity[k] * body.mass;
+        }
+    }
+
+    for (int k = 0; k < 3; ++k) {
+        com[k] /= total_mass;
+        com_velocity[k] /= total_mass;
+    }
+
+    for (auto& body : bodies) {
+        for (int k = 0; k < 3; ++k) {
+            body.position[k] -= com[k];
+            body.velocity[k] -= com_velocity[k];
+        }
+        body.updateMomentumFromVelocity();
+    }
+}
+
 void Solver::run() {
     SolverParams params = readParams("data/param.txt");
 
@@ -40,6 +68,15 @@ void Solver::run() {
 
     for (int step = 0; step < steps; ++step) {
         integrator->step(bodies, dt);
+        recenter_system(bodies);
+        Diagnostics diag = compute_diagnostics(bodies, G, dt);
+        std::cout << "Step: " << step << ", Time: " << step * dt 
+                  << ", | Total Energy: " << diag.total_energy 
+                  << ", | Linear Momentum: " << diag.linear_momentum 
+                  << ", | Angular Momentum: " << diag.angular_momentum 
+                  << ", | Shadow Energy: " << diag.shadow_energy 
+                  << ", | COM Drift: " << diag.com_drift
+                  << std::endl;
 
         // Write output at the specified frequency
         if (step % output_frequency == 0) {
@@ -76,6 +113,7 @@ void Solver::ReversibilityTest() {
     for (auto& body: bodies) {
         for (int k = 0; k < 3; ++k) {
             body.velocity[k] *= -1.0; // Reverse velocities
+            body.momentum[k] *= -1.0; // Reverse momenta to maintain consistency
         }
     }
     

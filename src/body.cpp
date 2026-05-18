@@ -7,7 +7,15 @@
 
 
 Body::Body(double m, std::vector<double> pos, std::vector<double> vel)
-    : mass(m), position(pos), velocity(vel), acceleration(3, 0.0) {}
+    : mass(m), position(pos), velocity(vel), acceleration(3, 0.0), jacobi_position(3, 0.0), jacobi_momentum(3, 0.0) {
+        momentum.resize(3);
+        for (int i = 0; i < 3; ++i)
+            momentum[i] = mass * velocity[i];
+        for (int i = 0; i < 3; ++i)
+            jacobi_position[i] = position[i];
+        for (int i = 0; i < 3; ++i)
+            jacobi_momentum[i] = momentum[i];
+    }
 
 void Body::updateAcceleration(const std::vector<Body>& bodies) {
     acceleration = {0.0, 0.0, 0.0};
@@ -55,6 +63,16 @@ void Body::updateVelocity(double dt) {
         velocity[i] += acceleration[i] * dt;
 }
 
+void Body::updateVelocityFromMomentum() {
+    for (int k = 0; k < 3; ++k)
+        velocity[k] = momentum[k] / mass;
+}
+
+void Body::updateMomentumFromVelocity() {
+    for (int k = 0; k < 3; ++k)
+        momentum[k] = mass * velocity[k];
+}
+
 BodyState Body::toState(double time) const {
     return BodyState{
         time,
@@ -64,3 +82,18 @@ BodyState Body::toState(double time) const {
     };
 }
 
+double Body::kineticEnergy() const {
+    double v2 = 0.0;
+    for (int k = 0; k < 3; ++k) {
+        v2 += velocity[k] * velocity[k];
+    }
+    return 0.5 * mass * v2;
+}
+
+double Body::momentumMagnitudeSquared() const {
+    double p2 = 0.0;
+    for (int k = 0; k < 3; ++k) {
+        p2 += momentum[k] * momentum[k];
+    }
+    return p2;
+}

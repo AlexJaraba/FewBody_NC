@@ -16,7 +16,7 @@ NewtonResult Newton_Solver(
         double f_x = function(x);
         double df_x = d_function(x);
 
-        if (std::abs(df_x) < 1e-12) {
+        if (std::abs(df_x) < 1e-15) {
             return {std::numeric_limits<double>::quiet_NaN(), i, false};
         }
 
@@ -32,7 +32,7 @@ NewtonResult Newton_Solver(
             return {std::numeric_limits<double>::quiet_NaN(), i, false};
         }
 
-        if (std::abs(x_new - x) < tolerance) {
+        if (std::abs(step) < tolerance) {
             return {x_new, i + 1, true};
         }
 
