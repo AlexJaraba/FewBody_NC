@@ -29,7 +29,7 @@ void kick_operator(std::vector<Body>& bodies, const std::vector<Pair>& pairs, do
 
     for (int i = 0; i < N; ++i) {
         for (int j = i + 1; j < N; ++j) {
-            if (!pair_contains(i, j, pairs))
+            if (pair_contains(i, j, pairs))
                 continue;
             std::vector<double> dr(3);
 

@@ -11,6 +11,8 @@ struct Pair {
 
 bool is_kepler_pair(int i, int j, const std::vector<Pair>& pairs);
 
+bool pair_exists(int i, int j, const std::vector<Pair>& pairs);
+
 Pair canonicalize_pair(int i, int j);
 
 std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs);

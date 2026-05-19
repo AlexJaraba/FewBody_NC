@@ -7,6 +7,8 @@
 #include "io.h"
 #include "globals.h"
 #include "csv_output_writer.h"
+#include "hernandez.h"
+#include "yoshida4.h"
 
 int main() {
     std::vector<Body> bodies;

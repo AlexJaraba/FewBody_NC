@@ -8,6 +8,8 @@
 #include "integrator.h"
 #include "leapfrog.h"
 #include "hernandez.h"
+#include "yoshida4.h"
+#include "pairing.h"
 
 class CSVOutputWriter;
 

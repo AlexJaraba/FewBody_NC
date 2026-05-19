@@ -111,19 +111,23 @@ def PlotVerificationSuite(data,df):
     E0 = energies[0]
     L0 = angular_momentum[0]
     P0 = linear_momentum[0]
+    Rcm0 = com_positions[0]
 
-    dE = (energies - E0) / abs(E0)
-    dL = (angular_momentum - L0) / abs(L0)
-    dP = (linear_momentum - P0) / (abs(P0) + 1e-16)
+    dE = np.abs((energies - E0) / abs(E0))
+    dL = np.abs((angular_momentum - L0) / abs(L0))
+    dP = np.abs(linear_momentum - P0) 
+    dRcm = np.abs(com_positions - Rcm0)
 
     # Print summary statistics
     print("Max |dE|:", np.max(np.abs(dE)))
     print("Max |dL|:", np.max(np.abs(dL)))
     print("Max |dP|:", np.max(np.abs(dP)))
+    print('Max |dRcm|:', np.max(np.abs(dRcm)))
 
     print("Final dE:", dE[-1])
     print("Final dL:", dL[-1])
     print("Final dP:", dP[-1])
+    print("Final dRcm:", dRcm[-1])
 
     # Figure Layout
     fig, ax = plt.subplots(3, 1, figsize=(16, 10))
@@ -167,15 +171,15 @@ def PlotVerificationSuite(data,df):
     ax3.semilogy(times, np.abs(dP) + 1e-16)  # Add small value to avoid log(0)
     ax3.set_title("Relative Linear Momentum Error")
     ax3.set_xlabel("Time")
-    ax3.set_ylabel("(P - P0)/P0")
+    ax3.set_ylabel("|P - P0|")
     ax3.grid(True, which='both', alpha=0.3)
 
     # Center of Mass Drift
     ax4 = fig.add_subplot(gs[1,3])
-    ax4.semilogy(times, np.abs(dP) + 1e-16)  # Add small value to avoid log(0)
+    ax4.semilogy(times, dRcm + 1e-30)  # Add small value to avoid log(0)
     ax4.set_title("Relative Center of Mass Drift")
     ax4.set_xlabel("Time")
-    ax4.set_ylabel("(Rcm - Rcm0)/Rcm0")
+    ax4.set_ylabel("|Rcm - Rcm0|")
     ax4.grid(True, which='both', alpha=0.3)
 
     fig.subplots_adjust(left=0.06, right=0.97, top=0.93, bottom=0.08, wspace=0.25, hspace=0.30)

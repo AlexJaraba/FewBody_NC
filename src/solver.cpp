@@ -9,18 +9,31 @@
 #include "body.h"
 #include "csv_output_writer.h"
 #include "diagnostics.h"
+#include "hernandez.h"
+#include "yoshida4.h"
+#include "pairing.h"
+#include "pair_graph.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
     SolverParams params = readParams("data/param.txt");
+    
+    PairGraph graph = build_hierarchical_pair_graph(bodies);
+    std::vector<Pair> fixed_pairs = graph.kepler_pairs;
+
+    std::cout << "Kepler Pairs:" << graph.kepler_pairs.size() << std::endl;
+    std::cout << "Pertubation pairs:" << graph.pertubation_pairs.size() << std::endl;
 
     if (params.integrator == "leapfrog") {
         integrator = std::make_unique<Leapfrog>();
     }
 
     if (params.integrator == "hernandez") {
-        std::vector<Pair> fixed_pairs = {{0,1},{0,2}};
         integrator = std::make_unique<Hernandez>(fixed_pairs);
+    }
+
+    if (params.integrator == "Yoshida4") {
+        integrator = std::make_unique<Yoshida4>(fixed_pairs);
     }
 
     if (!integrator) {
