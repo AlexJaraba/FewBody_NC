@@ -208,8 +208,8 @@ def rewrite_param(dt, runtime):
 
 def RunTimeStepScalingStudy():
     dt_ref = 0.00025
-    dts = [0.1, 0.05, 0.025, 0.0125]
-    runtime = 1000
+    dts = [0.4, 0.2, 0.1, 0.05]
+    runtime = 100
     position_errors = []
 
     # -------------------------------------------------------------------

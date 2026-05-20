@@ -148,6 +148,12 @@ void Solver::ReversibilityTest() {
         integrator->step(state, dt);
     }
 
+    for (size_t i = 1; i < state.P.size(); ++i) {
+        for (int k = 0; k < 3; ++k) {
+            state.P[i][k] *= -1.0;
+        }
+    }
+
     reconstruct_bodies(state, bodies);
 
     double max_pos_error = 0.0;
