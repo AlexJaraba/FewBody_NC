@@ -1,112 +1,107 @@
 #include <cmath>
 #include <stdexcept>
+#include <iostream>
 
 #include "operators.h"
 #include "pairing.h"
 #include "propagator.h"
 #include "jacobi.h"
+#include "univ_vari_solve.h"
+#include "jacobi_transform.h"
+#include "canonical_state.h"
 
-void drift_operator(std::vector<Body>& bodies, double dt) {
-    for (auto& body: bodies) {
+void drift_operator(CanonicalState& state, double dt) {
+    // const int N = state.Q.size();
+
+    // for (int i = 1; i < N; ++i) {
+    //     const double mu = state.mu[i];
+    //     for (int k = 0; k < 3; ++k) {
+    //         state.Q[i][k] += dt * state.P[i][k] / mu;
+    //     }
+    // }
+}
+
+void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    const int N = state.Q.size();
+
+    std::vector<std::vector<double>> dP(N, std::vector<double>(3, 0.0));
+    std::vector<std::vector<double>> r(N, std::vector<double>(3, 0.0));
+    std::vector<double> R_prev(3, 0.0);
+
+    double M_prev = state.physical_mass[0];
+
+    for (int i = 1; i < N; ++i) {
+        std::vector<double> r_com_prev(3);
         for (int k = 0; k < 3; ++k) {
-            body.position[k] += body.velocity[k] * dt;
+            r_com_prev[k] = R_prev[k] / M_prev;
         }
-    }
-}
 
-static bool pair_contains(int i, int j, const std::vector<Pair>& pairs) {
-    for (const auto& p : pairs){
-        if ((p.i == i && p.j == j) || (p.i == j && p.j == i)) {
-            return true;
+        for (int k = 0; k < 3; ++k) {
+            r[i][k] = r_com_prev[k] + state.Q[i][k];
         }
+
+        for (int k = 0; k < 3; ++k) {
+            R_prev[k] += state.physical_mass[i] * r[i][k];
+        }
+        M_prev += state.physical_mass[i];
     }
-    return false;
-}
 
-void kick_operator(std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt, double G) {
-    int N = bodies.size();
-    std::vector<std::vector<double>> acc(N, std::vector<double>(3, 0.0));
-
+    // Physical perturbation forces
     for (int i = 0; i < N; ++i) {
         for (int j = i + 1; j < N; ++j) {
-            if (pair_contains(i, j, pairs))
-                continue;
             std::vector<double> dr(3);
+            for (int k = 0; k < 3; ++k) {
+                dr[k] = r[j][k] - r[i][k];
+            }
+
+            double r2 = 0.0;
 
             for (int k = 0; k < 3; ++k)
-                dr[k] = bodies[j].position[k] - bodies[i].position[k];
-            
-            double r = std::sqrt(dr[0]*dr[0] + dr[1]*dr[1] + dr[2]*dr[2]) + 1e-12;
-            double factor = G / (r*r*r);
+                r2 += dr[k] * dr[k];
+
+            const double dist = std::sqrt(r2) + 1e-15;
+            const double coeff = (G * state.physical_mass[i] * state.physical_mass[j]) / (dist * dist * dist);
 
             for (int k = 0; k < 3; ++k) {
-                double force = factor * dr[k];
-                acc[i][k] += force * bodies[j].mass;
-                acc[j][k] -= force * bodies[i].mass;
+                const double F = coeff * dr[k];
+                dP[i][k] += dt * F;
+                dP[j][k] -= dt * F;
             }
         }
     }
-
-    for (int i = 0; i < N; ++i) {
+    // Canonical momentum update
+    for (int i = 1; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
-            bodies[i].momentum[k] += bodies[i].mass * acc[i][k] * dt;
+            state.P[i][k] += dP[i][k];
         }
     }
 }
 
-static void kepler_pair_step(Body& bi, Body& bj, double dt, double G) {
-    std::vector<double> r_rel(3), p_rel(3), v_rel(3);
-    double mu_red = (bi.mass * bj.mass) / (bi.mass + bj.mass);
+static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) {
+    const double mu_grav = G * state.M[i];
 
-    for (int k = 0; k < 3; ++k) {
-        r_rel[k] = bi.position[k] - bj.position[k];
-        p_rel[k] = mu_red * (bi.velocity[k] - bj.velocity[k]);
-        v_rel[k] = p_rel[k] / mu_red;
-    }
-
-    double mu = G * (bi.mass + bj.mass);
-
-    StateVector result = propagate_universal(mu, r_rel, v_rel, dt);
+    CanonicalStateVector result = propagate_universal(mu_grav, state.mu[i], state.Q[i], state.P[i], dt);
 
     if (!result.converged) {
         throw std::runtime_error("Kepler solve failed.");
     }
-    
-    double m_tot = bi.mass + bj.mass;
 
-    std::vector<double> r_cm(3), v_cm(3);
-    for (int k = 0; k < 3; ++k) {
-        r_cm[k] = (bi.mass * bi.position[k] + bj.mass * bj.position[k]) / (bi.mass + bj.mass);
-        v_cm[k] = (bi.mass * bi.velocity[k] + bj.mass * bj.velocity[k]) / (bi.mass + bj.mass);
+    state.Q[i] = result.q;
+    state.P[i] = result.p;
+}
 
-        r_cm[k] += v_cm[k] * dt; // Drift center of mass
-    }
-
-    for (int k = 0; k < 3; ++k) {
-        bi.position[k] = r_cm[k] + (bj.mass / m_tot) * result.r[k];
-        bj.position[k] = r_cm[k] - (bi.mass / m_tot) * result.r[k];
-
-        bi.velocity[k] = v_cm[k] + (bj.mass / m_tot) * result.v[k];
-        bj.velocity[k] = v_cm[k] - (bi.mass / m_tot) * result.v[k];
+void kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    for (size_t  i = 1; i < state.Q.size(); ++i) {
+        kepler_pair_step(state, i, dt, G);
     }
 }
 
-void kepler_operator(std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt, double G) {
-    for (const auto& p : pairs) {
-        kepler_pair_step(bodies[p.i], bodies[p.j], dt, G);
-    }
-}
-
-void symmetric_kepler_operator(std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt, double G) {
-    //Forward half step
-    for (const auto& p : pairs) {
-        kepler_pair_step(bodies[p.i], bodies[p.j], dt, G);
+void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    for (size_t i = 1; i < state.Q.size(); ++i) {
+        kepler_pair_step(state, i, 0.5 * dt, G);
     }
 
-    //Backward half step
-    std::vector<Pair> reversed = reverse_pairs(pairs);
-    for (const auto& p : reversed) {
-        kepler_pair_step(bodies[p.i], bodies[p.j], dt, G);
+    for (int i = static_cast<int>(state.Q.size()) - 1; i >= 1; --i) {
+        kepler_pair_step(state, i, 0.5 * dt, G);
     }
-
 }

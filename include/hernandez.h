@@ -12,7 +12,7 @@ class Hernandez : public Integrator {
 public:
     explicit Hernandez(const std::vector<Pair>& fixed_pairs);
 
-    void step(std::vector<Body>& bodies, double dt) override;
+    void step(CanonicalState& state, double dt);
 
 private:
     std::vector<Pair> pairs_;

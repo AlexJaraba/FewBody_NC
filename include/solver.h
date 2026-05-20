@@ -13,6 +13,8 @@
 
 class CSVOutputWriter;
 
+void recenter_system(std::vector<Body>& bodies);
+
 class Solver {
 public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);

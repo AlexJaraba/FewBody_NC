@@ -2,16 +2,17 @@
 
 #include <vector>
 
-struct StateVector {
-    std::vector<double> r;
-    std::vector<double> v;
+struct CanonicalStateVector {
+    std::vector<double> q;
+    std::vector<double> p;
     bool converged;
     int iterations;
 };
 
-StateVector propagate_universal(
-    double mu,
-    const std::vector<double>& r0,
-    const std::vector<double>& v0,
+CanonicalStateVector propagate_universal(
+    double mu_grav,
+    double reduced_mass,
+    const std::vector<double>& q0,
+    const std::vector<double>& p0,
     double dt
 );

@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "body.h"
+#include "canonical_state.h"
 
-void compute_jacobi_coordinates(std::vector<Body>& bodies);
-void reconstruct_barycentric_coordinates(std::vector<Body>& bodies);
+CanonicalState compute_jacobi_state(const std::vector<Body>& bodies);
+void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies);

@@ -1,5 +1,4 @@
 #include <cmath>
-#include <iostream>
 
 #include "body.h"
 #include "globals.h"
@@ -7,14 +6,10 @@
 
 
 Body::Body(double m, std::vector<double> pos, std::vector<double> vel)
-    : mass(m), position(pos), velocity(vel), acceleration(3, 0.0), jacobi_position(3, 0.0), jacobi_momentum(3, 0.0) {
+    : mass(m), position(pos), velocity(vel), acceleration(3, 0.0) {
         momentum.resize(3);
         for (int i = 0; i < 3; ++i)
             momentum[i] = mass * velocity[i];
-        for (int i = 0; i < 3; ++i)
-            jacobi_position[i] = position[i];
-        for (int i = 0; i < 3; ++i)
-            jacobi_momentum[i] = momentum[i];
     }
 
 void Body::updateAcceleration(const std::vector<Body>& bodies) {
@@ -37,20 +32,6 @@ void Body::updateAcceleration(const std::vector<Body>& bodies) {
         for (int i = 0; i < 3; ++i)
             acceleration[i] += force * diff[i];
     }
-}
-
-void Body::updateCenterofMass(const std::vector<Body>& bodies) {
-    double total_mass = 0.0;
-    std::vector<double> center_of_mass(3, 0.0);
-    
-    for (const auto& body : bodies) {
-        total_mass += body.mass;
-        for (int i = 0; i < 3; ++i)
-            center_of_mass[i] += body.position[i] * body.mass;
-    }
-    
-    for (int i = 0; i < 3; ++i)
-        center_of_mass[i] /= total_mass;
 }
 
 void Body::updatePosition(double dt) {

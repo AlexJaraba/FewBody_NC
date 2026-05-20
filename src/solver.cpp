@@ -13,6 +13,8 @@
 #include "yoshida4.h"
 #include "pairing.h"
 #include "pair_graph.h"
+#include "jacobi.h"
+#include "canonical_state.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
@@ -79,9 +81,11 @@ void Solver::run() {
 
     G = params.gravitational_constant;  // Set the global gravitational constant
 
+    CanonicalState state = compute_jacobi_state(bodies);
+
     for (int step = 0; step < steps; ++step) {
-        integrator->step(bodies, dt);
-        recenter_system(bodies);
+        integrator->step(state, dt);
+        reconstruct_bodies(state, bodies);
         Diagnostics diag = compute_diagnostics(bodies, G, dt);
         std::cout << "Step: " << step << ", Time: " << step * dt 
                   << ", | Total Energy: " << diag.total_energy 
@@ -100,7 +104,7 @@ void Solver::run() {
 	        writer.write(states);
         }
     }
-
+    reconstruct_bodies(state, bodies);
     std::vector<BodyState> states;
     for (const auto& b : bodies) {
         states.push_back(b.toState(steps * dt));
@@ -110,54 +114,62 @@ void Solver::run() {
 }
 
 void Solver::ReversibilityTest() {
-    SolverParams params = readParams("data/param.txt");
+    std::cout << "\n=== REVERSIBILITY TEST ===\n";
 
-    double runtime = params.runtime;
-    double dt = params.timestep;
+    // Save initial state
+    std::vector<Body> initial = bodies;
 
-    int steps = static_cast<int>(runtime / dt);
+    const double dt = 0.01;
+    const int steps = 10000;
 
-    std::vector<Body> initial_bodies = bodies; // Save initial state
+    CanonicalState state = compute_jacobi_state(bodies);
 
-    for (int step = 0; step < steps; ++step) {
-        integrator->step(bodies, dt);
+    // Forward integration
+    for (int i = 0; i < steps; ++i) {
+        integrator->step(state, dt);
     }
 
-    for (auto& body: bodies) {
+    // Reverse velocities
+    for (size_t i = 1; i < state.P.size(); ++i) {
         for (int k = 0; k < 3; ++k) {
-            body.velocity[k] *= -1.0; // Reverse velocities
-            body.momentum[k] *= -1.0; // Reverse momenta to maintain consistency
+            state.P[i][k] *= -1.0;
         }
     }
-    
-    for (int step = 0; step < steps; ++step) {
-        integrator->step(bodies, dt);
+
+    // Backward integration
+    for (int i = 0; i < steps; ++i) {
+        integrator->step(state, dt);
     }
 
-    double max_position_error = 0.0;
-    double max_velocity_error = 0.0;
+    reconstruct_bodies(state, bodies);
 
-    for (size_t i = 0; i < bodies.size(); ++i){
+    // Reverse again
+    for (auto& body : bodies) {
+        for (int k = 0; k < 3; ++k) {
+            body.velocity[k] *= -1.0;
+        }
+        body.updateMomentumFromVelocity();
+    }
 
+    double max_pos_error = 0.0;
+    double max_vel_error = 0.0;
+
+    for (size_t i = 0; i < bodies.size(); ++i) {
         double pos_err = 0.0;
         double vel_err = 0.0;
-
-        for (int k = 0; k < 3; ++k){
-
-            double dp = bodies[i].position[k] - initial_bodies[i].position[k];
-            double dv = bodies[i].velocity[k] + initial_bodies[i].velocity[k];
-            pos_err += std::abs(dp);
-            vel_err += std::abs(dv);
+        for (int k = 0; k < 3; ++k) {
+            double dp = bodies[i].position[k] - initial[i].position[k];
+            double dv = bodies[i].velocity[k] - initial[i].velocity[k];
+            pos_err += dp * dp;
+            vel_err += dv * dv;
         }
 
         pos_err = std::sqrt(pos_err);
         vel_err = std::sqrt(vel_err);
-
-        max_position_error = std::max(max_position_error, pos_err);
-        max_velocity_error = std::max(max_velocity_error, vel_err);
+        max_pos_error = std::max(max_pos_error, pos_err);
+        max_vel_error = std::max(max_vel_error, vel_err);
     }
 
-    std::cout << "Reversibility Test Results:" << std::endl;
-    std::cout << "Max Position Error: " << max_position_error << std::endl;
-    std::cout << "Max Velocity Error: " << max_velocity_error << std::endl;
+    std::cout << "Max Position Error: " << max_pos_error << "\n";
+    std::cout << "Max Velocity Error: " << max_vel_error << "\n";
 }

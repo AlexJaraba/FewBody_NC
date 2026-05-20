@@ -7,27 +7,41 @@
 #include "univ_vari_solve.h"
 
 double stumpff_C(double z) {
-    if (z > 0) {
-        double sz = std::sqrt(z);
-        return (1.0 - std::cos(sz)) / z;
-    } else if (z < 0) {
-        double sz = std::sqrt(-z);
-        return (std::cosh(sz) - 1.0) / (-z);
-    } else {
-        return 0.5;
+    const double abs_z = std::abs(z);
+
+    //Series expansion near z = 0
+    if (abs_z < 1e-12) {
+        const double z2 = z * z;
+        const double z3 = z2 * z;
+
+        return 0.5 - (z / 24.0) + (z2 / 720.0) - (z3 / 40320.0);
     }
+
+    if (z > 0) {
+        const double sz =  std::sqrt(z);
+        return (1.0 - std::cos(sz)) / z;
+    }
+    const double sz = std::sqrt(-z);
+    return (std::cosh(sz) - 1.0) / (-z);
 }
 
 double stumpff_S(double z) {
-    if (z > 0) {
-        double sz = std::sqrt(z);
-        return (sz - std::sin(sz)) / (sz * sz * sz);
-    } else if (z < 0) {
-        double sz = std::sqrt(-z);
-        return (std::sinh(sz) - sz) / (sz * sz * sz);
-    } else {
-        return 1.0 / 6.0;
+    const double abs_z = std::abs(z);
+
+    // Series expansion near z = 0
+    if (abs_z < 1e-12) {
+        const double z2 = z * z;
+        const double z3 = z2 * z;
+
+        return (1.0 / 6.0) - (z / 120.0) + (z2 / 5040.0) - (z3 / 362880.0);
     }
+
+    if (z > 0) {
+        const double sz = std::sqrt(z);
+        return (sz - std::sin(sz)) / (sz * sz * sz);
+    }
+    const double sz = std::sqrt(-z);
+    return (std::sinh(sz) - sz) / (sz * sz * sz);
 }
 
 double norm(const std::vector<double>& v) {
@@ -39,20 +53,16 @@ double norm(const std::vector<double>& v) {
 ChiResult solve_chi(double mu, double alpha,
                     const std::vector<double>& r0,
                     double vr, double dt,
-                    double tol,
+                    double abs_tol,
+                    double rel_tol,
                     int max_iter)
 {
     double r = norm(r0);
     double chi0;
 
-    if (alpha > 0) {
-        chi0 = std::sqrt(mu) * dt * alpha;
-    } else if (alpha < 0) {
-        chi0 = std::sqrt(-1.0 / alpha) *
-               std::log((-2 * mu * alpha * dt) /
-               (vr + std::copysign(1.0, dt) *
-               std::sqrt(-mu / alpha) * (1 - r * alpha)));
-    } else {
+    chi0 = std::sqrt(mu) * std::abs(alpha) * dt;
+
+    if (alpha == 0.0) {
         chi0 = std::sqrt(mu) * dt / r;
     }
 
@@ -81,7 +91,7 @@ ChiResult solve_chi(double mu, double alpha,
              + r;
     };
 
-    NewtonResult result = Newton_Solver(F, dF, chi0, tol, max_iter);
+    NewtonResult result = Newton_Solver(F, dF, chi0, abs_tol, rel_tol, max_iter);
 
     return {result.root, result.iterations, result.converged};
 }

@@ -5,13 +5,12 @@
 
 bool is_kepler_pair(int i, int j, const std::vector<Pair>& pairs)
 {
-    Pair p = canonicalize_pair(i, j);
+    // Pair p = canonicalize_pair(i, j);
     
-    for (const auto& p : pairs) {
-        if ((p.i == i && p.j == j) || (p.i == j && p.j == i))
-            return true;
-    }
-    return false;
+    // for (const auto& kp : kepler_pairs) {
+    //     if (kp.i == p.i && kp.j == p.j) {return true};
+    // }
+    // return false;
 }
 
 bool pair_exists(int i, int j, const std::vector<Pair>& pairs) {

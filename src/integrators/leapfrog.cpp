@@ -1,31 +1,15 @@
 #include "leapfrog.h"
-#include "body.h"
+#include "operators.h"
 
-void Leapfrog::step(std::vector<Body>& bodies, double dt) {
-    // Initialize half-step velocities for the leapfrog integrator
-    for (auto& body : bodies) {
-        body.updateAcceleration(bodies);
-        for (int i = 0; i < 3; ++i) {
-            body.velocity[i] += 0.5 * body.acceleration[i] * dt;
-        }
-    }
+void Leapfrog::step(CanonicalState& state, double dt) {
+    extern double G;
 
-    // Update positions
-    for (auto& body : bodies)
-        body.updatePosition(dt);
+    // Kick half-step
+    kick_operator(state, {}, 0.5 * dt, G);
 
-    // Recompute accelerations
-    for (auto& body : bodies)
-        body.updateAcceleration(bodies);
+    // Kepler full-step
+    kepler_operator(state, {}, dt, G);
 
-    // Update velocities
-    //for (auto& body : bodies)
-    //    body.updateVelocity(dt);
-
-    // Finalize velocities after the last step
-    for (auto& body : bodies) {
-        for (int i = 0; i < 3; ++i) {
-            body.velocity[i] += 0.5 * body.acceleration[i] * dt;
-        }
-    }
+    // Kick half-step
+    kick_operator(state, {}, 0.5 * dt, G);
 }

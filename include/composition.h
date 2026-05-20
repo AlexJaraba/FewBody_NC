@@ -6,6 +6,7 @@
 #include "body.h"
 #include "pairing.h"
 #include "corrector.h"
+#include "canonical_state.h"
 
 enum class OperatorType {
     DRIFT,
@@ -22,7 +23,7 @@ class SymmetricComposition {
     public:
         SymmetricComposition(const std::vector<CompositionStep>& steps);
         void set_corrector(const SymplecticCorrector& corrector);
-        void execute(std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt, double G) const;
+        void execute(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) const;
         
         const std::vector<CompositionStep>& steps() const;
 

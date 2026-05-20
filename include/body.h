@@ -10,8 +10,7 @@ struct Body {
     std::vector<double> velocity;
     std::vector<double> acceleration;
     std::vector<double> momentum;
-    std::vector<double> jacobi_position;
-    std::vector<double> jacobi_momentum;
+
     BodyState toState(double time) const;
 
     Body(double m, std::vector<double> pos, std::vector<double> vel);

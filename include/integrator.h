@@ -1,10 +1,9 @@
 #pragma once
 
-#include <vector>
-#include "body.h"
+#include "canonical_state.h"
 
 class Integrator {
 public:
-    virtual void step(std::vector<Body>& bodies, double dt) = 0;
+    virtual void step(CanonicalState& state, double dt) = 0;
     virtual ~Integrator() = default;
 };

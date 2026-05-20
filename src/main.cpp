@@ -9,10 +9,14 @@
 #include "csv_output_writer.h"
 #include "hernandez.h"
 #include "yoshida4.h"
+#include "jacobi.h"
+#include "solver.h"
 
 int main() {
     std::vector<Body> bodies;
     readInitialConditions("data/initial_conditions.txt", bodies);
+
+    recenter_system(bodies);
 
     std::string outputfilename = "output.csv";
     CSVOutputWriter output(outputfilename);
