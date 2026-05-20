@@ -72,11 +72,15 @@ void recenter_system(std::vector<Body>& bodies) {
 }
 
 void Solver::run() {
+    std::cout << "Reading param file..." << std::endl;
     SolverParams params = readParams("data/param.txt");
+    std::cout << "dt = " << params.timestep << std::endl;
 
     int output_frequency = params.output_frequency;
     double runtime = params.runtime;
     double dt = params.timestep;
+    std::cout << "Loaded timestep: " << dt << std::endl;
+
     int steps = static_cast<int>(runtime / dt);
 
     G = params.gravitational_constant;  // Set the global gravitational constant
@@ -86,14 +90,17 @@ void Solver::run() {
     for (int step = 0; step < steps; ++step) {
         integrator->step(state, dt);
         reconstruct_bodies(state, bodies);
-        Diagnostics diag = compute_diagnostics(bodies, G, dt);
-        std::cout << "Step: " << step << ", Time: " << step * dt 
-                  << ", | Total Energy: " << diag.total_energy 
-                  << ", | Linear Momentum: " << diag.linear_momentum 
-                  << ", | Angular Momentum: " << diag.angular_momentum 
-                  << ", | Shadow Energy: " << diag.shadow_energy 
-                  << ", | COM Drift: " << diag.com_drift
-                  << std::endl;
+
+        if (step % output_frequency == 0) {
+            Diagnostics diag = compute_diagnostics(bodies, G, dt);
+            std::cout << "Step: " << step << ", Time: " << step * dt 
+                    << ", | Total Energy: " << diag.total_energy 
+                    << ", | Linear Momentum: " << diag.linear_momentum 
+                    << ", | Angular Momentum: " << diag.angular_momentum 
+                    << ", | Shadow Energy: " << diag.shadow_energy 
+                    << ", | COM Drift: " << diag.com_drift
+                    << std::endl;
+        }
 
         // Write output at the specified frequency
         if (step % output_frequency == 0) {
@@ -142,14 +149,6 @@ void Solver::ReversibilityTest() {
     }
 
     reconstruct_bodies(state, bodies);
-
-    // Reverse again
-    for (auto& body : bodies) {
-        for (int k = 0; k < 3; ++k) {
-            body.velocity[k] *= -1.0;
-        }
-        body.updateMomentumFromVelocity();
-    }
 
     double max_pos_error = 0.0;
     double max_vel_error = 0.0;

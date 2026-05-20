@@ -1,9 +1,10 @@
-// output_writer.cpp
+#include <iomanip>
+
 #include "csv_output_writer.h"
 #include "body.h"
 
 CSVOutputWriter::CSVOutputWriter(const std::string& filename)
-    : file_(filename), header_written_(false) {}
+    : file_(filename), header_written_(false) {file_ << std::setprecision(17);}
 
 void CSVOutputWriter::write(const std::vector<BodyState>& bodies) {
     if (!header_written_) {

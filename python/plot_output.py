@@ -1,7 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import time
+import subprocess
+import os
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+PARAM_PATH = PROJECT_ROOT / "data" / "param.txt"
+OUTPUT_PATH = PROJECT_ROOT / "output.csv"
+EXECUTABLE_PATH = PROJECT_ROOT / "few_body_nc.exe"
 
 plt.style.use('bmh')  # Use a nicer style for plots
 
@@ -113,8 +122,8 @@ def PlotVerificationSuite(data,df):
     P0 = linear_momentum[0]
     Rcm0 = com_positions[0]
 
-    dE = np.abs((energies - E0) / abs(E0))
-    dL = np.abs((angular_momentum - L0) / abs(L0))
+    dE = np.abs(energies - E0)
+    dL = np.abs(angular_momentum - L0)
     dP = np.abs(linear_momentum - P0) 
     dRcm = np.abs(com_positions - Rcm0)
 
@@ -130,7 +139,7 @@ def PlotVerificationSuite(data,df):
     print("Final dRcm:", dRcm[-1])
 
     # Figure Layout
-    fig, ax = plt.subplots(3, 1, figsize=(16, 10))
+    fig = plt.figure(figsize=(16,10))
     gs = fig.add_gridspec(2, 4)
 
     # Orbit Plot
@@ -185,21 +194,137 @@ def PlotVerificationSuite(data,df):
     fig.subplots_adjust(left=0.06, right=0.97, top=0.93, bottom=0.08, wspace=0.25, hspace=0.30)
     plt.show()
 
-def TimestepScalingTest():
-    dts = np.array([0.01, 0.005, 0.0025, 0.00125])
-    errors = np.array([4.0e-5, 1.0e-5, 2.5e-6, 6.25e-7])  # Example errors for a 4th order method
+def rewrite_param(dt, runtime):
+    with open(PARAM_PATH, "r") as f:
+        lines = f.readlines()
+    with open(PARAM_PATH, "w") as f:
+        for line in lines:
+            if line.startswith("timestep"):
+                f.write(f"timestep {dt}\n")
+            elif line.startswith("runtime"):
+                f.write(f"runtime {runtime}\n")
+            else:
+                f.write(line)
 
-    plt.figure(figsize=(8,6))
-    plt.loglog(dts, errors, marker='o')
+def RunTimeStepScalingStudy():
+    dt_ref = 0.00025
+    dts = [0.1, 0.05, 0.025, 0.0125]
+    runtime = 1000
+    position_errors = []
+
+    # -------------------------------------------------------------------
+    # Run reference solution
+    # -------------------------------------------------------------------
+
+    print("\nRunning reference solution...")
+
+    rewrite_param(dt_ref, runtime)
+
+    if OUTPUT_PATH.exists():
+        OUTPUT_PATH.unlink()
+    
+    result = subprocess.run([str(EXECUTABLE_PATH)], capture_output=True, text=True)
+
+    print(result.stdout)
+
+    if result.returncode != 0:
+        print(result.stderr)
+        raise RuntimeError("Reference simulation failed")
+    
+    data_ref, df_ref = read_output(OUTPUT_PATH)
+
+    # -------------------------------------------------------------------
+    # Final reference positions
+    # -------------------------------------------------------------------
+
+    reference_positions = {}
+    final_time_ref = max(df_ref["time"])
+    final_step_ref = df_ref[df_ref["time"] == final_time_ref]
+
+    for i in sorted(final_step_ref["id"].unique()):
+        body = final_step_ref[final_step_ref["id"] == i]
+        reference_positions[i] = np.array([body["x"].values[0], body["y"].values[0], body["z"].values[0]])
+
+    # -------------------------------------------------------------------
+    # Run test timesteps
+    # -------------------------------------------------------------------
+
+    for dt in dts:
+
+        print(f"\nRunning dt = {dt}")
+        rewrite_param(dt, runtime)
+
+        if OUTPUT_PATH.exists():
+            OUTPUT_PATH.unlink()
+        
+        result = subprocess.run([str(EXECUTABLE_PATH)], capture_output=True, text=True)
+
+        print(result.stdout)
+
+        if result.returncode != 0:
+            print(result.stderr)
+            raise RuntimeError(f"Simulation failed for dt = {dt}")
+        
+        data, df = read_output(OUTPUT_PATH)
+        final_time = max(df["time"])
+        final_step = df[df["time"] == final_time]
+
+        # ---------------------------------------------------------------
+        # Compute RMS position error
+        # ---------------------------------------------------------------
+        
+        total_error = 0.0
+        count = 0
+
+        for i in sorted(final_step["id"].unique()):
+            body = final_step[final_step["id"] == i]
+
+            r = np.array([body["x"].values[0], body["y"].values[0], body["z"].values[0]])
+            dr = r - reference_positions[i]
+
+            total_error += np.dot(dr, dr)
+
+            count += 1
+        
+        rms_error = np.sqrt(total_error / count)
+        position_errors.append(rms_error)
+
+        print(f"RMS position error: {rms_error}")
+        
+    # ---------------------------------------------------------------
+    # Read new output
+    # ---------------------------------------------------------------
+
+    dts = np.array(dts)
+    position_errors = np.array(position_errors)
+    
+    # ---------------------------------------------------------------
+    # Plot convergence
+    # ---------------------------------------------------------------
+
+    plt.figure()
+    plt.loglog(dts, position_errors, marker='o')
     plt.gca().invert_xaxis()
     plt.xlabel('Timestep (dt)')
-    plt.ylabel('Error')
-    plt.title('Timestep Scaling Test')
-    plt.grid(True, which="both", ls="--")
+    plt.ylabel('RMS Position Error')
+    plt.title('True Convergence Test')
+    plt.grid(True, which='both', ls='--')
     plt.show()
 
+    # ---------------------------------------------------------------
+    # Print convergence ratio
+    # ---------------------------------------------------------------
+
+    print("\nConvergence Ratios:")
+
+    for i in range(len(position_errors) - 1):
+        ratio = position_errors[i] / position_errors[i+1]
+        print(f"{dts[i]} -> {dts[i+1]} : ratio = {ratio}")
+
+
+
 if __name__ == "__main__":
-    data, df = read_output('output.csv')
+    data, df = read_output(OUTPUT_PATH)
     PlotVerificationSuite(data, df)
 
-    TimestepScalingTest()
+    RunTimeStepScalingStudy()
