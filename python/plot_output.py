@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import subprocess
-import os
 
 from pathlib import Path
 
@@ -122,8 +121,8 @@ def PlotVerificationSuite(data,df):
     P0 = linear_momentum[0]
     Rcm0 = com_positions[0]
 
-    dE = np.abs(energies - E0)
-    dL = np.abs(angular_momentum - L0)
+    dE = np.abs((energies - E0) / E0)
+    dL = np.abs((angular_momentum - L0) / L0)
     dP = np.abs(linear_momentum - P0) 
     dRcm = np.abs(com_positions - Rcm0)
 
@@ -207,9 +206,9 @@ def rewrite_param(dt, runtime):
                 f.write(line)
 
 def RunTimeStepScalingStudy():
-    dt_ref = 0.00025
-    dts = [0.4, 0.2, 0.1, 0.05]
-    runtime = 100
+    dt_ref = 0.0025
+    dts = [0.2, 0.1, 0.05, 0.025]
+    runtime = 500
     position_errors = []
 
     # -------------------------------------------------------------------
@@ -321,10 +320,29 @@ def RunTimeStepScalingStudy():
         ratio = position_errors[i] / position_errors[i+1]
         print(f"{dts[i]} -> {dts[i+1]} : ratio = {ratio}")
 
+def PlotShadowHamiltonian():
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    import numpy as np
 
+    diagnostics = pd.read_csv("diagnostics.csv")
+    time = diagnostics["time"].values
+    shadow_energy = diagnostics["shadow_energy"].values
+    H0 = shadow_energy[0]
+    dH = np.abs((shadow_energy - H0) / H0)
+
+    plt.figure()
+    plt.semilogy(time, dH, label="Shadow Hamiltonian Error")
+    plt.xlabel("Time")
+    plt.ylabel(r"$|(\tilde{H} - \tilde{H}_0)/\tilde{H}_0|$")
+    plt.title("Shadow Hamiltonian Conservation")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
+    RunTimeStepScalingStudy()
     data, df = read_output(OUTPUT_PATH)
     PlotVerificationSuite(data, df)
-
-    RunTimeStepScalingStudy()
+    PlotShadowHamiltonian()

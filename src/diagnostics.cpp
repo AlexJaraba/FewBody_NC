@@ -73,3 +73,22 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
 
     return d;
 }
+
+double compute_pertubation_energy(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double G) {
+    double E = 0.0;
+
+    for (const auto& pair : pairs) {
+        int i = pair.i;
+        int j = pair.j;
+        double r2 = 0.0;
+
+        for (int k = 0; k < 3; ++k) {
+            double dr = bodies[j].position[k] - bodies[i].position[k];
+            r2 += dr * dr;
+        }
+
+        double r = std::sqrt(r2);
+        E -= (G * bodies[i].mass * bodies[j].mass) / r;
+    }
+    return E;
+}

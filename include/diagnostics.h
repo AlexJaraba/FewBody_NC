@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "body.h"
+#include "pairing.h"
 
 struct Diagnostics {
     double kinetic_energy;

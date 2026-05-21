@@ -1,5 +1,6 @@
 output_frequency 10
-runtime 100
-timestep 0.05
+runtime 500
+timestep 0.025
 integrator Yoshida4
 gravitational_constant 0.000296014912
+enable_diagnostics false

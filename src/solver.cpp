@@ -15,16 +15,17 @@
 #include "pair_graph.h"
 #include "jacobi.h"
 #include "canonical_state.h"
+#include "diagnostics_writer.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
     SolverParams params = readParams("data/param.txt");
     
     PairGraph graph = build_hierarchical_pair_graph(bodies);
-    std::vector<Pair> fixed_pairs = graph.kepler_pairs;
+    std::vector<Pair> fixed_pairs = graph.pertubation_pairs;
 
-    std::cout << "Kepler Pairs:" << graph.kepler_pairs.size() << std::endl;
-    std::cout << "Pertubation pairs:" << graph.pertubation_pairs.size() << std::endl;
+    std::cout << "Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
+    std::cout << "Perturbation Pairs: " << graph.pertubation_pairs.size() << std::endl;
 
     if (params.integrator == "leapfrog") {
         integrator = std::make_unique<Leapfrog>();
@@ -87,6 +88,8 @@ void Solver::run() {
 
     CanonicalState state = compute_jacobi_state(bodies);
 
+    DiagnosticsWriter dianostics_writer("diagnostics.csv");
+
     for (int step = 0; step < steps; ++step) {
         integrator->step(state, dt);
         reconstruct_bodies(state, bodies);
@@ -100,6 +103,7 @@ void Solver::run() {
                     << ", | Shadow Energy: " << diag.shadow_energy 
                     << ", | COM Drift: " << diag.com_drift
                     << std::endl;
+            dianostics_writer.write(step * dt, diag);
         }
 
         // Write output at the specified frequency
@@ -118,6 +122,7 @@ void Solver::run() {
     }
     // Write final output
     writer.write(states);
+    dianostics_writer.close();
 }
 
 void Solver::ReversibilityTest() {

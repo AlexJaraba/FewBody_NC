@@ -47,28 +47,31 @@ void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double
     }
 
     // Physical perturbation forces
-    for (int i = 0; i < N; ++i) {
-        for (int j = i + 1; j < N; ++j) {
-            std::vector<double> dr(3);
-            for (int k = 0; k < 3; ++k) {
-                dr[k] = r[j][k] - r[i][k];
-            }
+    for (const auto& pair : pairs) {
 
-            double r2 = 0.0;
+        const int i = pair.i;
+        const int j = pair.j;
 
-            for (int k = 0; k < 3; ++k)
-                r2 += dr[k] * dr[k];
+        std::vector<double> dr(3);
+        for (int k = 0; k < 3; ++k) {
+            dr[k] = r[j][k] - r[i][k];
+        }
 
-            const double dist = std::sqrt(r2) + 1e-15;
-            const double coeff = (G * state.physical_mass[i] * state.physical_mass[j]) / (dist * dist * dist);
+        double r2 = 0.0;
 
-            for (int k = 0; k < 3; ++k) {
-                const double F = coeff * dr[k];
-                dP[i][k] += dt * F;
-                dP[j][k] -= dt * F;
-            }
+        for (int k = 0; k < 3; ++k)
+            r2 += dr[k] * dr[k];
+
+        const double dist = std::sqrt(r2) + 1e-15;
+        const double coeff = (G * state.physical_mass[i] * state.physical_mass[j]) / (dist * dist * dist);
+
+        for (int k = 0; k < 3; ++k) {
+            const double F = coeff * dr[k];
+            dP[i][k] += dt * F;
+            dP[j][k] -= dt * F;
         }
     }
+
     // Canonical momentum update
     for (int i = 1; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
@@ -79,10 +82,27 @@ void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double
 
 static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) {
     const double mu_grav = G * state.M[i];
-
+    const double r0 = std::sqrt(state.Q[i][0] * state.Q[i][0] + state.Q[i][1] * state.Q[i][1] + state.Q[i][2] * state.Q[i][2]);
+    const double p2 = state.P[i][0] * state.P[i][0] + state.P[i][1] * state.P[i][1] + state.P[i][2] * state.P[i][2];
+    const double v2 = p2 / (state.mu[i] * state.mu[i]);
+    const double alpha = (2.0 / r0) - (v2 / mu_grav);
+    
     CanonicalStateVector result = propagate_universal(mu_grav, state.mu[i], state.Q[i], state.P[i], dt);
 
     if (!result.converged) {
+        std::cerr
+            << "\n====================================\n"
+            << "KEPLER SOLVE FAILURE\n"
+            << "Jacobi Index : " << i << "\n"
+            << "dt           : " << dt << "\n"
+            << "r0           : " << r0 << "\n"
+            << "v2           : " << v2 << "\n"
+            << "alpha        : " << alpha << "\n"
+            << "mu_grav      : " << mu_grav << "\n"
+            << "mu_reduced   : " << state.mu[i] << "\n"
+            << "M_total      : " << state.M[i] << "\n"
+            << "====================================\n"
+            << std::endl;
         throw std::runtime_error("Kepler solve failed.");
     }
 

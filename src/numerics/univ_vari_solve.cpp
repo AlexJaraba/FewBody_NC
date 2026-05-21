@@ -60,14 +60,26 @@ ChiResult solve_chi(double mu, double alpha,
     double r = norm(r0);
     double chi0;
 
-    chi0 = std::sqrt(mu) * std::abs(alpha) * dt;
-
-    if (alpha == 0.0) {
+    if (alpha > 1e-12) {
+        chi0 = std::sqrt(mu) * alpha * dt;
+    }
+    else if (alpha < -1e-12) {
+        const double a = 1.0 / alpha;
+        const double term = -2.0 * mu * alpha * dt;
+        const double denom = r * vr + std::copysign(1.0, dt) * std::sqrt(-mu * a) * (1.0 - r / alpha);
+        if (std::abs(denom) < 1e-15) {
+            chi0 = (std::sqrt(mu) * dt) / r;
+        }
+        else {
+            chi0 = std::copysign(std::sqrt(-a) * std::log(term / denom), dt);
+        }
+    }
+    else {
         chi0 = std::sqrt(mu) * dt / r;
     }
 
     if (!std::isfinite(chi0)) {
-        return {std::numeric_limits<double>::quiet_NaN(), 0, false};
+        chi0 = (std::sqrt(mu) * dt) / r;
     }
 
     auto F = [&](double chi) {

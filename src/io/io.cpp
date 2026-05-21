@@ -53,7 +53,7 @@ SolverParams readParams(const std::string& filename) {
             } else if (param == "integrator") {
                 iss >> params.integrator;
             } else if (param == "gravitational_constant") {
-	      iss >> params.gravitational_constant;
+	            iss >> params.gravitational_constant;
 	    }
         }
     }
