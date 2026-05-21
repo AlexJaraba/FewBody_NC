@@ -6,10 +6,10 @@
 SymmetricComposition::SymmetricComposition(const std::vector<CompositionStep>& steps)
     : steps_(steps) {}
 
-// void SymmetricComposition::set_corrector(const SymplecticCorrector& corrector) {
-//     corrector_ = corrector;
-//     has_corrector_ = true;
-// }
+void SymmetricComposition::set_corrector(const SymplecticCorrector& corrector) {
+    corrector_ = corrector;
+    has_corrector_ = true;
+}
 
 const std::vector<CompositionStep>& SymmetricComposition::steps() const {
     return steps_;

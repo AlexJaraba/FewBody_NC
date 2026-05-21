@@ -30,5 +30,5 @@ class SymmetricComposition {
     private:
         std::vector<CompositionStep> steps_;
         bool has_corrector_ = false;
-        SymplecticCorrector corrector_{0.0};
+        SymplecticCorrector corrector_;
 };

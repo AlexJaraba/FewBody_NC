@@ -11,6 +11,7 @@
 #include "yoshida4.h"
 #include "jacobi.h"
 #include "solver.h"
+#include "operators.h"
 
 int main() {
     std::vector<Body> bodies;

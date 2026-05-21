@@ -206,9 +206,9 @@ def rewrite_param(dt, runtime):
                 f.write(line)
 
 def RunTimeStepScalingStudy():
-    dt_ref = 0.0025
-    dts = [0.2, 0.1, 0.05, 0.025]
-    runtime = 500
+    dt_ref = 0.00025
+    dts = [0.1, 0.05, 0.025, 0.0125]
+    runtime = 1.0
     position_errors = []
 
     # -------------------------------------------------------------------
@@ -342,7 +342,6 @@ def PlotShadowHamiltonian():
     plt.show()
 
 if __name__ == "__main__":
-    RunTimeStepScalingStudy()
     data, df = read_output(OUTPUT_PATH)
     PlotVerificationSuite(data, df)
     PlotShadowHamiltonian()

@@ -9,6 +9,7 @@
 #include "univ_vari_solve.h"
 #include "jacobi_transform.h"
 #include "canonical_state.h"
+#include "perturbation_hamiltonian.h"
 
 void drift_operator(CanonicalState& state, double dt) {
     // const int N = state.Q.size();
@@ -22,60 +23,21 @@ void drift_operator(CanonicalState& state, double dt) {
 }
 
 void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    const double eps = 1e-10;
     const int N = state.Q.size();
 
-    std::vector<std::vector<double>> dP(N, std::vector<double>(3, 0.0));
-    std::vector<std::vector<double>> r(N, std::vector<double>(3, 0.0));
-    std::vector<double> R_prev(3, 0.0);
-
-    double M_prev = state.physical_mass[0];
-
-    for (int i = 1; i < N; ++i) {
-        std::vector<double> r_com_prev(3);
-        for (int k = 0; k < 3; ++k) {
-            r_com_prev[k] = R_prev[k] / M_prev;
-        }
-
-        for (int k = 0; k < 3; ++k) {
-            r[i][k] = r_com_prev[k] + state.Q[i][k];
-        }
-
-        for (int k = 0; k < 3; ++k) {
-            R_prev[k] += state.physical_mass[i] * r[i][k];
-        }
-        M_prev += state.physical_mass[i];
-    }
-
-    // Physical perturbation forces
-    for (const auto& pair : pairs) {
-
-        const int i = pair.i;
-        const int j = pair.j;
-
-        std::vector<double> dr(3);
-        for (int k = 0; k < 3; ++k) {
-            dr[k] = r[j][k] - r[i][k];
-        }
-
-        double r2 = 0.0;
-
-        for (int k = 0; k < 3; ++k)
-            r2 += dr[k] * dr[k];
-
-        const double dist = std::sqrt(r2) + 1e-15;
-        const double coeff = (G * state.physical_mass[i] * state.physical_mass[j]) / (dist * dist * dist);
-
-        for (int k = 0; k < 3; ++k) {
-            const double F = coeff * dr[k];
-            dP[i][k] += dt * F;
-            dP[j][k] -= dt * F;
-        }
-    }
-
-    // Canonical momentum update
     for (int i = 1; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
-            state.P[i][k] += dP[i][k];
+            CanonicalState plus_state = state;
+            CanonicalState minus_state = state;
+            plus_state.Q[i][k] += eps;
+            minus_state.Q[i][k] -= eps;
+
+            const double H_plus = compute_perturbation_hamiltonian(plus_state, pairs, G);
+            const double H_minus = compute_perturbation_hamiltonian(minus_state, pairs, G);
+            const double dH_dq = (H_plus - H_minus) / (2.0 * eps);
+
+            state.P[i][k] -= dt * dH_dq;
         }
     }
 }
@@ -121,7 +83,56 @@ void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& p
         kepler_pair_step(state, i, 0.5 * dt, G);
     }
 
-    for (int i = static_cast<int>(state.Q.size()) - 1; i >= 1; --i) {
-        kepler_pair_step(state, i, 0.5 * dt, G);
+    // for (int i = static_cast<int>(state.Q.size()) - 1; i >= 1; --i) {
+    //     kepler_pair_step(state, i, 0.5 * dt, G);
+    // }
+}
+
+void test_kepler_reversibility(CanonicalState& inital_state, double dt, double G) {
+    std::cout << "\n=== KEPLER REVERSIBILITY TEST ===\n";
+
+    CanonicalState state = inital_state;
+    CanonicalState initial = state;
+
+    //Forward
+    kepler_operator(state, {}, dt, G);
+
+    //Backward
+    kepler_operator(state, {}, -dt, G);
+
+    double max_q_error = 0.0;
+    double max_p_error = 0.0;
+
+    for (size_t i = 1; i < state.Q.size(); ++i) {
+        for (int k = 0; k < 3; ++k) {
+            max_q_error = std::max(max_q_error, std::abs(state.Q[i][k] - initial.Q[i][k]));
+            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
+        }
     }
+
+    std::cout << "Max Q Error: " << max_q_error << std::endl;
+    std::cout << "Max P Error: " << max_p_error << std::endl;
+}
+
+void test_kick_reversibility(CanonicalState& inital_state, const std::vector<Pair>& pairs, double dt, double G) {
+    std::cout << "\n=== KICK REVERSIBILITY TEST ===\n";
+
+    CanonicalState state = inital_state;
+    CanonicalState initial = state;
+
+    //Forward
+    kick_operator(state, pairs, dt, G);
+
+    //Backward
+    kick_operator(state, pairs, -dt, G);
+
+    double max_p_error = 0.0;
+
+    for (size_t i = 1; i < state.Q.size(); ++i) {
+        for (int k = 0; k < 3; ++k) {
+            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
+        }
+    }
+
+    std::cout << "Max P Error: " << max_p_error << std::endl;
 }

@@ -18,6 +18,7 @@ SRCS += $(wildcard $(SRC_DIR)/jacobi/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/diagnostics/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/pair_graph/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/diagnostics_writer/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/perturbation_hamiltonian/*.cpp)
 #SRCS+= src/io/io.cpp src/io/output.cpp src/io/input.cpp
 
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))

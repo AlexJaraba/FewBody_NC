@@ -16,6 +16,7 @@
 #include "jacobi.h"
 #include "canonical_state.h"
 #include "diagnostics_writer.h"
+#include "integrator.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
@@ -123,6 +124,74 @@ void Solver::run() {
     // Write final output
     writer.write(states);
     dianostics_writer.close();
+}
+
+void Solver::TestHernandezAdjoint(double dt) {
+    std::cout << "\n=== HERNANDEZ ADJOINT TEST ===\n";
+
+    CanonicalState state = compute_jacobi_state(bodies);
+
+    CanonicalState initial = state;
+
+    // Forward step
+    integrator->step(state, dt);
+
+    // Backward step
+    integrator->step(state, -dt);
+
+    double max_q_error = 0.0;
+    double max_p_error = 0.0;
+
+    for (size_t i = 1; i < state.Q.size(); ++i) {
+        for (int k = 0; k < 3; ++k) {
+            max_q_error = std::max(max_q_error, std::abs(state.Q[i][k] - initial.Q[i][k]));
+            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
+        }
+    }
+
+    std::cout << "Max Q Error: " << max_q_error << std::endl;
+    std::cout << "Max P Error: " << max_p_error << std::endl;
+}
+
+void Solver::TestLocalOrder() {
+    std::cout << "\n=== LOCAL ORDER TEST ===\n";
+    const double G = 0.000296014912;
+    CanonicalState inital = compute_jacobi_state(bodies);
+    CanonicalState reference = inital;
+    const double dt_ref = 0.0001;
+    const double T = 0.1;
+    int ref_steps = static_cast<int>(T / dt_ref);
+    for (int i = 0; i < ref_steps; ++i) {
+        integrator->step(reference, dt_ref);
+    }
+    std::vector<double> dts = {0.1, 0.05, 0.025};
+    std::vector<double> errors;
+    for (double dt : dts) {
+        CanonicalState test = inital;
+        int steps = static_cast<int>(T / dt);
+        for (int i = 0; i < steps; ++i) {
+            integrator->step(test, dt);
+        }
+
+        double err = 0.0;
+
+        for (size_t i = 1; i < test.Q.size(); ++i) {
+            for (int k = 0; k < 3; ++k) {
+                double dQ = test.Q[i][k] - reference.Q[i][k];
+                double dP = test.P[i][k] - reference.P[i][k];
+
+                err += dQ * dQ;
+                err += dP * dP;
+            }
+        }
+        err = std::sqrt(err);
+        errors.push_back(err);
+        std::cout << "dt: " << dt << ", Error: " << err << std::endl;
+    }
+    for (size_t i = 0; i < errors.size() - 1; ++i) {
+        double ratio = errors[i] / errors[i + 1];
+        std::cout << dts[i] << " -> " << dts[i + 1] << ", Error Ratio: " << ratio << std::endl;
+    }
 }
 
 void Solver::ReversibilityTest() {

@@ -20,6 +20,8 @@ public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
     void run();
     void ReversibilityTest();
+    void TestHernandezAdjoint(double dt);
+    void TestLocalOrder();
 
 private:
     std::vector<Body>& bodies;
