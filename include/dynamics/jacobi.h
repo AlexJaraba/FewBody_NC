@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "body.h"
-#include "canonical_state.h"
-#include "vec3.h"
-#include "reconstruction.h"
+#include "core/body.h"
+#include "core/canonical_state.h"
+#include "core/reconstruction.h"
+#include "math/vec3.h"
 
 CanonicalState compute_jacobi_state(const std::vector<Body>& bodies);
 

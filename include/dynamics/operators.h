@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "body.h"
-#include "pairing.h"
-#include "jacobi.h"
-#include "canonical_state.h"
+#include "core/body.h"
+#include "core/canonical_state.h"
+#include "dynamics/pairing.h"
+#include "dynamics/jacobi.h"
 
 void drift_operator(
     CanonicalState& state,

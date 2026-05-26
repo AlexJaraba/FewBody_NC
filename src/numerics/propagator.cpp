@@ -1,9 +1,9 @@
 #include <cmath>
 #include <iostream>
 
-#include "univ_vari_solve.h"
-#include "propagator.h"
-#include "vec3.h"
+#include "numerics/univ_vari_solve.h"
+#include "numerics/propagator.h"
+#include "math/vec3.h"
 
 CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
     Vec3 v0;

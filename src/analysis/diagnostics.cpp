@@ -1,7 +1,7 @@
 #include <cmath>
 
-#include "diagnostics.h"
-#include "vec3.h"
+#include "analysis/diagnostics.h"
+#include "math/vec3.h"
 
 Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, double dt) {
     Diagnostics d{};

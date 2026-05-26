@@ -1,7 +1,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "pairing.h"
+#include "dynamics/pairing.h"
 
 bool is_kepler_pair(int i, int j, const std::vector<Pair>& pairs) {
     for (const auto& p : pairs) {

@@ -1,4 +1,4 @@
-#include "reconstruction.h"
+#include "core/reconstruction.h"
 
 std::vector<Vec3> reconstruct_cartesian_positions(const CanonicalState& state) {
     const int N = state.Q.size();

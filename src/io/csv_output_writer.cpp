@@ -1,7 +1,7 @@
 #include <iomanip>
 
-#include "csv_output_writer.h"
-#include "body.h"
+#include "io/csv_output_writer.h"
+#include "core/body.h"
 
 CSVOutputWriter::CSVOutputWriter(const std::string& filename)
     : file_(filename), header_written_(false) {file_ << std::setprecision(17);}

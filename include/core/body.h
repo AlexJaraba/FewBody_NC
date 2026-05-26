@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "body_state.h"
-#include "vec3.h"
+#include "core/body_state.h"
+#include "math/vec3.h"
 
 struct Body {
     double mass;

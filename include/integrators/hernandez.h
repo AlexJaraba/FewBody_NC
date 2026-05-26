@@ -2,11 +2,11 @@
 
 #include <vector>
 
-#include "body.h"
-#include "composition.h"
-#include "integrator.h"
-#include "pairing.h"
-#include "corrector.h"
+#include "core/body.h"
+#include "numerics/composition.h"
+#include "integrators/integrator.h"
+#include "dynamics/pairing.h"
+#include "dynamics/corrector.h"
 
 class Hernandez : public Integrator {
 public:

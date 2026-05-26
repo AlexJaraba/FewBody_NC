@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "pairing.h"
-#include "canonical_state.h"
+#include "dynamics/pairing.h"
+#include "core/canonical_state.h"
 
 class SymplecticCorrector {
 public:

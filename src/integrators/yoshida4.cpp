@@ -1,6 +1,6 @@
-#include "yoshida4.h"
-#include "hernandez.h"
-#include "canonical_state.h"
+#include "integrators/yoshida4.h"
+#include "integrators/hernandez.h"
+#include "core/canonical_state.h"
 
 Yoshida4::Yoshida4(const std::vector<Pair>& pairs) : base_integrator_(pairs) {}
 

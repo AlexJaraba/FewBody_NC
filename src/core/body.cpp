@@ -1,7 +1,7 @@
 #include <cmath>
 
-#include "body.h"
-#include "globals.h"
+#include "core/body.h"
+#include "core/globals.h"
 
 Body::Body(double m, Vec3 pos, Vec3 vel)
     : mass(m), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}

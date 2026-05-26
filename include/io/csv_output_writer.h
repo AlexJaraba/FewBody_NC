@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "output_writer.h"
+#include "io/output_writer.h"
 
 class CSVOutputWriter final: public OutputWriter {
 public:

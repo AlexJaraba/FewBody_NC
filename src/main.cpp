@@ -2,16 +2,15 @@
 #include <vector>
 #include <string>
 
-#include "body.h"
-#include "solver.h"
-#include "io.h"
-#include "globals.h"
-#include "csv_output_writer.h"
-#include "hernandez.h"
-#include "yoshida4.h"
-#include "jacobi.h"
-#include "solver.h"
-#include "operators.h"
+#include "core/body.h"
+#include "core/solver.h"
+#include "core/globals.h"
+#include "io/io.h"
+#include "io/csv_output_writer.h"
+#include "integrators/hernandez.h"
+#include "integrators/yoshida4.h"
+#include "dynamics/jacobi.h"
+#include "dynamics/operators.h"
 
 int main() {
     std::vector<Body> bodies;

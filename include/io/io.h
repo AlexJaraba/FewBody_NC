@@ -1,8 +1,9 @@
 #pragma once
 
 #include <vector>
-#include <string>  // Correct inclusion of string header
-#include "body.h"
+#include <string>
+
+#include "core/body.h"
 
 struct SolverParams {
   int output_frequency;

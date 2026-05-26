@@ -1,8 +1,8 @@
 #include <vector> 
 
-#include "hernandez.h"
-#include "pairing.h"
-#include "operators.h"
+#include "integrators/hernandez.h"
+#include "dynamics/pairing.h"
+#include "dynamics/operators.h"
 
 Hernandez::Hernandez(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs(fixed_pairs)), composition_({
     {OperatorType::KEPLER, 0.5},

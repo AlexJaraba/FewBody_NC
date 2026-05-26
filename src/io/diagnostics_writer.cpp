@@ -1,6 +1,6 @@
 #include <iomanip>
 
-#include "diagnostics_writer.h"
+#include "io/diagnostics_writer.h"
 
 DiagnosticsWriter::DiagnosticsWriter(const std::string& filename) : file_(filename), header_written_(false) {file_ << std::setprecision(17);}
 

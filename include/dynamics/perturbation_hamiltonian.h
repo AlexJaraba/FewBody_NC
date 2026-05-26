@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "canonical_state.h"
-#include "pairing.h"
+#include "core/canonical_state.h"
+#include "dynamics/pairing.h"
 
 double compute_perturbation_hamiltonian(
     const CanonicalState& state,

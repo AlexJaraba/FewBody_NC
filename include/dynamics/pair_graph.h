@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "body.h"
-#include "pairing.h"
+#include "core/body.h"
+#include "dynamics/pairing.h"
 
 struct PairGraph {
     std::vector<Pair> kepler_pairs;

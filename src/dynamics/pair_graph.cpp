@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "pair_graph.h"
+#include "dynamics/pair_graph.h"
 
 PairGraph build_hierarchical_pair_graph(const std::vector<Body>& bodies) {
     PairGraph graph;

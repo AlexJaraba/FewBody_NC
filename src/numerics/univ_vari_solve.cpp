@@ -3,8 +3,8 @@
 #include <limits>
 #include <stdexcept>
 
-#include "newton_solver.h"
-#include "univ_vari_solve.h"
+#include "numerics/newton_solver.h"
+#include "numerics/univ_vari_solve.h"
 
 double stumpff_C(double z) {
     const double abs_z = std::abs(z);

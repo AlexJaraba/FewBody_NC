@@ -3,10 +3,10 @@
 #include <functional>
 #include <vector>
 
-#include "body.h"
-#include "pairing.h"
-#include "corrector.h"
-#include "canonical_state.h"
+#include "core/body.h"
+#include "core/canonical_state.h"
+#include "dynamics/pairing.h"
+#include "dynamics/corrector.h"
 
 enum class OperatorType {
     DRIFT,

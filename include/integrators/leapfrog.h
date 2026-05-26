@@ -2,9 +2,9 @@
 
 #include <vector>
 
-#include "integrator.h"
-#include "canonical_state.h"
-#include "pairing.h"
+#include "integrators/integrator.h"
+#include "core/canonical_state.h"
+#include "dynamics/pairing.h"
 
 class Leapfrog : public Integrator {
 public:

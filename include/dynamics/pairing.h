@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "body.h"
+#include "core/body.h"
 
 struct Pair {
     int i;

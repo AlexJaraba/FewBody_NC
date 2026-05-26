@@ -2,7 +2,7 @@
 #include <limits>
 #include <iostream>
 
-#include "newton_solver.h"
+#include "numerics/newton_solver.h"
 
 NewtonResult Newton_Solver(
     std::function<double(double)> function,

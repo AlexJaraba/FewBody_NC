@@ -3,10 +3,10 @@
 #include <cmath>
 #include <vector>
 
-#include "integrator.h"
-#include "pairing.h"
-#include "canonical_state.h"
-#include "hernandez.h"
+#include "integrators/integrator.h"
+#include "integrators/hernandez.h"
+#include "dynamics/pairing.h"
+#include "core/canonical_state.h"
 
 class Yoshida4 : public Integrator {
 public:

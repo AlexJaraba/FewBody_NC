@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "vec3.h"
+#include "math/vec3.h"
 
 struct CanonicalState{
     std::vector<Vec3> Q;

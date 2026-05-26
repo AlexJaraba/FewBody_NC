@@ -2,14 +2,14 @@
 #include <stdexcept>
 #include <iostream>
 
-#include "operators.h"
-#include "pairing.h"
-#include "propagator.h"
-#include "jacobi.h"
-#include "univ_vari_solve.h"
-#include "canonical_state.h"
-#include "perturbation_hamiltonian.h"
-#include "vec3.h"
+#include "dynamics/operators.h"
+#include "dynamics/pairing.h"
+#include "dynamics/perturbation_hamiltonian.h"
+#include "dynamics/jacobi.h"
+#include "numerics/univ_vari_solve.h"
+#include "numerics/propagator.h"
+#include "core/canonical_state.h"
+#include "math/vec3.h"
 
 void drift_operator(CanonicalState& state, double dt) {
     const int N = state.Q.size();

@@ -1,7 +1,7 @@
 #include <stdexcept>
 
-#include "composition.h"
-#include "operators.h"
+#include "numerics/composition.h"
+#include "dynamics/operators.h"
 
 SymmetricComposition::SymmetricComposition(const std::vector<CompositionStep>& steps)
     : steps_(steps) {}

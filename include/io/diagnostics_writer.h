@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-#include "diagnostics.h"
+#include "analysis/diagnostics.h"
 
 class DiagnosticsWriter {
 public:

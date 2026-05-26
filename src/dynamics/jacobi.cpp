@@ -1,6 +1,6 @@
 #include <vector>
 
-#include "jacobi.h"
+#include "dynamics/jacobi.h"
 
 CanonicalState compute_jacobi_state(const std::vector<Body>& bodies) {
     CanonicalState state;

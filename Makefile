@@ -11,8 +11,9 @@ SRCS = $(wildcard $(SRC_DIR)/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/io/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/integrators/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/numerics/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/propagator/*.cpp) 
-SRCS += $(wildcard $(SRC_DIR)/operators/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/dynamics/*.cpp) 
+SRCS += $(wildcard $(SRC_DIR)/core/*.cpp)
+SRCS += $(wildcard $(SRC_DIR)/analysis/*.cpp)
 #SRCS+= src/io/io.cpp src/io/output.cpp src/io/input.cpp
 
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))

@@ -3,21 +3,21 @@
 #include <stdexcept>
 #include <cmath>
 
-#include "solver.h"
-#include "io.h"
-#include "globals.h"
-#include "body.h"
-#include "csv_output_writer.h"
-#include "diagnostics.h"
-#include "hernandez.h"
-#include "yoshida4.h"
-#include "pairing.h"
-#include "pair_graph.h"
-#include "jacobi.h"
-#include "canonical_state.h"
-#include "diagnostics_writer.h"
-#include "integrator.h"
-#include "vec3.h"
+#include "core/solver.h"
+#include "core/globals.h"
+#include "core/body.h"
+#include "core/canonical_state.h"
+#include "io/io.h"
+#include "io/diagnostics_writer.h"
+#include "io/csv_output_writer.h"
+#include "analysis/diagnostics.h"
+#include "integrators/hernandez.h"
+#include "integrators/yoshida4.h"
+#include "integrators/integrator.h"
+#include "dynamics/pairing.h"
+#include "dynamics/pair_graph.h"
+#include "dynamics/jacobi.h"
+#include "math/vec3.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 

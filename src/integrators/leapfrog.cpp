@@ -1,5 +1,5 @@
-#include "leapfrog.h"
-#include "operators.h"
+#include "integrators/leapfrog.h"
+#include "dynamics/operators.h"
 
 Leapfrog::Leapfrog(const std::vector<Pair>& pairs) : pairs_(pairs) {}
 

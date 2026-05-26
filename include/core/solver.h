@@ -3,13 +3,13 @@
 #include <vector>
 #include <memory>
 
-#include "body.h"
-#include "csv_output_writer.h"
-#include "integrator.h"
-#include "leapfrog.h"
-#include "hernandez.h"
-#include "yoshida4.h"
-#include "pairing.h"
+#include "core/body.h"
+#include "io/csv_output_writer.h"
+#include "integrators/integrator.h"
+#include "integrators/leapfrog.h"
+#include "integrators/hernandez.h"
+#include "integrators/yoshida4.h"
+#include "dynamics/pairing.h"
 
 class CSVOutputWriter;
 

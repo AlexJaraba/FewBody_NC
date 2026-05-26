@@ -1,4 +1,4 @@
-#include "jacobi_transform.h"
+#include "dynamics/jacobi_transform.h"
 
 std::vector<std::vector<double>> build_jacobi_projection_matrix(const std::vector<double>& masses) {
     const int N = masses.size();

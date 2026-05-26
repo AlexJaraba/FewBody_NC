@@ -1,9 +1,9 @@
 #include <cmath>
 
-#include "canonical_state.h"
-#include "pairing.h"
-#include "reconstruction.h"
-#include "vec3.h"
+#include "core/canonical_state.h"
+#include "core/reconstruction.h"
+#include "dynamics/pairing.h"
+#include "math/vec3.h"
 
 double compute_perturbation_hamiltonian(const CanonicalState& state, const std::vector<Pair>& pairs, double G) {
     auto r = reconstruct_cartesian_positions(state);

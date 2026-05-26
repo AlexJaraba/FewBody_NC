@@ -1,6 +1,6 @@
 #pragma once
 
-#include "canonical_state.h"
+#include "core/canonical_state.h"
 
 class Integrator {
 public:
