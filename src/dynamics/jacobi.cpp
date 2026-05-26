@@ -105,18 +105,3 @@ void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies) 
         bodies[i].updateMomentumFromVelocity();
     }
 }
-
-std::vector<Vec3> reconstruct_cartesian_position(const CanonicalState& state) {
-    const int N = state.Q.size();
-    std::vector<Vec3> r(N);
-    Vec3 R_prev;
-    double M_prev = state.physical_mass[0];
-    
-    for (int i = 1; i < N; ++i) {
-        Vec3 r_com_prev = R_prev / M_prev;
-        r[i] = r_com_prev + state.Q[i];
-        R_prev += state.physical_mass[i] * r[i];
-        M_prev += state.physical_mass[i];
-    }
-    return r;
-}

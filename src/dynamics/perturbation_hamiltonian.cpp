@@ -2,11 +2,11 @@
 
 #include "canonical_state.h"
 #include "pairing.h"
-#include "jacobi.h"
+#include "reconstruction.h"
 #include "vec3.h"
 
 double compute_perturbation_hamiltonian(const CanonicalState& state, const std::vector<Pair>& pairs, double G) {
-    auto r = reconstruct_cartesian_position(state);
+    auto r = reconstruct_cartesian_positions(state);
     double H = 0.0;
 
     for (const auto& pair : pairs) {
@@ -26,7 +26,7 @@ double compute_perturbation_hamiltonian(const CanonicalState& state, const std::
 std::vector<Vec3> compute_perturbation_gradient(const CanonicalState& state, const std::vector<Pair>& pairs, double G) {
     const int N = state.Q.size();
     std::vector<Vec3> grad(N);
-    auto r = reconstruct_cartesian_position(state);
+    auto r = reconstruct_cartesian_positions(state);
     for (const auto& pair : pairs) {
         const int i = pair.i;
         const int j = pair.j;

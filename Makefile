@@ -13,12 +13,6 @@ SRCS += $(wildcard $(SRC_DIR)/integrators/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/numerics/*.cpp)
 SRCS += $(wildcard $(SRC_DIR)/propagator/*.cpp) 
 SRCS += $(wildcard $(SRC_DIR)/operators/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/corrector/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/jacobi/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/diagnostics/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/pair_graph/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/diagnostics_writer/*.cpp)
-SRCS += $(wildcard $(SRC_DIR)/perturbation_hamiltonian/*.cpp)
 #SRCS+= src/io/io.cpp src/io/output.cpp src/io/input.cpp
 
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))
@@ -39,3 +33,4 @@ clean:
 	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
 	@if exist $(TARGET).exe del /Q $(TARGET).exe
 	@if exist output.csv del /Q output.csv
+	@if exist diagnostics.csv del /Q diagnostics.csv

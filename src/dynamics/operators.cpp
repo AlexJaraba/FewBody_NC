@@ -34,6 +34,10 @@ static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) 
     const double r0 = state.Q[i].norm();
     const double p2 = state.P[i].norm2();
     const double v2 = p2 / (state.mu[i] * state.mu[i]);
+    
+    if (r0 < 1e-14) {
+        return;
+    }
     const double alpha = (2.0 / r0) - (v2 / mu_grav);
     
     CanonicalStateVector result = propagate_universal(mu_grav, state.mu[i], state.Q[i], state.P[i], dt);

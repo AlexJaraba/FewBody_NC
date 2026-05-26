@@ -123,8 +123,8 @@ def PlotVerificationSuite(data,df):
 
     dE = np.abs((energies - E0) / E0)
     dL = np.abs((angular_momentum - L0) / L0)
-    dP = np.abs((linear_momentum - P0) / P0) 
-    dRcm = np.abs((com_positions - Rcm0) / Rcm0)
+    dP = np.abs(linear_momentum - P0) 
+    dRcm = np.abs(com_positions - Rcm0)
 
     # Print summary statistics
     print("Max |dE|:", np.max(np.abs(dE)))
