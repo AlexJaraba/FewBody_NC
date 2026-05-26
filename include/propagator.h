@@ -2,9 +2,11 @@
 
 #include <vector>
 
+#include "vec3.h"
+
 struct CanonicalStateVector {
-    std::vector<double> q;
-    std::vector<double> p;
+    Vec3 q;
+    Vec3 p;
     bool converged;
     int iterations;
 };
@@ -12,7 +14,7 @@ struct CanonicalStateVector {
 CanonicalStateVector propagate_universal(
     double mu_grav,
     double reduced_mass,
-    const std::vector<double>& q0,
-    const std::vector<double>& p0,
+    const Vec3& q0,
+    const Vec3& p0,
     double dt
 );

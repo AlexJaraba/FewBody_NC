@@ -1,6 +1,7 @@
 #include <cmath>
 
 #include "diagnostics.h"
+#include "vec3.h"
 
 Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, double dt) {
     Diagnostics d{};
@@ -14,52 +15,38 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
     const int N = bodies.size();
     for (int i = 0; i < N; ++i) {
         for (int j = i + 1; j < N; ++j) {
-            double r2 = 0.0;
-            for (int k = 0; k < 3; ++k) {
-                double dr = bodies[j].position[k] - bodies[i].position[k];
-                r2 += dr * dr;
-            }
-            double r = std::sqrt(r2);
-            d.potential_energy -= G * bodies[i].mass * bodies[j].mass / r;
+            Vec3 dr = bodies[j].position - bodies[i].position;
+            double r = dr.norm();
+            d.potential_energy -= (G * bodies[i].mass * bodies[j].mass) / r;
         }
     }
 
     d.total_energy = d.kinetic_energy + d.potential_energy;
 
     // Compute linear momentum
-    double px = 0.0, py = 0.0, pz = 0.0;
+    Vec3 P;
     for (const auto& body : bodies) {
-        px += body.momentum[0];
-        py += body.momentum[1];
-        pz += body.momentum[2];
+        P += body.momentum;
     }
 
-    d.linear_momentum = std::sqrt(px*px + py*py + pz*pz);
+    d.linear_momentum = P.norm();
 
     // Compute angular momentum
-    double Lx = 0.0, Ly = 0.0, Lz = 0.0;
+    Vec3 L;
     for (const auto& body : bodies) {
-        Lx += body.position[1] * body.momentum[2] - body.position[2] * body.momentum[1];
-        Ly += body.position[2] * body.momentum[0] - body.position[0] * body.momentum[2];
-        Lz += body.position[0] * body.momentum[1] - body.position[1] * body.momentum[0];
+        L += cross(body.position, body.momentum);
     }
-
-    d.angular_momentum = std::sqrt(Lx*Lx + Ly*Ly + Lz*Lz);
 
     // Compute center of mass drift
-    double mx = 0.0, my = 0.0, mz = 0.0, total_mass = 0.0;
+    Vec3 Rcm;
+    double total_mass = 0.0;
     for (const auto& body : bodies) {
         total_mass += body.mass;
-        mx += body.position[0] * body.mass;
-        my += body.position[1] * body.mass;
-        mz += body.position[2] * body.mass;
+        Rcm += body.mass * body.position;
     }
 
-    mx /= total_mass;
-    my /= total_mass;
-    mz /= total_mass;
-
-    d.com_drift = std::sqrt(mx*mx + my*my + mz*mz);
+    Rcm /= total_mass;
+    d.com_drift = Rcm.norm();
 
     // Second-order shadow Hamiltonian estimate
     // double p2sum = 0.0;
@@ -80,14 +67,8 @@ double compute_perturbation_energy(const std::vector<Body>& bodies, const std::v
     for (const auto& pair : pairs) {
         int i = pair.i;
         int j = pair.j;
-        double r2 = 0.0;
-
-        for (int k = 0; k < 3; ++k) {
-            double dr = bodies[j].position[k] - bodies[i].position[k];
-            r2 += dr * dr;
-        }
-
-        double r = std::sqrt(r2);
+        Vec3 dr = bodies[j].position - bodies[i].position;
+        double r = dr.norm();
         E -= (G * bodies[i].mass * bodies[j].mass) / r;
     }
     return E;

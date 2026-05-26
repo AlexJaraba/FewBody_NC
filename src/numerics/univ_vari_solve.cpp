@@ -44,14 +44,12 @@ double stumpff_S(double z) {
     return (std::sinh(sz) - sz) / (sz * sz * sz);
 }
 
-double norm(const std::vector<double>& v) {
-    double sum = 0.0;
-    for (double x : v) sum += x * x;
-    return std::sqrt(sum);
+double norm(const Vec3& v) {
+    return v.norm();
 }
 
 ChiResult solve_chi(double mu, double alpha,
-                    const std::vector<double>& r0,
+                    const Vec3& r0,
                     double vr, double dt,
                     double abs_tol,
                     double rel_tol,

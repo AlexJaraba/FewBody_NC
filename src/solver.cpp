@@ -17,6 +17,7 @@
 #include "canonical_state.h"
 #include "diagnostics_writer.h"
 #include "integrator.h"
+#include "vec3.h"
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
@@ -48,27 +49,21 @@ Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodi
 
 void recenter_system(std::vector<Body>& bodies) {
     double total_mass = 0.0;
-    std::vector<double> com(3, 0.0);
-    std::vector<double> com_velocity(3, 0.0);
+    Vec3 com;
+    Vec3 com_velocity;
 
     for (const auto& body : bodies) {
         total_mass += body.mass;
-        for (int k = 0; k < 3; ++k) {
-            com[k] += body.position[k] * body.mass;
-            com_velocity[k] += body.velocity[k] * body.mass;
-        }
+        com += body.mass * body.position;
+        com_velocity += body.mass * body.velocity;
     }
 
-    for (int k = 0; k < 3; ++k) {
-        com[k] /= total_mass;
-        com_velocity[k] /= total_mass;
-    }
+    com /= total_mass;
+    com_velocity /= total_mass;
 
     for (auto& body : bodies) {
-        for (int k = 0; k < 3; ++k) {
-            body.position[k] -= com[k];
-            body.velocity[k] -= com_velocity[k];
-        }
+        body.position -= com;
+        body.velocity -= com_velocity;
         body.updateMomentumFromVelocity();
     }
 }
@@ -143,14 +138,14 @@ void Solver::TestHernandezAdjoint(double dt) {
     double max_p_error = 0.0;
 
     for (size_t i = 1; i < state.Q.size(); ++i) {
-        for (int k = 0; k < 3; ++k) {
-            max_q_error = std::max(max_q_error, std::abs(state.Q[i][k] - initial.Q[i][k]));
-            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
-        }
-    }
+        Vec3 dQ = state.Q[i] - initial.Q[i];
+        Vec3 dP = state.P[i] - initial.P[i];
+        max_q_error = std::max(max_q_error, dQ.norm());
+        max_p_error = std::max(max_p_error, dP.norm());
 
     std::cout << "Max Q Error: " << max_q_error << std::endl;
     std::cout << "Max P Error: " << max_p_error << std::endl;
+    }
 }
 
 void Solver::TestLocalOrder() {
@@ -176,14 +171,12 @@ void Solver::TestLocalOrder() {
         double err = 0.0;
 
         for (size_t i = 1; i < test.Q.size(); ++i) {
-            for (int k = 0; k < 3; ++k) {
-                double dQ = test.Q[i][k] - reference.Q[i][k];
-                double dP = test.P[i][k] - reference.P[i][k];
-
-                err += dQ * dQ;
-                err += dP * dP;
-            }
+           Vec3 dQ = test.Q[i] - reference.Q[i];
+           Vec3 dP = test.P[i] - reference.P[i];
+           err += dQ.norm2();
+           err += dP.norm2();
         }
+
         err = std::sqrt(err);
         errors.push_back(err);
         std::cout << "dt: " << dt << ", Error: " << err << std::endl;
@@ -212,9 +205,7 @@ void Solver::ReversibilityTest() {
 
     // Reverse velocities
     for (size_t i = 1; i < state.P.size(); ++i) {
-        for (int k = 0; k < 3; ++k) {
-            state.P[i][k] *= -1.0;
-        }
+        state.P[i] *= -1.0;
     }
 
     // Backward integration
@@ -223,9 +214,7 @@ void Solver::ReversibilityTest() {
     }
 
     for (size_t i = 1; i < state.P.size(); ++i) {
-        for (int k = 0; k < 3; ++k) {
-            state.P[i][k] *= -1.0;
-        }
+        state.P[i] *= -1.0;
     }
 
     reconstruct_bodies(state, bodies);
@@ -234,21 +223,14 @@ void Solver::ReversibilityTest() {
     double max_vel_error = 0.0;
 
     for (size_t i = 0; i < bodies.size(); ++i) {
-        double pos_err = 0.0;
-        double vel_err = 0.0;
-        for (int k = 0; k < 3; ++k) {
-            double dp = bodies[i].position[k] - initial[i].position[k];
-            double dv = bodies[i].velocity[k] - initial[i].velocity[k];
-            pos_err += dp * dp;
-            vel_err += dv * dv;
-        }
+        Vec3 dp = bodies[i].position - initial[i].position;
+        Vec3 dv = bodies[i].velocity - initial[i].velocity;
 
-        pos_err = std::sqrt(pos_err);
-        vel_err = std::sqrt(vel_err);
+        double pos_err = dp.norm();
+        double vel_err = dv.norm();
         max_pos_error = std::max(max_pos_error, pos_err);
         max_vel_error = std::max(max_vel_error, vel_err);
     }
-
     std::cout << "Max Position Error: " << max_pos_error << "\n";
     std::cout << "Max Velocity Error: " << max_vel_error << "\n";
 }

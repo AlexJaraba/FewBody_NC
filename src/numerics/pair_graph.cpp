@@ -11,11 +11,9 @@ PairGraph build_hierarchical_pair_graph(const std::vector<Body>& bodies) {
         int best_j = 0;
 
         for (int j = 0; j < i; ++j) {
-            double r2 = 0.0;
-            for (int k = 0; k < 3; ++k) {
-                double dr = bodies[i].position[k] - bodies[j].position[k];
-                r2 += dr;
-            }
+            Vec3 dr = bodies[i].position - bodies[j].position;
+            double r2 = dr.norm2();
+            
             double strength = (bodies[i].mass * bodies[j].mass) / r2;
             if (strength > best_strength) {
                 best_strength = strength;

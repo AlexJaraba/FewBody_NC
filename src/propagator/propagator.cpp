@@ -1,40 +1,14 @@
 #include <cmath>
-#include <vector>
 #include <iostream>
 
 #include "univ_vari_solve.h"
 #include "propagator.h"
+#include "vec3.h"
 
-// dot product
-static double dot(const std::vector<double>& a, const std::vector<double>& b) {
-    double sum = 0.0;
-    for (size_t i = 0; i < a.size(); ++i)
-        sum += a[i] * b[i];
-    return sum;
-}
+CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
+    Vec3 v0;
 
-// scalar * vector
-static std::vector<double> scalar_mult(double s, const std::vector<double>& v) {
-    std::vector<double> result(v.size());
-    for (size_t i = 0; i < v.size(); ++i)
-        result[i] = s * v[i];
-    return result;
-}
-
-// vector addition
-static std::vector<double> add(const std::vector<double>& a, const std::vector<double>& b) {
-    std::vector<double> result(a.size());
-    for (size_t i = 0; i < a.size(); ++i)
-        result[i] = a[i] + b[i];
-    return result;
-}
-
-CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const std::vector<double>& q0, const std::vector<double>& p0, double dt) {
-    std::vector<double> v0(3);
-
-    for (int k = 0; k < 3; ++k) {
-        v0[k] = p0[k] / reduced_mass;
-    }
+    v0 = p0 / reduced_mass;
 
     const double r0_mag = norm(q0);
     const double v0_mag = norm(v0);
@@ -54,17 +28,14 @@ CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, co
     const double f = 1.0 - (chi * chi / r0_mag) * C;
     const double g = dt - (chi * chi * chi * S) / std::sqrt(mu_grav);
 
-    std::vector<double> q = add(scalar_mult(f, q0), scalar_mult(g, v0));
+    Vec3 q = (f * q0) + (g * v0);
 
     const double r_mag = norm(q);
     const double fdot = (std::sqrt(mu_grav) / (r_mag * r0_mag)) * chi * (z * S - 1.0);
     const double gdot = 1.0 - (chi * chi / r_mag) * C;
 
-    std::vector<double> v = add(scalar_mult(fdot, q0), scalar_mult(gdot, v0));
+    Vec3 v = (fdot * q0) + (gdot * v0);
+    Vec3 p = reduced_mass * v;
 
-    std::vector<double> p(3);
-    for (int k = 0; k < 3; ++k) {
-        p[k] = reduced_mass * v[k];
-    }
     return{q, p, true, chi_res.iterations};
 }

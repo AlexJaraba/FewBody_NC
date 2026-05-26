@@ -2,11 +2,13 @@
 
 #include <vector>
 
+#include "vec3.h"
+
 struct CanonicalState{
-    std::vector<std::vector<double>> Q;
-    std::vector<std::vector<double>> P;
-    std::vector<double> com_position;
-    std::vector<double> com_velocity;
+    std::vector<Vec3> Q;
+    std::vector<Vec3> P;
+    Vec3 com_position;
+    Vec3 com_velocity;
     std::vector<double> mu;
     std::vector<double> M;
     std::vector<double> physical_mass;

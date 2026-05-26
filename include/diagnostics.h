@@ -4,6 +4,7 @@
 
 #include "body.h"
 #include "pairing.h"
+#include "vec3.h"
 
 struct Diagnostics {
     double kinetic_energy;

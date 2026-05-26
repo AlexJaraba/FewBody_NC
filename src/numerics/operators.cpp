@@ -7,18 +7,16 @@
 #include "propagator.h"
 #include "jacobi.h"
 #include "univ_vari_solve.h"
-#include "jacobi_transform.h"
 #include "canonical_state.h"
 #include "perturbation_hamiltonian.h"
+#include "vec3.h"
 
 void drift_operator(CanonicalState& state, double dt) {
     const int N = state.Q.size();
 
     for (int i = 1; i < N; ++i) {
         const double mu = state.mu[i];
-        for (int k = 0; k < 3; ++k) {
-            state.Q[i][k] += dt * state.P[i][k] / mu;
-        }
+        state.Q[i] += (dt * state.P[i]) / mu;
     }
 }
 
@@ -27,16 +25,14 @@ void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double
     const int N = state.Q.size();
 
     for (int i = 1; i < N; ++i) {
-        for (int k = 0; k < 3; ++k) {
-            state.P[i][k] -= dt * grad[i][k];
-        }
+        state.P[i] -= dt * grad[i];
     }
 }
 
 static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) {
     const double mu_grav = G * state.M[i];
-    const double r0 = std::sqrt(state.Q[i][0] * state.Q[i][0] + state.Q[i][1] * state.Q[i][1] + state.Q[i][2] * state.Q[i][2]);
-    const double p2 = state.P[i][0] * state.P[i][0] + state.P[i][1] * state.P[i][1] + state.P[i][2] * state.P[i][2];
+    const double r0 = state.Q[i].norm();
+    const double p2 = state.P[i].norm2();
     const double v2 = p2 / (state.mu[i] * state.mu[i]);
     const double alpha = (2.0 / r0) - (v2 / mu_grav);
     
@@ -95,10 +91,10 @@ void test_kepler_reversibility(CanonicalState& inital_state, double dt, double G
     double max_p_error = 0.0;
 
     for (size_t i = 1; i < state.Q.size(); ++i) {
-        for (int k = 0; k < 3; ++k) {
-            max_q_error = std::max(max_q_error, std::abs(state.Q[i][k] - initial.Q[i][k]));
-            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
-        }
+        Vec3 dQ = state.Q[i] - initial.Q[i];
+        Vec3 dP = state.P[i] - initial.P[i];
+        max_q_error = std::max(max_q_error, dQ.norm());
+        max_p_error = std::max(max_p_error, dP.norm());
     }
 
     std::cout << "Max Q Error: " << max_q_error << std::endl;
@@ -120,9 +116,8 @@ void test_kick_reversibility(CanonicalState& inital_state, const std::vector<Pai
     double max_p_error = 0.0;
 
     for (size_t i = 1; i < state.Q.size(); ++i) {
-        for (int k = 0; k < 3; ++k) {
-            max_p_error = std::max(max_p_error, std::abs(state.P[i][k] - initial.P[i][k]));
-        }
+        Vec3 dP = state.P[i] - initial.P[i];
+        max_p_error = std::max(max_p_error, dP.norm());
     }
 
     std::cout << "Max P Error: " << max_p_error << std::endl;

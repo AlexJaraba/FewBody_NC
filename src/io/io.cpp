@@ -1,9 +1,11 @@
-#include "io.h"
-#include "globals.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#include "io.h"
+#include "globals.h"
+#include "vec3.h"
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies) {
     std::ifstream infile(filename);
@@ -12,10 +14,11 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         double mass;
-        std::vector<double> position(3), velocity(3);
+        Vec3 position; 
+        Vec3 velocity;
 
-        if (!(iss >> mass >> position[0] >> position[1] >> position[2] 
-                   >> velocity[0] >> velocity[1] >> velocity[2])) { break; }
+        if (!(iss >> mass >> position.x >> position.y >> position.z 
+                   >> velocity.x >> velocity.y >> velocity.z)) { break; }
         
         bodies.emplace_back(mass, position, velocity);
     }
@@ -28,9 +31,14 @@ void writeOutput(const std::string& filename, const std::vector<Body>& bodies, d
     outfile << time;  // Start with the current time
 
     for (const auto& body : bodies) {
-        outfile << " " << body.mass;
-        for (const auto& pos : body.position) outfile << " " << pos;
-        for (const auto& vel : body.velocity) outfile << " " << vel;
+        outfile 
+            << " " << body.mass
+            << " " << body.position.x
+            << " " << body.position.y
+            << " " << body.position.z
+            << " " << body.velocity.x
+            << " " << body.velocity.y
+            << " " << body.velocity.z;
     }
     outfile << "\n";  // Newline at the end of each timestep
 }
