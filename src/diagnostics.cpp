@@ -62,19 +62,19 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
     d.com_drift = std::sqrt(mx*mx + my*my + mz*mz);
 
     // Second-order shadow Hamiltonian estimate
-    double p2sum = 0.0;
-    for (const auto& body : bodies) {
-        p2sum += body.momentumMagnitudeSquared();
-    }
+    // double p2sum = 0.0;
+    // for (const auto& body : bodies) {
+    //     p2sum += body.momentumMagnitudeSquared();
+    // }
 
-    d.shadow_energy = d.total_energy + (dt*dt/12.0) * p2sum;
+    d.shadow_energy = d.total_energy;
 
     d.timestep = dt;
 
     return d;
 }
 
-double compute_pertubation_energy(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double G) {
+double compute_perturbation_energy(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double G) {
     double E = 0.0;
 
     for (const auto& pair : pairs) {

@@ -23,13 +23,13 @@ Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodi
     SolverParams params = readParams("data/param.txt");
     
     PairGraph graph = build_hierarchical_pair_graph(bodies);
-    std::vector<Pair> fixed_pairs = graph.pertubation_pairs;
+    std::vector<Pair> fixed_pairs = graph.perturbation_pairs;
 
     std::cout << "Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
-    std::cout << "Perturbation Pairs: " << graph.pertubation_pairs.size() << std::endl;
+    std::cout << "Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
 
     if (params.integrator == "leapfrog") {
-        integrator = std::make_unique<Leapfrog>();
+        integrator = std::make_unique<Leapfrog>(fixed_pairs);
     }
 
     if (params.integrator == "hernandez") {
@@ -158,7 +158,7 @@ void Solver::TestLocalOrder() {
     const double G = 0.000296014912;
     CanonicalState inital = compute_jacobi_state(bodies);
     CanonicalState reference = inital;
-    const double dt_ref = 0.0001;
+    const double dt_ref = 1e-6;
     const double T = 0.1;
     int ref_steps = static_cast<int>(T / dt_ref);
     for (int i = 0; i < ref_steps; ++i) {

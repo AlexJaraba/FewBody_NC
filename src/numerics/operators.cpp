@@ -12,32 +12,23 @@
 #include "perturbation_hamiltonian.h"
 
 void drift_operator(CanonicalState& state, double dt) {
-    // const int N = state.Q.size();
+    const int N = state.Q.size();
 
-    // for (int i = 1; i < N; ++i) {
-    //     const double mu = state.mu[i];
-    //     for (int k = 0; k < 3; ++k) {
-    //         state.Q[i][k] += dt * state.P[i][k] / mu;
-    //     }
-    // }
+    for (int i = 1; i < N; ++i) {
+        const double mu = state.mu[i];
+        for (int k = 0; k < 3; ++k) {
+            state.Q[i][k] += dt * state.P[i][k] / mu;
+        }
+    }
 }
 
 void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
-    const double eps = 1e-10;
+    auto grad = compute_perturbation_gradient(state, pairs, G);
     const int N = state.Q.size();
 
     for (int i = 1; i < N; ++i) {
         for (int k = 0; k < 3; ++k) {
-            CanonicalState plus_state = state;
-            CanonicalState minus_state = state;
-            plus_state.Q[i][k] += eps;
-            minus_state.Q[i][k] -= eps;
-
-            const double H_plus = compute_perturbation_hamiltonian(plus_state, pairs, G);
-            const double H_minus = compute_perturbation_hamiltonian(minus_state, pairs, G);
-            const double dH_dq = (H_plus - H_minus) / (2.0 * eps);
-
-            state.P[i][k] -= dt * dH_dq;
+            state.P[i][k] -= dt * grad[i][k];
         }
     }
 }
@@ -83,9 +74,9 @@ void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& p
         kepler_pair_step(state, i, 0.5 * dt, G);
     }
 
-    // for (int i = static_cast<int>(state.Q.size()) - 1; i >= 1; --i) {
-    //     kepler_pair_step(state, i, 0.5 * dt, G);
-    // }
+    for (int i = static_cast<int>(state.Q.size()) - 1; i >= 1; --i) {
+        kepler_pair_step(state, i, 0.5 * dt, G);
+    }
 }
 
 void test_kepler_reversibility(CanonicalState& inital_state, double dt, double G) {

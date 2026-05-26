@@ -84,11 +84,6 @@ void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies) 
 
     double M_prev = bodies[0].mass;
 
-    for (int k = 0; k < 3; ++k) {
-        R_prev[k] = bodies[0].mass * bodies[0].position[k];
-        V_prev[k] = bodies[0].mass * bodies[0].velocity[k];
-    }
-
     //Recursive jacobi reconstruction
     for (int i = 1; i < N; ++i) {
         const double mi = bodies[i].mass;
@@ -122,10 +117,32 @@ void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies) 
             weighted_pos += bodies[i].mass * bodies[i].position[k];
             weighted_vel += bodies[i].mass * bodies[i].velocity[k];
         }
-        bodies[0].position[k] = state.com_position[k] - (weighted_pos / bodies[0].mass);
-        bodies[0].velocity[k] = state.com_velocity[k] - (weighted_vel / bodies[0].mass);
+        bodies[0].position[k] = (state.com_position[k] * M_prev - weighted_pos) / bodies[k].mass;
+        bodies[0].velocity[k] = (state.com_velocity[k] * M_prev - weighted_vel) / bodies[k].mass;
     }
     for (int i = 0; i < N; ++i) {
         bodies[i].updateMomentumFromVelocity();
     }
+}
+
+std::vector<std::vector<double>> reconstruct_cartesian_position(const CanonicalState& state) {
+    const int N = state.Q.size();
+    std::vector<std::vector<double>> r(N, std::vector<double>(3, 0.0));
+    std::vector<double> R_prev(3, 0.0);
+    double M_prev = state.physical_mass[0];
+    
+    for (int i = 1; i < N; ++i) {
+        std::vector<double> r_com_prev(3);
+        for (int k = 0; k < 3; ++k) {
+            r_com_prev[k] = R_prev[k] / M_prev;
+        }
+        for (int k = 0; k < 3; ++k) {
+            r[i][k] = r_com_prev[k] + state.Q[i][k];
+        }
+        for (int k = 0; k < 3; ++k) {
+            R_prev[k] += state.physical_mass[i] * r[i][k];
+        }
+        M_prev += state.physical_mass[i];
+    }
+    return r;
 }

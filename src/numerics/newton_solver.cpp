@@ -33,8 +33,9 @@ NewtonResult Newton_Solver(
         double step = f_x / df_x;
 
         // Safeguarded Newton Damping
-        if (std::abs(step) > 1.0) {
-            step *= 0.5;
+        const double max_step = 1.0;
+        if (std::abs(step) > max_step) {
+            step = std::copysign(max_step, step);
         }
 
         const double x_new = x -step;

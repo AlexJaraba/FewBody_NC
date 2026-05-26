@@ -14,7 +14,7 @@ PairGraph build_hierarchical_pair_graph(const std::vector<Body>& bodies) {
             double r2 = 0.0;
             for (int k = 0; k < 3; ++k) {
                 double dr = bodies[i].position[k] - bodies[j].position[k];
-                r2 += dr * dr;
+                r2 += dr;
             }
             double strength = (bodies[i].mass * bodies[j].mass) / r2;
             if (strength > best_strength) {
@@ -35,7 +35,7 @@ PairGraph build_hierarchical_pair_graph(const std::vector<Body>& bodies) {
                 }
             }
             if (!is_kepler) {
-                graph.pertubation_pairs.push_back({i, j});
+                graph.perturbation_pairs.push_back({i, j});
             }
         }
     }

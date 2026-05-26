@@ -64,7 +64,7 @@ ChiResult solve_chi(double mu, double alpha,
         chi0 = std::sqrt(mu) * alpha * dt;
     }
     else if (alpha < -1e-12) {
-        const double a = 1.0 / alpha;
+        const double a = -1.0 / alpha;
         const double term = -2.0 * mu * alpha * dt;
         const double denom = r * vr + std::copysign(1.0, dt) * std::sqrt(-mu * a) * (1.0 - r / alpha);
         if (std::abs(denom) < 1e-15) {

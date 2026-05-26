@@ -89,7 +89,7 @@ def PlotVerificationSuite(data,df):
 
         for i in range(N):
             for j in range(i+1, N):
-                r = np.linalg.norm(pos[i] - pos[j]) + 1e-12
+                r = np.linalg.norm(pos[i] - pos[j]) + 1e-18
                 PE -= G * m[i] * m[j] / r
 
         # Total Energy
@@ -123,8 +123,8 @@ def PlotVerificationSuite(data,df):
 
     dE = np.abs((energies - E0) / E0)
     dL = np.abs((angular_momentum - L0) / L0)
-    dP = np.abs(linear_momentum - P0) 
-    dRcm = np.abs(com_positions - Rcm0)
+    dP = np.abs((linear_momentum - P0) / P0) 
+    dRcm = np.abs((com_positions - Rcm0) / Rcm0)
 
     # Print summary statistics
     print("Max |dE|:", np.max(np.abs(dE)))

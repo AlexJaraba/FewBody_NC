@@ -1,5 +1,5 @@
 output_frequency 1000
-runtime 10000
+runtime 1000
 timestep 0.0025
 integrator hernandez
 gravitational_constant 0.000296014912
