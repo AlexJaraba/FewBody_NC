@@ -26,6 +26,21 @@ struct Mat3 {
         return m;
     }
 
+    Mat3 operator-(const Mat3& rhs) const {
+        Mat3 m;
+        m.xx = xx - rhs.xx;
+        m.xy = xy - rhs.xy;
+        m.xz = xz - rhs.xz;
+        m.yx = yx - rhs.yx;
+        m.yy = yy - rhs.yy;
+        m.yz = yz - rhs.yz;
+        m.zx = zx - rhs.zx;
+        m.zy = zy - rhs.zy;
+        m.zz = zz - rhs.zz;
+
+        return m;
+    }
+
     Mat3& operator+=(const Mat3& rhs) {
         xx += rhs.xx;
         xy += rhs.xy;
@@ -36,6 +51,21 @@ struct Mat3 {
         zx += rhs.zx;
         zy += rhs.zy;
         zz += rhs.zz;
+
+        return *this;
+    }
+
+    Mat3 operator-=(const Mat3& rhs) {
+        Mat3 m;
+        xx -= rhs.xx;
+        xy -= rhs.xy;
+        xz -= rhs.xz;
+        yx -= rhs.yx;
+        yy -= rhs.yy;
+        yz -= rhs.yz;
+        zx -= rhs.zx;
+        zy -= rhs.zy;
+        zz -= rhs.zz;
 
         return *this;
     }

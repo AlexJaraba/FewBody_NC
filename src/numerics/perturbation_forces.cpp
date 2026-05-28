@@ -7,6 +7,7 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
     const int N = state.Q.size();
 
     ForceResult result;
+    result.potential = 0.0;
 
     result.gradient.resize(N);
     result.hessian.resize(N, std::vector<Mat3>(N));
@@ -19,7 +20,7 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
 
         Vec3 dr = r[j] - r[i];
 
-        const double r2 = dr.norm2();
+        const double r2 = dr.norm2() + 1e-15; // Add small softening to avoid singularities
         const double dist = std::sqrt(r2) + 1e-15;
         const double inv_r3 = 1.0 / (dist * dist * dist);
         const double inv_r5 = inv_r3 / r2;
@@ -51,6 +52,8 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
 
         result.hessian[i][i] += H;
         result.hessian[j][j] += H;
+        result.hessian[i][j] -= H;
+        result.hessian[j][i] -= H;
     }
     return result;
 }
