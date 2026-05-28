@@ -37,6 +37,8 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
         L += cross(body.position, body.momentum);
     }
 
+    d.angular_momentum = L.norm();
+
     // Compute center of mass drift
     Vec3 Rcm;
     double total_mass = 0.0;

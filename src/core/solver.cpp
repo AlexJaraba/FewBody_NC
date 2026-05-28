@@ -143,17 +143,16 @@ void Solver::TestHernandezAdjoint(double dt) {
         Vec3 dP = state.P[i] - initial.P[i];
         max_q_error = std::max(max_q_error, dQ.norm());
         max_p_error = std::max(max_p_error, dP.norm());
-
+    }
     std::cout << "Max Q Error: " << max_q_error << std::endl;
     std::cout << "Max P Error: " << max_p_error << std::endl;
-    }
 }
 
 void Solver::TestLocalOrder() {
     std::cout << "\n=== LOCAL ORDER TEST ===\n";
     const double G = 0.000296014912;
-    CanonicalState inital = compute_jacobi_state(bodies);
-    CanonicalState reference = inital;
+    CanonicalState initial = compute_jacobi_state(bodies);
+    CanonicalState reference = initial;
     const double dt_ref = 1e-6;
     const double T = 0.1;
     int ref_steps = static_cast<int>(T / dt_ref);
@@ -163,7 +162,7 @@ void Solver::TestLocalOrder() {
     std::vector<double> dts = {0.1, 0.05, 0.025};
     std::vector<double> errors;
     for (double dt : dts) {
-        CanonicalState test = inital;
+        CanonicalState test = initial;
         int steps = static_cast<int>(T / dt);
         for (int i = 0; i < steps; ++i) {
             integrator->step(test, dt, G);
