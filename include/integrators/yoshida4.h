@@ -11,7 +11,7 @@
 class Yoshida4 : public Integrator {
 public:
     explicit Yoshida4(const std::vector<Pair>& pairs);
-    void step(CanonicalState& state, double dt) override;
+    void step(CanonicalState& state, double dt, double G) override;
 private:
     Hernandez base_integrator_;
     const double w1_= 1.0 / (2.0 - std::cbrt(2.0));

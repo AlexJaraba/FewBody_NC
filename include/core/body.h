@@ -16,7 +16,7 @@ struct Body {
 
     Body(double m, Vec3 pos, Vec3 vel);
 
-    void updateAcceleration(const std::vector<Body>& bodies);
+    void updateAcceleration(const std::vector<Body>& bodies, double G);
     void updatePosition(double dt);
     void updateVelocity(double dt);
     void updateVelocityFromMomentum();

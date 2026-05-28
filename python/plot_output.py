@@ -66,7 +66,9 @@ def read_output(filename):
 def PlotVerificationSuite(data,df):
     G = 0.000296014912
 
-    times = sorted(df["time"].unique())
+    grouped = df.groupby("time")
+
+    times = sorted(grouped.groups.keys())
 
     energies = []
     angular_momentum = []
@@ -74,7 +76,7 @@ def PlotVerificationSuite(data,df):
     com_positions = []
 
     for t in times:
-        step = df[df["time"] == t]
+        step = grouped.get_group(t)
 
         pos = step[["x","y","z"]].values
         vel = step[["vx","vy","vz"]].values

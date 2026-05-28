@@ -13,8 +13,5 @@ void SymplecticCorrector::apply_backward(CanonicalState& state, const std::vecto
 }
 
 void SymplecticCorrector::apply(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G, double sign) const {
-    const double c = sign * (dt * dt) / 12.0;
-    const int N = static_cast<int>(state.Q.size());
-
     auto r = reconstruct_cartesian_positions(state);
 }

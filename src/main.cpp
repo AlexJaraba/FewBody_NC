@@ -4,7 +4,6 @@
 
 #include "core/body.h"
 #include "core/solver.h"
-#include "core/globals.h"
 #include "io/io.h"
 #include "io/csv_output_writer.h"
 #include "integrators/hernandez.h"

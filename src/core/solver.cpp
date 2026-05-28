@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "core/solver.h"
-#include "core/globals.h"
 #include "core/body.h"
 #include "core/canonical_state.h"
 #include "io/io.h"
@@ -80,14 +79,14 @@ void Solver::run() {
 
     int steps = static_cast<int>(runtime / dt);
 
-    G = params.gravitational_constant;  // Set the global gravitational constant
+    double G = params.gravitational_constant;  // Set the global gravitational constant
 
     CanonicalState state = compute_jacobi_state(bodies);
 
     DiagnosticsWriter dianostics_writer("diagnostics.csv");
 
     for (int step = 0; step < steps; ++step) {
-        integrator->step(state, dt);
+        integrator->step(state, dt, G);
         reconstruct_bodies(state, bodies);
 
         if (step % output_frequency == 0) {
@@ -123,16 +122,18 @@ void Solver::run() {
 
 void Solver::TestHernandezAdjoint(double dt) {
     std::cout << "\n=== HERNANDEZ ADJOINT TEST ===\n";
+    
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
 
     CanonicalState state = compute_jacobi_state(bodies);
-
     CanonicalState initial = state;
 
     // Forward step
-    integrator->step(state, dt);
+    integrator->step(state, dt, G);
 
     // Backward step
-    integrator->step(state, -dt);
+    integrator->step(state, -dt, G);
 
     double max_q_error = 0.0;
     double max_p_error = 0.0;
@@ -157,7 +158,7 @@ void Solver::TestLocalOrder() {
     const double T = 0.1;
     int ref_steps = static_cast<int>(T / dt_ref);
     for (int i = 0; i < ref_steps; ++i) {
-        integrator->step(reference, dt_ref);
+        integrator->step(reference, dt_ref, G);
     }
     std::vector<double> dts = {0.1, 0.05, 0.025};
     std::vector<double> errors;
@@ -165,7 +166,7 @@ void Solver::TestLocalOrder() {
         CanonicalState test = inital;
         int steps = static_cast<int>(T / dt);
         for (int i = 0; i < steps; ++i) {
-            integrator->step(test, dt);
+            integrator->step(test, dt, G);
         }
 
         double err = 0.0;
@@ -190,6 +191,9 @@ void Solver::TestLocalOrder() {
 void Solver::ReversibilityTest() {
     std::cout << "\n=== REVERSIBILITY TEST ===\n";
 
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
     // Save initial state
     std::vector<Body> initial = bodies;
 
@@ -200,7 +204,7 @@ void Solver::ReversibilityTest() {
 
     // Forward integration
     for (int i = 0; i < steps; ++i) {
-        integrator->step(state, dt);
+        integrator->step(state, dt, G);
     }
 
     // Reverse velocities
@@ -210,7 +214,7 @@ void Solver::ReversibilityTest() {
 
     // Backward integration
     for (int i = 0; i < steps; ++i) {
-        integrator->step(state, dt);
+        integrator->step(state, dt, G);
     }
 
     for (size_t i = 1; i < state.P.size(); ++i) {

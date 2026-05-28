@@ -1,12 +1,11 @@
 #include <cmath>
 
 #include "core/body.h"
-#include "core/globals.h"
 
 Body::Body(double m, Vec3 pos, Vec3 vel)
     : mass(m), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}
 
-void Body::updateAcceleration(const std::vector<Body>& bodies) {
+void Body::updateAcceleration(const std::vector<Body>& bodies, double G) {
     acceleration = Vec3();
     
     for (const auto& other : bodies) {

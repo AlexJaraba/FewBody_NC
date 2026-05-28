@@ -4,10 +4,10 @@
 
 #include "dynamics/operators.h"
 #include "dynamics/pairing.h"
-#include "dynamics/perturbation_hamiltonian.h"
 #include "dynamics/jacobi.h"
 #include "numerics/univ_vari_solve.h"
 #include "numerics/propagator.h"
+#include "numerics/perturbation_forces.h"
 #include "core/canonical_state.h"
 #include "math/vec3.h"
 
@@ -21,11 +21,11 @@ void drift_operator(CanonicalState& state, double dt) {
 }
 
 void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
-    auto grad = compute_perturbation_gradient(state, pairs, G);
+    auto forces = compute_perturbation_forces(state, pairs, G);
     const int N = state.Q.size();
 
     for (int i = 1; i < N; ++i) {
-        state.P[i] -= dt * grad[i];
+        state.P[i] -= dt * forces.gradient[i];
     }
 }
 

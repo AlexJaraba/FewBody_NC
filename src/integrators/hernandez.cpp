@@ -10,8 +10,6 @@ Hernandez::Hernandez(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize
     {OperatorType::KEPLER, 0.5},
 }) {};
 
-void Hernandez::step(CanonicalState& state, double dt)
-{
-    extern double G;
+void Hernandez::step(CanonicalState& state, double dt, double G) {
     composition_.execute(state, pairs_, dt, G);
 }

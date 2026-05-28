@@ -4,7 +4,6 @@
 #include <string>
 
 #include "io/io.h"
-#include "core/globals.h"
 #include "math/vec3.h"
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies) {

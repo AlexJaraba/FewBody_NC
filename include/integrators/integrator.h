@@ -4,6 +4,6 @@
 
 class Integrator {
 public:
-    virtual void step(CanonicalState& state, double dt) = 0;
+    virtual void step(CanonicalState& state, double dt, double G) = 0;
     virtual ~Integrator() = default;
 };
