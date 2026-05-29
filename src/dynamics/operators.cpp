@@ -21,11 +21,11 @@ void drift_operator(CanonicalState& state, double dt) {
 }
 
 void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
-    auto forces = compute_perturbation_forces(state, pairs, G);
-    const int N = state.Q.size();
+    auto result = compute_perturbation_forces(state, pairs, G);
+    const int N = static_cast<int>(state.Q.size());
 
     for (int i = 1; i < N; ++i) {
-        state.P[i] -= dt * forces.gradient[i];
+        state.P[i] += dt * result.gradient[i];
     }
 }
 

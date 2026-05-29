@@ -123,8 +123,8 @@ def PlotVerificationSuite(data,df):
     P0 = linear_momentum[0]
     Rcm0 = com_positions[0]
 
-    dE = np.abs((energies - E0) / E0)
-    dL = np.abs((angular_momentum - L0) / L0)
+    dE = np.abs(energies - E0)
+    dL = np.abs(angular_momentum - L0)
     dP = np.abs(linear_momentum - P0) 
     dRcm = np.abs(com_positions - Rcm0)
 
@@ -148,7 +148,7 @@ def PlotVerificationSuite(data,df):
     for i in sorted(data.keys()):
         x = data[i]["x"]
         y = data[i]["y"]
-        ax_orbit.plot(x, y, linewidth=2, label=f'Body {i}')  # Plot the trajectory of each body
+        ax_orbit.scatter(x, y, label=f'Body {i}')  # Plot the trajectory of each body
         ax_orbit.scatter(x[0], y[0], s=60, zorder=10)  # Plot the initial position of each body
 
     ax_orbit.set_title('Orbits of Bodies')
@@ -209,7 +209,7 @@ def rewrite_param(dt, runtime):
 
 def RunTimeStepScalingStudy():
     dt_ref = 0.00025
-    dts = [0.1, 0.05, 0.025, 0.0125]
+    dts = [0.01, 0.005, 0.0025, 0.00125]
     runtime = 1.0
     position_errors = []
 
@@ -346,4 +346,3 @@ def PlotShadowHamiltonian():
 if __name__ == "__main__":
     data, df = read_output(OUTPUT_PATH)
     PlotVerificationSuite(data, df)
-    PlotShadowHamiltonian()

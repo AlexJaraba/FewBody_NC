@@ -12,8 +12,5 @@ Hernandez::Hernandez(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize
 }) {};
 
 void Hernandez::step(CanonicalState& state, double dt, double G) {
-    SymplecticCorrector corrector;
-    corrector.apply_forward(state, pairs_, dt, G);
     composition_.execute(state, pairs_, dt, G);
-    corrector.apply_backward(state, pairs_, dt, G);
 }

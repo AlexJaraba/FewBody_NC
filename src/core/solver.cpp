@@ -2,9 +2,11 @@
 #include <iostream>
 #include <stdexcept>
 #include <cmath>
+#include <iomanip>
 
 #include "core/solver.h"
 #include "core/body.h"
+#include "core/variational_state.h"
 #include "core/canonical_state.h"
 #include "io/io.h"
 #include "io/diagnostics_writer.h"
@@ -16,17 +18,38 @@
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
 #include "dynamics/jacobi.h"
+#include "dynamics/jacobi_transform.h"
+#include "dynamics/variational_operators.h"
 #include "math/vec3.h"
+#include "numerics/perturbation_forces.h"
+
+double tangent_norm(const VariationalState& v) {
+    double sum = 0.0;
+    for (size_t i = 1; i < v.delta_q.size(); ++i) {
+        sum += v.delta_q[i].norm2();
+        sum += v.delta_p[i].norm2();
+    }
+    return std::sqrt(sum);
+}
 
 Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
 
     SolverParams params = readParams("data/param.txt");
     
     PairGraph graph = build_hierarchical_pair_graph(bodies);
-    std::vector<Pair> fixed_pairs = graph.perturbation_pairs;
+    fixed_pairs.clear();
 
-    std::cout << "Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
-    std::cout << "Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
+    const int N = static_cast<int>(bodies.size());
+
+    for (int i = 0; i < N; ++i) {
+        for (int j = i + 1; j < N; ++j) {
+            fixed_pairs.push_back({i, j});
+        }
+    }
+
+    std::cout << "Graph Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
+    std::cout << "Graph Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
+    std::cout << "Physical Pairs Used For Full Perturbation Splilt: " << fixed_pairs.size() << std::endl;
 
     if (params.integrator == "leapfrog") {
         integrator = std::make_unique<Leapfrog>(fixed_pairs);
@@ -83,22 +106,57 @@ void Solver::run() {
 
     CanonicalState state = compute_jacobi_state(bodies);
 
-    DiagnosticsWriter dianostics_writer("diagnostics.csv");
+    // auto test_force = compute_perturbation_forces(state, fixed_pairs, G);
+    // std::cout << "\n=== INITIAL PERTURBATION FORCE TEST ===\n";
+    // for (size_t i = 1; i < test_force.gradient.size(); ++i) {
+    //     std::cout << "grad[" << i << "] = "
+    //             << test_force.gradient[i].x << " "
+    //             << test_force.gradient[i].y << " "
+    //             << test_force.gradient[i].z << "\n";
+    // }
+    // std::cout << "H_pert = " << test_force.potential << "\n";
+    // std::cout << "=======================================\n";
+
+    // auto A = build_jacobi_projection_matrix(state);
+    // std::cout << "\n=== JACOBI PROJECTION MATRIX TEST ===\n";
+    // for (size_t a = 0; a < A.size(); ++a) {
+    //     for (size_t k = 0; k < A[a].size(); ++k) {
+    //         std::cout << "A[" << a << "][" << k << "] = " << A[a][k] << "\n";
+    //     }
+    // }
+    // std::cout << "=====================================\n";
+
+    VariationalState var_state;
+    const int N = static_cast<int>(bodies.size());
+    var_state.delta_q.resize(N);
+    var_state.delta_p.resize(N);
+    for (int i = 1; i < N; ++i) {
+        var_state.delta_q[i] = Vec3(1e-10, 0.0, 0.0);  // Small perturbation in position
+        var_state.delta_p[i] = Vec3();  // Small perturbation in momentum
+    }
+
+    DiagnosticsWriter diagnostics_writer("diagnostics.csv");
 
     for (int step = 0; step < steps; ++step) {
         integrator->step(state, dt, G);
+        variational_drift_operator(state, var_state, dt);
+        variational_kick_operator(state, var_state, fixed_pairs, dt, G);
         reconstruct_bodies(state, bodies);
 
         if (step % output_frequency == 0) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
+            double tangent = std::max(tangent_norm(var_state), 1e-300);
+            double lambda = std::log(tangent / 1e-10) / ((step + 1) * dt);
             std::cout << "Step: " << step << ", Time: " << step * dt 
                     << ", | Total Energy: " << diag.total_energy 
                     << ", | Linear Momentum: " << diag.linear_momentum 
                     << ", | Angular Momentum: " << diag.angular_momentum 
                     << ", | Shadow Energy: " << diag.shadow_energy 
                     << ", | COM Drift: " << diag.com_drift
+                    << ", | Lyapunov Exponent: " << lambda
+                    << ", | Tangent Norm: " << tangent
                     << std::endl;
-            dianostics_writer.write(step * dt, diag);
+            diagnostics_writer.write(step * dt, diag);
         }
 
         // Write output at the specified frequency
@@ -117,7 +175,7 @@ void Solver::run() {
     }
     // Write final output
     writer.write(states);
-    dianostics_writer.close();
+    diagnostics_writer.close();
 }
 
 void Solver::TestHernandezAdjoint(double dt) {
@@ -150,17 +208,23 @@ void Solver::TestHernandezAdjoint(double dt) {
 
 void Solver::TestLocalOrder() {
     std::cout << "\n=== LOCAL ORDER TEST ===\n";
-    const double G = 0.000296014912;
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
     CanonicalState initial = compute_jacobi_state(bodies);
+    const double dt_ref = 0.0003125;
+    const double T = 10.0;
     CanonicalState reference = initial;
-    const double dt_ref = 1e-6;
-    const double T = 0.1;
     int ref_steps = static_cast<int>(T / dt_ref);
-    for (int i = 0; i < ref_steps; ++i) {
+
+    for (int n = 0; n < ref_steps; ++n) {
         integrator->step(reference, dt_ref, G);
     }
-    std::vector<double> dts = {0.1, 0.05, 0.025};
+    std::vector<double> dts = {0.08, 0.04, 0.02, 0.01};
     std::vector<double> errors;
+
     for (double dt : dts) {
         CanonicalState test = initial;
         int steps = static_cast<int>(T / dt);
@@ -168,22 +232,24 @@ void Solver::TestLocalOrder() {
             integrator->step(test, dt, G);
         }
 
-        double err = 0.0;
+        double err2 = 0.0;
 
         for (size_t i = 1; i < test.Q.size(); ++i) {
            Vec3 dQ = test.Q[i] - reference.Q[i];
            Vec3 dP = test.P[i] - reference.P[i];
-           err += dQ.norm2();
-           err += dP.norm2();
+           err2 += dQ.norm2();
+           err2 += dP.norm2();
         }
 
-        err = std::sqrt(err);
+        const double err = std::sqrt(err2);
         errors.push_back(err);
         std::cout << "dt: " << dt << ", Error: " << err << std::endl;
     }
-    for (size_t i = 0; i < errors.size() - 1; ++i) {
-        double ratio = errors[i] / errors[i + 1];
-        std::cout << dts[i] << " -> " << dts[i + 1] << ", Error Ratio: " << ratio << std::endl;
+
+    std::cout << "\nConvergence Ratios:\n";
+
+    for (size_t i = 0; i + 1 < errors.size(); ++i) {
+        std::cout << dts[i] << " -> " << dts[i + 1] << " : ratio = " << errors[i] / errors[i + 1] << std::endl;
     }
 }
 

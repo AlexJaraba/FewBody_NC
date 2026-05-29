@@ -2,4 +2,6 @@
 
 #include <vector>
 
-std::vector<std::vector<double>> build_jacobi_projection_matrix(const std::vector<double>& masses);
+#include "core/canonical_state.h"
+
+std::vector<std::vector<double>> build_jacobi_projection_matrix(const CanonicalState& state);

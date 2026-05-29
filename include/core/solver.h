@@ -25,6 +25,7 @@ public:
 
 private:
     std::vector<Body>& bodies;
+    std::vector<Pair> fixed_pairs;
     std::unique_ptr<Integrator> integrator;
     CSVOutputWriter& writer;
 };

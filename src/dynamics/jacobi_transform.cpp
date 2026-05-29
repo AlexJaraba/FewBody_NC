@@ -1,22 +1,21 @@
 #include "dynamics/jacobi_transform.h"
 
-std::vector<std::vector<double>> build_jacobi_projection_matrix(const std::vector<double>& masses) {
-    const int N = masses.size();
+std::vector<std::vector<double>> build_jacobi_projection_matrix(const CanonicalState& state) {
+    const int N = static_cast<int>(state.physical_mass.size());
 
-    std::vector<std::vector<double>> A(N, std::vector<double>(N,0.0));
+    std::vector<std::vector<double>> A(N, std::vector<double>(N, 0.0));
 
-    double enclosed = masses[0];
-
-    A[0][0] = 1.0;
-
-    for (int i = 1; i < N; ++i) {
-        for (int j = 0; j < i; ++j) {
-            A[i][j] = -masses[j] / enclosed;
+    for (int k = 1; k < N; ++k) {
+        double M_prev = 0.0;
+        for (int a = 0; a < k; ++a) {
+            M_prev += state.physical_mass[a];
         }
-        A[i][i] = 1.0;
-
-        enclosed+= masses[i];
+        const double mk = state.physical_mass[k];
+        const double Mk = M_prev + mk;
+        for (int a = 0; a < k; ++a) {
+            A[a][k] = -mk / Mk;
+        }
+        A[k][k] = M_prev / Mk;
     }
-
     return A;
 }

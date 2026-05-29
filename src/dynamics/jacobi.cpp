@@ -61,47 +61,15 @@ CanonicalState compute_jacobi_state(const std::vector<Body>& bodies) {
 }
 
 void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies) {
-    const int N = bodies.size();
-    if (N == 0) return;
+    const int N = static_cast<int>(state.Q.size());
+    if (N == 0) return;  // Handle empty state case
 
-    Vec3 R_prev;
-    Vec3 V_prev;
-
-    double M_prev = bodies[0].mass;
-
-    //Recursive jacobi reconstruction
-    for (int i = 1; i < N; ++i) {
-        const double mi = bodies[i].mass;
-        const double mu = state.mu[i];
-
-        Vec3 r_com_prev;
-        Vec3 v_com_prev;
-
-        r_com_prev = R_prev / M_prev;
-        v_com_prev = V_prev / M_prev;
-
-        bodies[i].position = state.Q[i] + r_com_prev;
-        bodies[i].velocity = (state.P[i] / mu) + v_com_prev;
-
-        R_prev += mi * bodies[i].position;
-        V_prev += mi * bodies[i].velocity;
-
-        M_prev += mi;
-    }
-
-    // Recover Cartesian momenta
-    Vec3 weighted_pos;
-    Vec3 weighted_vel;
-    for (int i = 1; i < N; ++i) {
-        weighted_pos += bodies[i].mass * bodies[i].position;
-        weighted_vel += bodies[i].mass * bodies[i].velocity;
-    }
-
-    bodies[0].position = (state.com_position * M_prev - weighted_pos) / bodies[0].mass;
-    bodies[0].velocity = (state.com_velocity * M_prev - weighted_vel) / bodies[0].mass;
-
+    auto r = reconstruct_cartesian_positions(state);
+    auto v = reconstruct_cartesian_velocities(state);
 
     for (int i = 0; i < N; ++i) {
+        bodies[i].position = r[i];
+        bodies[i].velocity = v[i];
         bodies[i].updateMomentumFromVelocity();
     }
 }
