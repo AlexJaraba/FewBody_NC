@@ -10,6 +10,7 @@ struct SolverParams {
   double runtime;
   double timestep;
   std::string integrator;
+  std::string coordinate_mode;
   double gravitational_constant;
 };
 

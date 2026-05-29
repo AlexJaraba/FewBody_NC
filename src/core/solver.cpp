@@ -8,20 +8,28 @@
 #include "core/body.h"
 #include "core/variational_state.h"
 #include "core/canonical_state.h"
+
 #include "io/io.h"
 #include "io/diagnostics_writer.h"
 #include "io/csv_output_writer.h"
+
 #include "analysis/diagnostics.h"
+
 #include "integrators/hernandez.h"
 #include "integrators/yoshida4.h"
 #include "integrators/integrator.h"
+
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
 #include "dynamics/jacobi.h"
 #include "dynamics/jacobi_transform.h"
 #include "dynamics/variational_operators.h"
+
 #include "math/vec3.h"
+
 #include "numerics/perturbation_forces.h"
+
+// ======================================================================
 
 double tangent_norm(const VariationalState& v) {
     double sum = 0.0;
@@ -32,7 +40,7 @@ double tangent_norm(const VariationalState& v) {
     return std::sqrt(sum);
 }
 
-Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodies), integrator(nullptr), writer(writer) {
+Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), integrator(nullptr), writer(writer_) {
 
     SolverParams params = readParams("data/param.txt");
     
@@ -50,20 +58,25 @@ Solver::Solver(std::vector<Body>& bodies, CSVOutputWriter& writer) : bodies(bodi
     std::cout << "Graph Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
     std::cout << "Graph Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
     std::cout << "Physical Pairs Used For Full Perturbation Splilt: " << fixed_pairs.size() << std::endl;
+    std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
+
+    if (params.coordinate_mode == "cartesian") {
+        return;
+    }
+    if (params.coordinate_mode != "jacobi") {
+        throw std::runtime_error("Invalid coordinate_mode. Use 'jacobi' or 'cartesian'.");
+    }
 
     if (params.integrator == "leapfrog") {
         integrator = std::make_unique<Leapfrog>(fixed_pairs);
     }
-
-    if (params.integrator == "hernandez") {
+    else if (params.integrator == "hernandez") {
         integrator = std::make_unique<Hernandez>(fixed_pairs);
     }
-
-    if (params.integrator == "Yoshida4") {
+    else if (params.integrator == "Yoshida4") {
         integrator = std::make_unique<Yoshida4>(fixed_pairs);
     }
-
-    if (!integrator) {
+    else {
         throw std::runtime_error("Invalid integrator specified");
     }
     // Add more integrator options here as needed
@@ -91,45 +104,52 @@ void recenter_system(std::vector<Body>& bodies) {
 }
 
 void Solver::run() {
-    std::cout << "Reading param file..." << std::endl;
     SolverParams params = readParams("data/param.txt");
-    std::cout << "dt = " << params.timestep << std::endl;
 
+    std::cout << "Reading param file..." << std::endl;
+    std::cout << "dt = " << params.timestep << std::endl;
+    std::cout << "Loaded timestep: " << params.timestep << std::endl;
+    std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
+
+    if (params.coordinate_mode == "cartesian") {
+        run_cartesian(params);
+    } else if (params.coordinate_mode == "jacobi") {
+        run_jacobi(params);
+    } else {
+        throw std::runtime_error("Invalid coordinate_mode. Use 'jacobi' or 'cartesian'.");
+    }
+}
+
+void Solver::write_curret_bodies(double time) {
+    std::vector<BodyState> states;
+    
+    states.reserve(bodies.size());
+    for (const auto& body : bodies) {
+        states.push_back(body.toState(time));
+    }
+
+    writer.write(states);
+}
+
+void Solver::run_jacobi(const SolverParams& params) {
     int output_frequency = params.output_frequency;
     double runtime = params.runtime;
     double dt = params.timestep;
-    std::cout << "Loaded timestep: " << dt << std::endl;
-
-    int steps = static_cast<int>(runtime / dt);
-
     double G = params.gravitational_constant;  // Set the global gravitational constant
+    const int steps = static_cast<int>(runtime / dt);
+
+    if (!integrator) {
+        throw std::runtime_error("Jacobi mode requires a CanonicalState integrator.");
+    }
 
     CanonicalState state = compute_jacobi_state(bodies);
 
-    // auto test_force = compute_perturbation_forces(state, fixed_pairs, G);
-    // std::cout << "\n=== INITIAL PERTURBATION FORCE TEST ===\n";
-    // for (size_t i = 1; i < test_force.gradient.size(); ++i) {
-    //     std::cout << "grad[" << i << "] = "
-    //             << test_force.gradient[i].x << " "
-    //             << test_force.gradient[i].y << " "
-    //             << test_force.gradient[i].z << "\n";
-    // }
-    // std::cout << "H_pert = " << test_force.potential << "\n";
-    // std::cout << "=======================================\n";
-
-    // auto A = build_jacobi_projection_matrix(state);
-    // std::cout << "\n=== JACOBI PROJECTION MATRIX TEST ===\n";
-    // for (size_t a = 0; a < A.size(); ++a) {
-    //     for (size_t k = 0; k < A[a].size(); ++k) {
-    //         std::cout << "A[" << a << "][" << k << "] = " << A[a][k] << "\n";
-    //     }
-    // }
-    // std::cout << "=====================================\n";
-
     VariationalState var_state;
     const int N = static_cast<int>(bodies.size());
+
     var_state.delta_q.resize(N);
     var_state.delta_p.resize(N);
+
     for (int i = 1; i < N; ++i) {
         var_state.delta_q[i] = Vec3(1e-10, 0.0, 0.0);  // Small perturbation in position
         var_state.delta_p[i] = Vec3();  // Small perturbation in momentum
@@ -139,14 +159,18 @@ void Solver::run() {
 
     for (int step = 0; step < steps; ++step) {
         integrator->step(state, dt, G);
+
         variational_drift_operator(state, var_state, dt);
         variational_kick_operator(state, var_state, fixed_pairs, dt, G);
+
         reconstruct_bodies(state, bodies);
 
         if (step % output_frequency == 0) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
+
             double tangent = std::max(tangent_norm(var_state), 1e-300);
             double lambda = std::log(tangent / 1e-10) / ((step + 1) * dt);
+
             std::cout << "Step: " << step << ", Time: " << step * dt 
                     << ", | Total Energy: " << diag.total_energy 
                     << ", | Linear Momentum: " << diag.linear_momentum 
@@ -157,24 +181,58 @@ void Solver::run() {
                     << ", | Tangent Norm: " << tangent
                     << std::endl;
             diagnostics_writer.write(step * dt, diag);
-        }
-
-        // Write output at the specified frequency
-        if (step % output_frequency == 0) {
-            std::vector<BodyState> states;
-            for (const auto& body : bodies) {
-                states.push_back(body.toState(step * dt));
-            }
-	        writer.write(states);
+            write_curret_bodies(step * dt);
         }
     }
     reconstruct_bodies(state, bodies);
-    std::vector<BodyState> states;
-    for (const auto& b : bodies) {
-        states.push_back(b.toState(steps * dt));
+    write_curret_bodies(steps * dt);
+    diagnostics_writer.close();
+}
+
+void Solver::cartesian_step(double dt, double G) {
+    for (auto& body : bodies) {
+        body.updateAcceleration(bodies, G);
     }
-    // Write final output
-    writer.write(states);
+    for (auto& body : bodies) {
+        body.velocity += 0.5 * dt * body.acceleration;
+        body.position += dt * body.velocity;
+    }
+    for (auto& body : bodies) {
+        body.updateAcceleration(bodies, G);
+    }
+    for (auto& body : bodies) {
+        body.velocity += 0.5 * dt * body.acceleration;
+        body.updateMomentumFromVelocity();
+    }
+}
+
+void Solver::run_cartesian(const SolverParams& params) {
+    const int output_frequency = params.output_frequency;
+    const double runtime = params.runtime;
+    const double dt = params.timestep;
+    const double G = params.gravitational_constant;
+    const int steps = static_cast<int>(runtime / dt);
+
+    DiagnosticsWriter diagnostics_writer("diagnostics.csv");
+
+    for (int step = 0; step < steps; ++step) {
+        cartesian_step(dt, G);
+
+        if (step % output_frequency == 0) {
+            Diagnostics diag = compute_diagnostics(bodies, G, dt);
+
+            std::cout << "Step: " << step << ", Time: " << step * dt 
+                    << ", | Total Energy: " << diag.total_energy 
+                    << ", | Linear Momentum: " << diag.linear_momentum 
+                    << ", | Angular Momentum: " << diag.angular_momentum 
+                    << ", | Shadow Energy: " << diag.shadow_energy 
+                    << ", | COM Drift: " << diag.com_drift
+                    << std::endl;
+            diagnostics_writer.write(step * dt, diag);
+            write_curret_bodies(step * dt);
+        }
+    }
+    write_curret_bodies(steps * dt);
     diagnostics_writer.close();
 }
 
@@ -182,14 +240,19 @@ void Solver::TestHernandezAdjoint(double dt) {
     std::cout << "\n=== HERNANDEZ ADJOINT TEST ===\n";
     
     SolverParams params = readParams("data/param.txt");
-    const double G = params.gravitational_constant;
+    
+    if (params.coordinate_mode != "jacobi") {
+        std::cout << "Skipped: HeHernandez adjoint test only applies to Jacobi mode.\n";
+        return;
+    }
+
+    const double G = params.gravitational_constant;  // Set the global gravitational constant
 
     CanonicalState state = compute_jacobi_state(bodies);
     CanonicalState initial = state;
 
     // Forward step
     integrator->step(state, dt, G);
-
     // Backward step
     integrator->step(state, -dt, G);
 
@@ -199,6 +262,7 @@ void Solver::TestHernandezAdjoint(double dt) {
     for (size_t i = 1; i < state.Q.size(); ++i) {
         Vec3 dQ = state.Q[i] - initial.Q[i];
         Vec3 dP = state.P[i] - initial.P[i];
+
         max_q_error = std::max(max_q_error, dQ.norm());
         max_p_error = std::max(max_p_error, dP.norm());
     }
@@ -211,23 +275,32 @@ void Solver::TestLocalOrder() {
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
+
+    if (params.coordinate_mode != "jacobi") {
+        std::cout << "Skipped: Local-order test currently applies to Jacobi mode.\n";
+        return;
+    }
+
     const double G = params.gravitational_constant;
 
     CanonicalState initial = compute_jacobi_state(bodies);
     const double dt_ref = 0.0003125;
     const double T = 10.0;
     CanonicalState reference = initial;
+
     int ref_steps = static_cast<int>(T / dt_ref);
 
     for (int n = 0; n < ref_steps; ++n) {
         integrator->step(reference, dt_ref, G);
     }
+
     std::vector<double> dts = {0.08, 0.04, 0.02, 0.01};
     std::vector<double> errors;
 
     for (double dt : dts) {
         CanonicalState test = initial;
-        int steps = static_cast<int>(T / dt);
+        const int steps = static_cast<int>(T / dt);
+
         for (int i = 0; i < steps; ++i) {
             integrator->step(test, dt, G);
         }
@@ -265,28 +338,51 @@ void Solver::ReversibilityTest() {
     const double dt = 0.01;
     const int steps = 10000;
 
-    CanonicalState state = compute_jacobi_state(bodies);
-
-    // Forward integration
-    for (int i = 0; i < steps; ++i) {
-        integrator->step(state, dt, G);
+    if (params.coordinate_mode == "cartesian") {
+        for (int i = 0; i < steps; ++i) {
+            cartesian_step(dt, G);
+        }
+        for (auto& body : bodies) {
+            body.velocity *= -1.0;
+            body.updateMomentumFromVelocity();
+        }
+        for (int i = 0; i < steps; ++i) {
+            cartesian_step(dt, G);
+        }
+        for (auto& body : bodies) {
+            body.velocity *= -1.0;
+            body.updateMomentumFromVelocity();
+        }
     }
 
-    // Reverse velocities
-    for (size_t i = 1; i < state.P.size(); ++i) {
-        state.P[i] *= -1.0;
+    else if (params.coordinate_mode == "jacobi") {
+        CanonicalState state = compute_jacobi_state(bodies);
+
+        // Forward integration
+        for (int i = 0; i < steps; ++i) {
+            integrator->step(state, dt, G);
+        }
+
+        // Reverse velocities
+        for (size_t i = 1; i < state.P.size(); ++i) {
+            state.P[i] *= -1.0;
+        }
+
+        // Backward integration
+        for (int i = 0; i < steps; ++i) {
+            integrator->step(state, dt, G);
+        }
+
+        for (size_t i = 1; i < state.P.size(); ++i) {
+            state.P[i] *= -1.0;
+        }
+
+        reconstruct_bodies(state, bodies);
     }
 
-    // Backward integration
-    for (int i = 0; i < steps; ++i) {
-        integrator->step(state, dt, G);
+    else {
+        throw std::runtime_error("Invalid coordinate_mode. Use 'jacobi' or 'cartesian'.");
     }
-
-    for (size_t i = 1; i < state.P.size(); ++i) {
-        state.P[i] *= -1.0;
-    }
-
-    reconstruct_bodies(state, bodies);
 
     double max_pos_error = 0.0;
     double max_vel_error = 0.0;

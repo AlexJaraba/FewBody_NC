@@ -5,6 +5,7 @@
 
 #include "core/body.h"
 #include "io/csv_output_writer.h"
+#include "io/io.h"
 #include "integrators/integrator.h"
 #include "integrators/leapfrog.h"
 #include "integrators/hernandez.h"
@@ -18,6 +19,7 @@ void recenter_system(std::vector<Body>& bodies);
 class Solver {
 public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
+
     void run();
     void ReversibilityTest();
     void TestHernandezAdjoint(double dt);
@@ -28,4 +30,10 @@ private:
     std::vector<Pair> fixed_pairs;
     std::unique_ptr<Integrator> integrator;
     CSVOutputWriter& writer;
+
+    void run_jacobi(const SolverParams& params);
+    void run_cartesian(const SolverParams& params);
+
+    void cartesian_step(double dt, double G);
+    void write_curret_bodies(double time);
 };

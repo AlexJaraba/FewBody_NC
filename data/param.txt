@@ -1,5 +1,6 @@
 output_frequency 1000
-runtime 100000
-timestep 0.02
+runtime 10000
+timestep 0.01
+coordinate_mode cartesian
 integrator hernandez
 gravitational_constant 0.000296014912
