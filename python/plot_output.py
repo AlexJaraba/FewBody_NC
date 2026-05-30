@@ -1,348 +1,387 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import subprocess
 
+import subprocess
+import argparse
+
+from dataclasses import dataclass
 from pathlib import Path
+
+# ============================================================
+# Paths
+# ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = BASE_DIR.parent
-PARAM_PATH = PROJECT_ROOT / "data" / "param.txt"
-OUTPUT_PATH = PROJECT_ROOT / "output.csv"
-EXECUTABLE_PATH = PROJECT_ROOT / "few_body_nc.exe"
 
-plt.style.use('bmh')  # Use a nicer style for plots
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "output.csv"
+DEFAULT_DIAGNOSTICS_PATH = PROJECT_ROOT / "diagnostics.csv"
+DEFAULT_PARAM_PATH = PROJECT_ROOT / "data" / "param.txt"
+DEFAULT_EXECUTABLE_PATH = PROJECT_ROOT / "few_body_nc.exe"
 
-def read_initial_conditions(filename):
-    masses = []
-    positions = []
-    velocities = []
+# ============================================================
+# Configuration
+# ============================================================
 
-    with open(filename, 'r') as f:
-        for line in f:
-            data = line.split()
-            masses.append(float(data[0]))
-            positions.append([float(data[1]), float(data[2]), float(data[3])])
-            velocities.append([float(data[4]), float(data[5]), float(data[6])])
+@dataclass
+class PlotConfig:
+    G: float = 0.000296014912
+    epsilon: float = 1e-300
+    figure_size: tuple = (16, 10)
+    orbit_marker_size: float = 4.0
+    start_marker_size: float = 60.0
 
-    return np.array(masses), np.array(positions), np.array(velocities)
+# ============================================================
+# Reading data
+# ============================================================
 
-def plot_initial_conditions(positions):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+def read_output(path: Path = DEFAULT_OUTPUT_PATH) -> pd.DataFrame:
+    if not path.exists():
+        raise FileNotFoundError(f"Output file not found: {path}")
+    df = pd.read_csv(path)
+
+    required = {"time", "id", "x", "y", "z", "vx", "vy", "vz", "mass"}
+    missing = required - set(df.columns)
+
+    if missing:
+        raise ValueError(f"Missing required columns in output: {sorted(missing)}")
     
-    for pos in positions:
-        ax.scatter(pos[0], pos[1], pos[2])
+    df = df.sort_values(by=["time", "id"]).reset_index(drop=True)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_aspect('equal')
-    plt.title('Initial Positions of Bodies')
-    plt.show()
+    return df
 
-def read_output(filename):
-    df = pd.read_csv(filename)
+def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | None:
+    if not path.exists():
+        return None
+    
+    df = pd.read_csv(path)
+    required = {"time", "total_energy", "angular_momentum", "linear_momentum", "com_drift", "shadow_energy", "timestep"}
+    missing = required - set(df.columns)
 
-    ids = sorted(df["id"].unique())
+    if missing:
+        print(f"Warning: Missing required columns in diagnostics: {sorted(missing)}")
+        return None
+    
+    return df.sort_values(by="time").reset_index(drop=True)
 
-    data = {}
+# ============================================================
+# Vectorized diagnostics from output.csv
+# ============================================================
 
-    for i in ids:
-        body= df[df["id"] == i]
-        data[i] = {
-            "time": body["time"].values,
-            "x": body["x"].values,
-            "y": body["y"].values,
-            "z": body["z"].values,
-            "vx": body["vx"].values,
-            "vy": body["vy"].values,
-            "vz": body["vz"].values,
-            "mass": body["mass"].values
-        }
+def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
+    times = np.sort(df["time"].unique())
+    body_ids = np.sort(df["id"].unique())
 
-    return data, df
+    nt = len(times)
+    nb = len(body_ids)
 
-def PlotVerificationSuite(data,df):
-    G = 0.000296014912
+    expected_rows = nt * nb
+    if len(df) != expected_rows:
+        raise ValueError("Output.csv does not look rectangular." "Expected one row per body per time step.")
+    
+    ordered = df.sort_values(["time", "id"])
+    
+    mass = ordered["mass"].to_numpy().reshape(nt, nb)
+    pos = ordered[["x", "y", "z"]].to_numpy().reshape(nt, nb, 3)
+    vel = ordered[["vx", "vy", "vz"]].to_numpy().reshape(nt, nb, 3)
 
-    grouped = df.groupby("time")
+    # Kinetic Energy
+    kinetic = 0.5 * np.sum(mass * np.sum(vel * vel, axis=2), axis=1)
 
-    times = sorted(grouped.groups.keys())
+    # Potential Energy
+    potential = np.zeros(nt)
 
-    energies = []
-    angular_momentum = []
-    linear_momentum = []
-    com_positions = []
+    for i in range(nb):
+        for j in range(i+1, nb):
+            dr = pos[:, j, :] - pos[:, i, :]
+            r = np.linalg.norm(dr, axis=1)
+            potential -= config.G * mass[:, i] * mass[:, j] / np.maximum(r, config.epsilon)
+    
+    # Total Energy
+    total_energy = kinetic + potential
 
-    for t in times:
-        step = grouped.get_group(t)
+    # Linear Momentum
+    momentum_vec = np.sum(mass[:, :, None] * vel, axis=1)
+    linear_momentum = np.linalg.norm(momentum_vec, axis=1)
 
-        pos = step[["x","y","z"]].values
-        vel = step[["vx","vy","vz"]].values
-        m   = step["mass"].values
-
-        # Kinetic Energy
-        KE = 0.5 * np.sum(m * np.sum(vel**2, axis=1))
-
-        # Potential Energy
-        PE = 0.0
-        N = len(m)
-
-        for i in range(N):
-            for j in range(i+1, N):
-                r = np.linalg.norm(pos[i] - pos[j]) + 1e-18
-                PE -= G * m[i] * m[j] / r
-
-        # Total Energy
-        E = KE + PE
-        energies.append(E)
-
-        # Angular Momentum
-        L = np.zeros(3)
-        for i in range(N):
-            L += np.cross(pos[i], m[i] * vel[i])
-        angular_momentum.append(np.linalg.norm(L))
-
-        # Linear Momentum
-        P = np.sum(m[:,None] * vel, axis=0)
-        linear_momentum.append(np.linalg.norm(P))
-
-        # Center of Mass Position
-        Rcm = np.sum(m[:,None] * pos, axis=0) / np.sum(m)
-        com_positions.append(np.linalg.norm(Rcm))
-
-    energies = np.array(energies)
-    angular_momentum = np.array(angular_momentum)
-    linear_momentum = np.array(linear_momentum)
-    com_positions = np.array(com_positions)
-
-    # Relative errors
-    E0 = energies[0]
-    L0 = angular_momentum[0]
-    P0 = linear_momentum[0]
-    Rcm0 = com_positions[0]
-
-    dE = np.abs(energies - E0)
-    dL = np.abs(angular_momentum - L0)
-    dP = np.abs(linear_momentum - P0) 
-    dRcm = np.abs(com_positions - Rcm0)
-
-    # Print summary statistics
-    print("Max |dE|:", np.max(np.abs(dE)))
-    print("Max |dL|:", np.max(np.abs(dL)))
-    print("Max |dP|:", np.max(np.abs(dP)))
-    print('Max |dRcm|:', np.max(np.abs(dRcm)))
-
-    print("Final dE:", dE[-1])
-    print("Final dL:", dL[-1])
-    print("Final dP:", dP[-1])
-    print("Final dRcm:", dRcm[-1])
-
-    # Figure Layout
-    fig = plt.figure(figsize=(16,10))
-    gs = fig.add_gridspec(2, 4)
-
-    # Orbit Plot
-    ax_orbit = fig.add_subplot(gs[:,0:2])
-    for i in sorted(data.keys()):
-        x = data[i]["x"]
-        y = data[i]["y"]
-        ax_orbit.scatter(x, y, label=f'Body {i}')  # Plot the trajectory of each body
-        ax_orbit.scatter(x[0], y[0], s=60, zorder=10)  # Plot the initial position of each body
-
-    ax_orbit.set_title('Orbits of Bodies')
-    ax_orbit.set_xlabel('X')
-    ax_orbit.set_ylabel('Y')
-    ax_orbit.set_aspect('equal')
-    ax_orbit.set_facecolor('#f8f8f8')
-    ax_orbit.tick_params(labelsize=10)
-    ax_orbit.legend()
-    ax_orbit.grid(True, which='both', alpha=0.3)
-
-    # Energy Error
-    ax1 = fig.add_subplot(gs[0,2])
-    ax1.semilogy(times, np.abs(dE) + 1e-16)  # Add small value to avoid log(0)
-    ax1.set_title("Relative Energy Error")
-    ax1.set_xlabel("Time")
-    ax1.set_ylabel("(E - E0)/E0")
-    ax1.grid(True, which='both', alpha=0.3)
-
-    # Angular Momentum Error
-    ax2 = fig.add_subplot(gs[0,3])
-    ax2.semilogy(times, np.abs(dL) + 1e-16)  # Add small value to avoid log(0)
-    ax2.set_title("Relative Angular Momentum Error")
-    ax2.set_xlabel("Time")
-    ax2.set_ylabel("(L - L0)/L0")
-    ax2.grid(True, which='both', alpha=0.3)
-
-    # Linear Momentum Error
-    ax3 = fig.add_subplot(gs[1,2])
-    ax3.semilogy(times, np.abs(dP) + 1e-16)  # Add small value to avoid log(0)
-    ax3.set_title("Relative Linear Momentum Error")
-    ax3.set_xlabel("Time")
-    ax3.set_ylabel("|P - P0|")
-    ax3.grid(True, which='both', alpha=0.3)
+    # Angular Momentum
+    angular_vec = np.sum(np.cross(pos, mass[:, :, None] * vel), axis=1)
+    angular_momentum = np.linalg.norm(angular_vec, axis=1)
 
     # Center of Mass Drift
-    ax4 = fig.add_subplot(gs[1,3])
-    ax4.semilogy(times, dRcm + 1e-30)  # Add small value to avoid log(0)
-    ax4.set_title("Relative Center of Mass Drift")
-    ax4.set_xlabel("Time")
-    ax4.set_ylabel("|Rcm - Rcm0|")
-    ax4.grid(True, which='both', alpha=0.3)
+    total_mass = np.sum(mass, axis=1)
+    rcm = np.sum(mass[:, :, None] * pos, axis=1) / total_mass[:, None]
+    com_drift = np.linalg.norm(rcm, axis=1)
 
-    fig.subplots_adjust(left=0.06, right=0.97, top=0.93, bottom=0.08, wspace=0.25, hspace=0.30)
+    # Print Statements
+    diagnostics = pd.DataFrame({
+        "time": times,
+        "kinetic Energy": kinetic,
+        "potential Energy": potential,
+        "total_energy": total_energy,
+        "angular_momentum": angular_momentum,
+        "linear_momentum": linear_momentum,
+        "com_drift": com_drift,
+    })
+    return diagnostics
+
+# ============================================================
+# Error helpers
+# ============================================================
+
+def absolute_error(values: np.ndarray) -> np.ndarray:
+    return np.abs(values - values[0])
+
+def relative_error(values: np.ndarray, epsilon: float = 1e-300) -> np.ndarray:
+    denom = max(np.abs(values[0]), epsilon)
+    return np.abs((values - values[0]) / denom)
+
+def print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
+    energy = diagnostics["total_energy"].to_numpy()
+    angular = diagnostics["angular_momentum"].to_numpy()
+    linear = diagnostics["linear_momentum"].to_numpy()
+    com = diagnostics["com_drift"].to_numpy()
+
+    dE = relative_error(energy, config.epsilon)
+    dL = relative_error(angular, config.epsilon)
+    dP = absolute_error(linear)
+    dRcm = absolute_error(com)
+
+    print("Summary of Diagnostics:")
+    print(f"Max |dE/E0|:", np.max(dE))
+    print(f"Max |dL/L0|:", np.max(dL))
+    print(f"Max |dP|:", np.max(dP))
+    print(f"Max |dRcm|:", np.max(dRcm))
+    print(f"Final dE/E0:", dE[-1])
+    print(f"Final dL/L0:", dL[-1])
+    print(f"Final dP:", dP[-1])
+    print(f"Final dRcm:", dRcm[-1])
+
+# ============================================================
+# Plotting
+# ============================================================
+
+def plot_orbits(ax, df: pd.DataFrame, config: PlotConfig) -> None:
+    for body_id, body in df.groupby("id", sort=True):
+        x = body["x"].to_numpy()
+        y = body["y"].to_numpy()
+
+        ax.plot(x, y, linewidth=1.2, label=f'Body {body_id}')
+        ax.scatter(x[0], y[0], s=config.start_marker_size, zorder=5)
+
+    ax.set_title('Orbits of Bodies')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_aspect('equal', adjustable="box")
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best")
+
+def plot_error(ax, time, values, title, ylabel, floor=1e-300) -> None:
+    ax.semilogy(time, np.maximum(values, floor))
+    ax.set_title(title)
+    ax.set_xlabel("Time")
+    ax.set_ylabel(ylabel)
+    ax.grid(True, which="both", alpha=0.3)
+
+def plot_verification_suite(output_df: pd.DataFrame, diagnostics: pd.DataFrame, config: PlotConfig) -> None:
+    time = diagnostics["time"].to_numpy()
+    dE = relative_error(diagnostics["total_energy"].to_numpy(), config.epsilon)
+    dL = relative_error(diagnostics["angular_momentum"].to_numpy(), config.epsilon)
+    dP = absolute_error(diagnostics["linear_momentum"].to_numpy())
+    dRcm = absolute_error(diagnostics["com_drift"].to_numpy())
+
+    print_summary(diagnostics, config)
+
+    fig = plt.figure(figsize=config.figure_size, constrained_layout=True)
+    gs = fig.add_gridspec(2, 4)
+
+    ax_orbit = fig.add_subplot(gs[:, 0:2])
+    plot_orbits(ax_orbit, output_df, config)
+
+    ax_energy = fig.add_subplot(gs[0, 2])
+    plot_error(ax_energy, time, dE, "Relative Energy Error", r"$|E - E_0|/|E_0|$", floor=1e-18)
+
+    ax_angular = fig.add_subplot(gs[0, 3])
+    plot_error(ax_angular, time, dL, "Relative Angular Momentum Error", r"$|L - L_0|/|L_0|$", floor=1e-18)
+
+    ax_linear = fig.add_subplot(gs[1, 2])
+    plot_error(ax_linear, time, dP, "Linear Momentum Error", r"$|P - P_0|$", floor=1e-30)
+
+    ax_com = fig.add_subplot(gs[1, 3])
+    plot_error(ax_com, time, dRcm, "Center of Mass Drift", r"$|R_{\rm cm} - R_{\rm cm,0}|$", floor=1e-30)
+
+    fig.suptitle("FewBodyNC Verification Suite", fontsize=16)
     plt.show()
 
-def rewrite_param(dt, runtime):
-    with open(PARAM_PATH, "r") as f:
-        lines = f.readlines()
-    with open(PARAM_PATH, "w") as f:
-        for line in lines:
-            if line.startswith("timestep"):
-                f.write(f"timestep {dt}\n")
-            elif line.startswith("runtime"):
-                f.write(f"runtime {runtime}\n")
-            else:
-                f.write(line)
+def plot_shadow_hamiltonian(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> None:
+    diagnostics = read_diagnostics(path)
 
-def RunTimeStepScalingStudy():
-    dt_ref = 0.00025
-    dts = [0.01, 0.005, 0.0025, 0.00125]
-    runtime = 1.0
-    position_errors = []
+    if diagnostics is None:
+        raise FileNotFoundError(f"No usable diagnostics.csv found.")
 
-    # -------------------------------------------------------------------
-    # Run reference solution
-    # -------------------------------------------------------------------
+    time = diagnostics["time"].to_numpy()
+    shadow = diagnostics["shadow_energy"].to_numpy()
 
-    print("\nRunning reference solution...")
+    dH = relative_error(shadow)
 
-    rewrite_param(dt_ref, runtime)
+    plt.figure(figsize=(8, 5), constrained_layout=True)
+    plt.semilogy(time, np.maximum(dH, 1e-18), label="Shadow Hamiltonian")
+    plt.xlabel("Time")
+    plt.ylabel(r"$|(\tilde{H} - \tilde{H}_0) / \tilde{H}_0|$")
+    plt.title("Shadow Hamiltonian Conservation")
+    plt.grid(True, which="both", alpha=0.3)
+    plt.legend()
+    plt.show()
 
-    if OUTPUT_PATH.exists():
-        OUTPUT_PATH.unlink()
+# ============================================================
+# Parameter rewriting and convergence study
+# ============================================================
+
+def rewrite_param(dt: float, runtime: float, param_path: Path = DEFAULT_PARAM_PATH) -> None:
+    if not param_path.exists():
+        raise FileNotFoundError(f"Could not find param file: {param_path}")
+
+    lines = param_path.read_text().splitlines()
+    updated = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("timestep"):
+            updated.append(f"timestep {dt}")
+        elif stripped.startswith("runtime"):
+            updated.append(f"runtime {runtime}")
+        else:
+            updated.append(line)
+    param_path.write_text("\n".join(updated) + "\n")
+
+def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
+    if not executable_path.exists():
+        raise FileNotFoundError(f"Could not find executable: {executable_path}")
     
-    result = subprocess.run([str(EXECUTABLE_PATH)], capture_output=True, text=True)
+    result = subprocess.run([str(executable_path)], cwd=str(PROJECT_ROOT), capture_output=True, text=True)
 
     print(result.stdout)
 
     if result.returncode != 0:
         print(result.stderr)
-        raise RuntimeError("Reference simulation failed")
+        raise RuntimeError("Simulation failed.")
+
+def final_positions(df: pd.DataFrame) -> dict[int, np.ndarray]:
+    final_time = df["time"].max()
+    final_step = df[df["time"] == final_time]
+
+    positions = {}
+
+    for body_id, body in final_step.groupby("id", sort=True):
+        positions[int(body_id)] = body[["x", "y", "z"]].to_numpy()[0]
     
-    data_ref, df_ref = read_output(OUTPUT_PATH)
+    return positions
 
-    # -------------------------------------------------------------------
-    # Final reference positions
-    # -------------------------------------------------------------------
+def rms_position_error(test_positions: dict[int, np.ndarray], reference_positions: dict[int, np.ndarray]) -> float:
+    total = 0.0
+    count = 0
 
-    reference_positions = {}
-    final_time_ref = max(df_ref["time"])
-    final_step_ref = df_ref[df_ref["time"] == final_time_ref]
+    for body_id, r_ref in reference_positions.items():
+        r = test_positions[body_id]
+        dr = r - r_ref
 
-    for i in sorted(final_step_ref["id"].unique()):
-        body = final_step_ref[final_step_ref["id"] == i]
-        reference_positions[i] = np.array([body["x"].values[0], body["y"].values[0], body["z"].values[0]])
+        total += np.dot(dr, dr)
+        count += 1
 
-    # -------------------------------------------------------------------
-    # Run test timesteps
-    # -------------------------------------------------------------------
+    return np.sqrt(total / count)
+
+def run_timestep_scaling_study(dt_ref: float = 0.00025, dts: tuple = (0.01, 0.005, 0.0025, 0.00125), runtime: float = 1.0) -> None:
+    print("\nRunning reference solution...")
+
+    rewrite_param(dt_ref, runtime)
+    if DEFAULT_OUTPUT_PATH.exists():
+        DEFAULT_OUTPUT_PATH.unlink()
+
+    run_executable()
+
+    df_ref = read_output(DEFAULT_OUTPUT_PATH)
+    reference = final_positions(df_ref)
+
+    errors = []
 
     for dt in dts:
-
         print(f"\nRunning dt = {dt}")
         rewrite_param(dt, runtime)
-
-        if OUTPUT_PATH.exists():
-            OUTPUT_PATH.unlink()
+        if DEFAULT_OUTPUT_PATH.exists():
+            DEFAULT_OUTPUT_PATH.unlink()
         
-        result = subprocess.run([str(EXECUTABLE_PATH)], capture_output=True, text=True)
+        run_executable()
 
-        print(result.stdout)
+        df = read_output(DEFAULT_OUTPUT_PATH)
+        err = rms_position_error(final_positions(df), reference)
 
-        if result.returncode != 0:
-            print(result.stderr)
-            raise RuntimeError(f"Simulation failed for dt = {dt}")
-        
-        data, df = read_output(OUTPUT_PATH)
-        final_time = max(df["time"])
-        final_step = df[df["time"] == final_time]
+        errors.append(err)
 
-        # ---------------------------------------------------------------
-        # Compute RMS position error
-        # ---------------------------------------------------------------
-        
-        total_error = 0.0
-        count = 0
-
-        for i in sorted(final_step["id"].unique()):
-            body = final_step[final_step["id"] == i]
-
-            r = np.array([body["x"].values[0], body["y"].values[0], body["z"].values[0]])
-            dr = r - reference_positions[i]
-
-            total_error += np.dot(dr, dr)
-
-            count += 1
-        
-        rms_error = np.sqrt(total_error / count)
-        position_errors.append(rms_error)
-
-        print(f"RMS position error: {rms_error}")
-        
-    # ---------------------------------------------------------------
-    # Read new output
-    # ---------------------------------------------------------------
-
-    dts = np.array(dts)
-    position_errors = np.array(position_errors)
+        print(f"RMS position error: {err}")
     
-    # ---------------------------------------------------------------
-    # Plot convergence
-    # ---------------------------------------------------------------
+    dts_array = np.array(dts)
+    errors_array = np.array(errors)
 
-    plt.figure()
-    plt.loglog(dts, position_errors, marker='o')
+    plt.figure(figsize=(7, 5), constrained_layout=True)
+    plt.loglog(dts_array, errors_array, marker="o")
     plt.gca().invert_xaxis()
-    plt.xlabel('Timestep (dt)')
-    plt.ylabel('RMS Position Error')
-    plt.title('True Convergence Test')
-    plt.grid(True, which='both', ls='--')
+    plt.xlabel("Timestep dt")
+    plt.ylabel("RMS final-position error")
+    plt.title("Timestep convergence")
+    plt.grid(True, which="both", ls="--", alpha=0.4)
     plt.show()
-
-    # ---------------------------------------------------------------
-    # Print convergence ratio
-    # ---------------------------------------------------------------
 
     print("\nConvergence Ratios:")
+    for i in range(len(errors_array) - 1):
+        ratio = errors_array[i] / errors_array[i + 1]
+        print(f"{dts_array[i]} -> {dts_array[i + 1]} : ratio = {ratio}")
 
-    for i in range(len(position_errors) - 1):
-        ratio = position_errors[i] / position_errors[i+1]
-        print(f"{dts[i]} -> {dts[i+1]} : ratio = {ratio}")
+# ============================================================
+# Command line interface
+# ============================================================
 
-def PlotShadowHamiltonian():
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import numpy as np
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="FewBodyNC plotting and verification utility.")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH, help="Path to output.csv.",)
+    parser.add_argument("--diagnostics", type=Path, default=DEFAULT_DIAGNOSTICS_PATH, help="Path to diagnostics.csv.",)
+    parser.add_argument("--G", type=float, default=0.000296014912, help="Gravitational constant used for recomputed diagnostics.",)
+    parser.add_argument("--use-diagnostics-csv", action="store_true", help="Use diagnostics.csv for diagnostic plots instead of recomputing from output.csv.",)
+    parser.add_argument("--shadow", action="store_true", help="Plot shadow Hamiltonian error from diagnostics.csv.",)
+    parser.add_argument("--convergence", action="store_true", help="Run timestep convergence study.",)
 
-    diagnostics = pd.read_csv("diagnostics.csv")
-    time = diagnostics["time"].values
-    shadow_energy = diagnostics["shadow_energy"].values
-    H0 = shadow_energy[0]
-    dH = np.abs((shadow_energy - H0) / H0)
+    return parser.parse_args()
 
-    plt.figure()
-    plt.semilogy(time, dH, label="Shadow Hamiltonian Error")
-    plt.xlabel("Time")
-    plt.ylabel(r"$|(\tilde{H} - \tilde{H}_0)/\tilde{H}_0|$")
-    plt.title("Shadow Hamiltonian Conservation")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+def main() -> None:
+    args = parse_args()
+    config = PlotConfig(G=args.G)
+
+    if args.shadow:
+        plot_shadow_hamiltonian(args.diagnostics)
+        return
+    if args.convergence:
+        run_timestep_scaling_study()
+        return
+    output_df = read_output(args.output)
+    if args.use_diagnostics_csv:
+        diagnostics = read_diagnostics(args.diagnostics)
+        output_df = read_output(args.output)
+        if diagnostics is None:
+            print("Falling back to recomputing diagnostics from output.csv.")
+            diagnostics = compute_diagnostics_from_output(output_df, config)
+    else:
+        diagnostics = compute_diagnostics_from_output(output_df, config)
+    
+    plot_verification_suite(output_df, diagnostics, config)
+
+# ====================================================
 
 if __name__ == "__main__":
-    data, df = read_output(OUTPUT_PATH)
-    PlotVerificationSuite(data, df)
+    main()
+
+# === DIFFERENT ARGUMENTS TO RUN ===
+# Regular Plot Output: python python/plot_output.py
+# Use Diagnostics instead of recomputing enegry: python python/plot_output.py --use-diagnostics-csv
+# Plot Shadow Hamiltonian: python python/plot_output.py --shadow
+# Run Convergence Study: python python/plot_output.py --convergence
+# Use Different Graviational Constant: python python/plot_output.py --G 0.000296014912
