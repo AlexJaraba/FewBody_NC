@@ -74,6 +74,12 @@ struct Vec3 {
     }
 };
 
+inline double norm(const Vec3& v) {
+    return v.norm();
+}
+inline double norm2(const Vec3& v) {
+    return v.norm2();
+}
 inline double dot(const Vec3& a, const Vec3& b) {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
