@@ -55,8 +55,7 @@ struct Mat3 {
         return *this;
     }
 
-    Mat3 operator-=(const Mat3& rhs) {
-        Mat3 m;
+    Mat3& operator-=(const Mat3& rhs) {
         xx -= rhs.xx;
         xy -= rhs.xy;
         xz -= rhs.xz;

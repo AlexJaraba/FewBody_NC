@@ -64,7 +64,7 @@ if __name__ == "__main__":
 # === DIFFERENT ARGUMENTS TO RUN ===
 # Regular Plot Output: python python/plot_output.py
 # Run Benchmark Test: python python/plot_output.py --benchmark
-# Use Diagnostics instead of recomputing enegry: python python/plot_output.py --use-diagnostics-csv
+# Use Diagnostics instead of recomputing energy: python python/plot_output.py --use-diagnostics-csv
 # Plot Shadow Hamiltonian: python python/plot_output.py --shadow
 # Run Convergence Study: python python/plot_output.py --convergence
-# Use Different Graviational Constant: python python/plot_output.py --G 0.000296014912
+# Use Different Gravitational Constant: python python/plot_output.py --G 0.000296014912

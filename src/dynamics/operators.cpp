@@ -79,10 +79,10 @@ void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& p
     }
 }
 
-void test_kepler_reversibility(CanonicalState& inital_state, double dt, double G) {
+void test_kepler_reversibility(CanonicalState& initial_state, double dt, double G) {
     std::cout << "\n=== KEPLER REVERSIBILITY TEST ===\n";
 
-    CanonicalState state = inital_state;
+    CanonicalState state = initial_state;
     CanonicalState initial = state;
 
     //Forward
@@ -105,10 +105,10 @@ void test_kepler_reversibility(CanonicalState& inital_state, double dt, double G
     std::cout << "Max P Error: " << max_p_error << std::endl;
 }
 
-void test_kick_reversibility(CanonicalState& inital_state, const std::vector<Pair>& pairs, double dt, double G) {
+void test_kick_reversibility(CanonicalState& initial_state, const std::vector<Pair>& pairs, double dt, double G) {
     std::cout << "\n=== KICK REVERSIBILITY TEST ===\n";
 
-    CanonicalState state = inital_state;
+    CanonicalState state = initial_state;
     CanonicalState initial = state;
 
     //Forward

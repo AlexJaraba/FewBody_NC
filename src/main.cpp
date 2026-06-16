@@ -12,18 +12,25 @@
 #include "dynamics/operators.h"
 
 int main() {
+    // Read initial conditions and create bodies
     std::vector<Body> bodies;
     readInitialConditions("data/initial_conditions.txt", bodies);
 
+    // Recenter system to the center of mass frame
     recenter_system(bodies);
 
+    // Create output writer
     std::string outputfilename = "output.csv";
     CSVOutputWriter output(outputfilename);
     
+    // Create solver and run simulation
     Solver sim(bodies, output);
     sim.run();
+
+    // Run reversibility test
     sim.ReversibilityTest();
 
+    // Close output file
     output.close();
     
     return 0;

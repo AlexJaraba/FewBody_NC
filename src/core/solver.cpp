@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <iomanip>
+#include <algorithm>
 
 #include "core/solver.h"
 #include "core/body.h"
@@ -57,7 +58,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
 
     std::cout << "Graph Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
     std::cout << "Graph Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
-    std::cout << "Physical Pairs Used For Full Perturbation Splilt: " << fixed_pairs.size() << std::endl;
+    std::cout << "Physical Pairs Used For Full Perturbation Split: " << fixed_pairs.size() << std::endl;
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
 
     if (params.coordinate_mode == "cartesian") {
@@ -120,7 +121,7 @@ void Solver::run() {
     }
 }
 
-void Solver::write_curret_bodies(double time) {
+void Solver::write_current_bodies(double time) {
     std::vector<BodyState> states;
     
     states.reserve(bodies.size());
@@ -157,7 +158,20 @@ void Solver::run_jacobi(const SolverParams& params) {
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
 
-    for (int step = 0; step < steps; ++step) {
+    {
+        Diagnostics diag = compute_diagnostics(bodies, G, dt);
+        std::cout << "Step: 0, Time: 0" 
+                << ", | Total Energy: " << diag.total_energy 
+                << ", | Linear Momentum: " << diag.linear_momentum 
+                << ", | Angular Momentum: " << diag.angular_momentum 
+                << ", | Shadow Energy: " << diag.shadow_energy 
+                << ", | COM Drift: " << diag.com_drift
+                << std::endl;
+        diagnostics_writer.write(0.0, diag);
+        write_current_bodies(0.0);
+    }
+
+    for (int step = 1; step <= steps; ++step) {
         integrator->step(state, dt, G);
 
         variational_drift_operator(state, var_state, dt);
@@ -165,13 +179,15 @@ void Solver::run_jacobi(const SolverParams& params) {
 
         reconstruct_bodies(state, bodies);
 
-        if (step % output_frequency == 0) {
+        const double time = step * dt;
+
+        if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
 
             double tangent = std::max(tangent_norm(var_state), 1e-300);
-            double lambda = std::log(tangent / 1e-10) / ((step + 1) * dt);
+            double lambda = std::log(tangent / 1e-10) / time;
 
-            std::cout << "Step: " << step << ", Time: " << step * dt 
+            std::cout << "Step: " << step << ", Time: " << time 
                     << ", | Total Energy: " << diag.total_energy 
                     << ", | Linear Momentum: " << diag.linear_momentum 
                     << ", | Angular Momentum: " << diag.angular_momentum 
@@ -181,11 +197,9 @@ void Solver::run_jacobi(const SolverParams& params) {
                     << ", | Tangent Norm: " << tangent
                     << std::endl;
             diagnostics_writer.write(step * dt, diag);
-            write_curret_bodies(step * dt);
+            write_current_bodies(step * dt);
         }
     }
-    reconstruct_bodies(state, bodies);
-    write_curret_bodies(steps * dt);
     diagnostics_writer.close();
 }
 
@@ -215,13 +229,28 @@ void Solver::run_cartesian(const SolverParams& params) {
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
 
-    for (int step = 0; step < steps; ++step) {
+    {
+        Diagnostics diag = compute_diagnostics(bodies, G, dt);
+        std::cout << "Step: 0, Time: 0" 
+                << ", | Total Energy: " << diag.total_energy 
+                << ", | Linear Momentum: " << diag.linear_momentum 
+                << ", | Angular Momentum: " << diag.angular_momentum 
+                << ", | Shadow Energy: " << diag.shadow_energy 
+                << ", | COM Drift: " << diag.com_drift
+                << std::endl;
+        diagnostics_writer.write(0.0, diag);
+        write_current_bodies(0.0);
+    }
+
+    for (int step = 1; step < steps; ++step) {
         cartesian_step(dt, G);
 
-        if (step % output_frequency == 0) {
+        const double time = step * dt;
+
+        if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
 
-            std::cout << "Step: " << step << ", Time: " << step * dt 
+            std::cout << "Step: " << step << ", Time: " << time 
                     << ", | Total Energy: " << diag.total_energy 
                     << ", | Linear Momentum: " << diag.linear_momentum 
                     << ", | Angular Momentum: " << diag.angular_momentum 
@@ -229,10 +258,9 @@ void Solver::run_cartesian(const SolverParams& params) {
                     << ", | COM Drift: " << diag.com_drift
                     << std::endl;
             diagnostics_writer.write(step * dt, diag);
-            write_curret_bodies(step * dt);
+            write_current_bodies(step * dt);
         }
     }
-    write_curret_bodies(steps * dt);
     diagnostics_writer.close();
 }
 
@@ -242,7 +270,7 @@ void Solver::TestHernandezAdjoint(double dt) {
     SolverParams params = readParams("data/param.txt");
     
     if (params.coordinate_mode != "jacobi") {
-        std::cout << "Skipped: HeHernandez adjoint test only applies to Jacobi mode.\n";
+        std::cout << "Skipped: Hernandez adjoint test only applies to Jacobi mode.\n";
         return;
     }
 

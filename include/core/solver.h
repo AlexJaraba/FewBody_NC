@@ -35,5 +35,5 @@ private:
     void run_cartesian(const SolverParams& params);
 
     void cartesian_step(double dt, double G);
-    void write_curret_bodies(double time);
+    void write_current_bodies(double time);
 };

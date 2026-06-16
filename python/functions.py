@@ -243,8 +243,8 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
     # Print Statements
     diagnostics = pd.DataFrame({
         "time": times,
-        "kinetic Energy": kinetic,
-        "potential Energy": potential,
+        "kinetic_energy": kinetic,
+        "potential_energy": potential,
         "total_energy": total_energy,
         "angular_momentum": angular_momentum,
         "linear_momentum": linear_momentum,

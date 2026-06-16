@@ -34,13 +34,13 @@ void symmetric_kepler_operator(
 );
 
 void test_kepler_reversibility(
-    CanonicalState& inital_state,
+    CanonicalState& initial_state,
     double dt,
     double G
 );
 
 void test_kick_reversibility(
-    CanonicalState& inital_state,
+    CanonicalState& initial_state,
     const std::vector<Pair>& pairs,
     double dt,
     double G

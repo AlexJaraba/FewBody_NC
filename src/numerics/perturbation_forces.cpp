@@ -31,7 +31,7 @@ namespace {
         const double r = std::sqrt(r2);
 
         if (r < 1e-14) {
-            throw std::runtime_error("Singualr pair distance in for Jacobian.");
+            throw std::runtime_error("Singular pair distance in force Jacobian.");
         }
 
         const double inv_r3 = 1.0 / (r2 * r);
