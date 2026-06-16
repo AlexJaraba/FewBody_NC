@@ -1,6 +1,6 @@
-output_frequency 1000
-runtime 1.0
-timestep 0.00125
+output_frequency 10
+runtime 36525
+timestep 0.1
 coordinate_mode cartesian
-integrator hernandez
+integrator leapfrog
 gravitational_constant 0.000296014912
