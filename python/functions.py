@@ -290,8 +290,29 @@ def error_absolute(values: np.ndarray) -> np.ndarray:
     return np.abs(values - values[0])
 
 def error_relative(values: np.ndarray, epsilon: float = 1e-300) -> np.ndarray:
-    denom = max(np.abs(values[0]), epsilon)
-    return np.abs((values - values[0]) / denom)
+    values = np.asarray(values, dtype=float)
+
+    safe_epsilon = max(float(epsilon), 1e-14)
+    finite = np.isfinite(values)
+
+    result = np.full_like(values, np.nan, dtype=float)
+
+    if not np.any(finite):
+        return result
+    
+    reference = values[0]
+
+    if not np.isfinite(reference):
+        reference = values[finite][0]
+    if abs(reference) < safe_epsilon:
+        scale = np.nanmax(np.abs(values[finite]))
+        if not np.isfinite(scale) or scale < safe_epsilon:
+            scale = 1.0
+    else:
+        scale = abs(reference)
+    
+    result[finite] = np.abs(values[finite] - reference) / scale
+    return result
 
 def error_rms_position(test_positions: dict[int, np.ndarray], reference_positions: dict[int, np.ndarray]) -> float:
     total = 0.0
@@ -305,6 +326,17 @@ def error_rms_position(test_positions: dict[int, np.ndarray], reference_position
         count += 1
 
     return np.sqrt(total / count)
+
+def error_safe_log_values(values: np.ndarray, floor: float = 1e-300, ceiling: float = 1e50) -> np.ndarray:
+    values = np.asarray(values, dtype=float)
+    
+    safe = np.full_like(values, np.nan, dtype=float)
+    finite = np.isfinite(values)
+
+    safe[finite] = np.abs(values[finite])
+    safe[finite] = np.clip(safe[finite], floor, ceiling)
+
+    return safe
 
 def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     energy = diagnostics["total_energy"].to_numpy()
@@ -332,12 +364,20 @@ def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
 # ============================================================
 
 def plot_orbits(ax, df: pd.DataFrame, config: PlotConfig) -> None:
-    for body_id, body in df.groupby("id", sort=True):
-        x = body["x"].to_numpy()
-        y = body["y"].to_numpy()
+    max_abs_plot_value = 1e50
 
-        ax.plot(x, y, linewidth=1, label=f'Body {body_id}')
-        ax.scatter(x[0], y[0], s=config.start_marker_size, zorder=5)
+    for body_id, body in df.groupby("id", sort=True):
+        x = body["x"].to_numpy(dtype=float)
+        y = body["y"].to_numpy(dtype=float)
+
+        valid = (np.isfinite(x) & np.isfinite(y) & (np.abs(x) < max_abs_plot_value) & (np.abs(y) < max_abs_plot_value))
+
+        if not np.any(valid):
+            continue
+
+        ax.plot(x[valid], y[valid], linewidth=1, label=f'Body {body_id}')
+        first_valid = np.flatnonzero(valid)[0]
+        ax.scatter(x[first_valid], y[first_valid], s=config.start_marker_size, zorder=5)
 
     ax.set_title('Orbits of Bodies')
     ax.set_xlabel('X')
@@ -347,7 +387,32 @@ def plot_orbits(ax, df: pd.DataFrame, config: PlotConfig) -> None:
     ax.legend(loc="best")
 
 def plot_error(ax, time, values, title, ylabel, floor=1e-300) -> None:
-    ax.semilogy(time, np.maximum(values, floor))
+    time = np.asarray(time, dtype=float)
+    y = error_safe_log_values(values, floor=floor)
+
+    valid = np.isfinite(time) & np.isfinite(y)
+
+    if np.any(valid):
+        ax.semilogy(time[valid], y[valid])
+        ymin = np.nanmin(y[valid])
+        ymax = np.nanmax(y[valid])
+
+        if ymin == ymax:
+            ymin = max(ymin * 0.5, floor)
+            ymax = min(ymax * 2.0, 1e50)
+        else:
+            ymin = max(ymin * 0.5, floor)
+            ymax = min(ymax * 2.0, 1e50)
+        
+        if not np.isfinite(ymin) or ymin <= 0.0:
+            ymin = floor
+        if not np.isfinite(ymax) or ymax <= ymin:
+            ymax = ymin * 10.0
+        
+        ax.set_ylim(ymin, ymax)
+    else:
+        ax.text(0.5, 0.5, "No finite diagnostic values", ha="center", va="center", transform=ax.transAxes,)
+
     ax.set_title(title)
     ax.set_xlabel("Time")
     ax.set_ylabel(ylabel)
@@ -406,13 +471,8 @@ def plot_shadow_hamiltonian(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> None:
 
     dH = error_relative(shadow)
 
-    plt.figure(figsize=(8, 5), constrained_layout=True)
-    plt.semilogy(time, np.maximum(dH, 1e-18), label="Shadow Hamiltonian")
-    plt.xlabel("Time")
-    plt.ylabel(r"$|(\tilde{H} - \tilde{H}_0) / \tilde{H}_0|$")
-    plt.title("Shadow Hamiltonian Conservation")
-    plt.grid(True, which="both", alpha=0.3)
-    plt.legend()
+    fig, ax = plt.subplots(figsize=(8, 5), constratined_layout=True)
+    plot_error(ax, time, dH, "Shadow Hamiltonian Conservation", r"$|(\tilde{H} - \tilde{H}_0) / \tilde{H}_0|$", floor=1e-18)
     plt.show()
 
 # ============================================================
@@ -502,11 +562,12 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
     
     result = subprocess.run([str(executable_path)], cwd=str(PROJECT_ROOT), capture_output=True, text=True)
 
-    print(result.stdout)
-
     if result.returncode != 0:
+        print(result.stdout)
         print(result.stderr)
         raise RuntimeError("Simulation failed.")
+
+    print("Simulation finished successfully")
 
 # Run a convergence study using the current settings in data/param.txt
 # Only the timestep is changed during the sweep.
