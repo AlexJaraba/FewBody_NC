@@ -471,7 +471,7 @@ def plot_shadow_hamiltonian(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> None:
 
     dH = error_relative(shadow)
 
-    fig, ax = plt.subplots(figsize=(8, 5), constratined_layout=True)
+    fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
     plot_error(ax, time, dH, "Shadow Hamiltonian Conservation", r"$|(\tilde{H} - \tilde{H}_0) / \tilde{H}_0|$", floor=1e-18)
     plt.show()
 
