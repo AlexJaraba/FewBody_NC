@@ -11,6 +11,22 @@
 #include "core/canonical_state.h"
 #include "math/vec3.h"
 
+/* =====================================================================
+
+    Canonical evolution operators
+
+    This file contains the primitive operators used by the symplectic compositions:
+        drift_operator
+        kick_operator
+        kepler_operator
+        symmetric_kepler_operator
+    
+    The Hernandez integrator is built from these operators.
+    In the active Jacobi split, the Kepler operator evolves each Jacobi coordinate under its two-body Kepler Hamiltonin.
+    The kick operator applies the perturbation force.
+
+   ===================================================================== */
+
 void drift_operator(CanonicalState& state, double dt) {
     const int N = state.Q.size();
 
@@ -19,6 +35,12 @@ void drift_operator(CanonicalState& state, double dt) {
         state.Q[i] += (dt * state.P[i]) / mu;
     }
 }
+
+/*
+    Apply perturbation kick:
+        P <- P + dt * F_perturbation(Q)
+    The force is the Jacobi generalized perturbation force returned by compute_perturbation_forces()
+*/
 
 void kick_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
     auto result = compute_perturbation_forces(state, pairs, G);
@@ -63,11 +85,21 @@ static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) 
     state.P[i] = result.p;
 }
 
+/*
+    Apply Kepler evolution to each Jacobi coordinate.
+    Each Jacobi coordinate Q_k is advanced as a two-body Kepler problem using the reduced mass mu_k and enclosed mass M_k.
+*/
+
 void kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
     for (size_t  i = 1; i < state.Q.size(); ++i) {
         kepler_pair_step(state, i, dt, G);
     }
 }
+
+/*
+    Symmetric Kepler operator wrapper.
+    This is used by symmetric compositions so forward and backward integrations use consistent Kepler evolution.
+*/
 
 void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
     for (size_t i = 1; i < state.Q.size(); ++i) {

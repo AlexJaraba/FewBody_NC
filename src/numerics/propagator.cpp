@@ -5,6 +5,24 @@
 #include "numerics/propagator.h"
 #include "math/vec3.h"
 
+/* =================================================================
+
+    Universal-variable Kepler propagator
+
+    This file advances one relative Kepler orbit over a timestep dt.
+    The Universal-variable method works for elliptic, parabolic, and hyperbolic motion when the universal anomaly solve converges.
+    Inputs are relative position q, relative momentum p, reduced mass mu, and gravitational parameter G * M.
+
+   ================================================================= */
+
+/*
+    Propagate a Jacobi relative coordinate through the Kepler part of the split.
+    The canonical momentum p is converted to relative velocity using:
+        v = p / mu
+    After propagation the updated velocity is converted back to canonical momentum:
+        p = mu * v
+*/
+
 CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
     Vec3 v0;
 

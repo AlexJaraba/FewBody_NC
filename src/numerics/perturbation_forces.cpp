@@ -5,6 +5,32 @@
 #include "core/reconstruction.h"
 #include "dynamics/jacobi_transform.h"
 
+/* ===============================================================
+
+    Perturbation Force Calculations
+
+    This file computes the force associated with the perturbation Hamiltonian used by the Jacobi/Hernandez splitting.
+    The active split is:
+
+        H = H_kepler_jacobi + H_perturbation
+
+    where:
+
+        H_perturbation = H_full_cartesian - H_kepler_jacobi
+    
+    The procedure is as follows:
+    1. Reconstruct Cartesian positions from the canonical Jacobi coordinates.
+    2. Compute the full Newtonian Cartesian gravitational force.
+    3. Project Cartesian forces into Jacobi generalized forces using A^T F.
+    4. Subtract the Jacobi Kepler force already handled by the Kepler operator.
+    5. Return the perturbation force and force Jacobian.
+
+    The passed pair list is currently unused since the Jacobi split requires all physical Cartesian pairs, 
+    but it is included for future flexibility in case we want to explore different splits.
+
+   =============================================================== */
+
+// Helper functions for matrix operations and force Jacobian calculations
 namespace {
     Mat3 identity_matrix() {
         Mat3 I;
@@ -55,6 +81,7 @@ namespace {
     }
 }
 
+// Main function to compute perturbation forces and their Jacobians in Jacobi coordinates
 ForceResult compute_perturbation_forces(const CanonicalState& state, const std::vector<Pair>& pairs, double G) {
     const int N = static_cast<int>(state.Q.size());
 
@@ -70,6 +97,12 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
     std::vector<std::vector<Mat3>> cartesian_force_jacobians(N, std::vector<Mat3>(N));
 
     (void)pairs; // Current Jacobi split requires all physical Cartesian pairs.
+
+    /*
+        Compute full physical Cartesian Newtonian forces.
+        These are ordinary body-body forces in physical space.
+        They are later projected into Jacobi coordinates.
+    */
 
     for (int i = 0; i < N; ++i) {
         for (int j = i + 1; j < N; ++j) {
@@ -99,6 +132,11 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
         }
     }
 
+    /*
+        Project Cartesian forces into Jacobi generalized forces using A^T F.
+        The projection matrix A maps Cartesian coordinates to Jacobi coordinates, so A^T maps Cartesian forces to Jacobi forces.
+    */
+
     for (int k = 1; k < N; ++k) {
         Vec3 Fk;
         for (int a = 0; a < N; ++a) {
@@ -106,6 +144,11 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
         }
         result.gradient[k] = Fk;
     }
+
+    /*
+        Compute the force Jacobian in Jacobi coordinates.
+        This projects the Cartesian force Jacobian using A^T J A.
+    */
 
     for (int k = 1; k < N; ++k) {
         for (int l = 1; l < N; ++l) {
@@ -119,6 +162,12 @@ ForceResult compute_perturbation_forces(const CanonicalState& state, const std::
         }
     }
     
+    /*
+        Subtract the force from the Jacobi Kepler Hamiltonian.
+        The Kepler operator already evolves each Jacobi coordinate under its two-body Kepler problem.
+        Therefore, that part must be removed from the perturbation force to avoid double-counting. 
+    */
+
     for (int k = 1; k < N; ++k) {
         const Vec3 q = state.Q[k];
         const double r2 = q.norm2();

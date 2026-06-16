@@ -5,6 +5,22 @@
 
 #include "numerics/newton_solver.h"
 #include "numerics/univ_vari_solve.h"
+#include "math/vec3.h"
+
+/* =============================================================================
+
+    Universal anomaly solver
+
+    This file solves for the universal anomaly chi used by the Kepler propagator.
+    The Stumpff functions C(z) and S(z) allow the same formulation to work for elliptic, near-parabolic, and hyperbolic cases.
+    Kepler solve failures usually indicate an overly large timestep, a near collision, or an orbit outside the safe range of the current Newton Sovler.
+
+   =============================================================================*/
+
+/*
+    Stumpff functions used by universal-variable Kepler propagation
+    These functions switch formulas depending on the sign of z to avoid using elliptic expressions for hyperbolic motion and vice versa
+*/
 
 double stumpff_C(double z) {
     const double abs_z = std::abs(z);
@@ -44,16 +60,12 @@ double stumpff_S(double z) {
     return (std::sinh(sz) - sz) / (sz * sz * sz);
 }
 
-double norm(const Vec3& v) {
-    return v.norm();
-}
+/*
+    Solve the universal Kepler equation for chi using Newton iteration.
+    The returned chi is then used to compute the Lagrange f and g functions in the propagator.
+*/
 
-ChiResult solve_chi(double mu, double alpha,
-                    const Vec3& r0,
-                    double vr, double dt,
-                    double abs_tol,
-                    double rel_tol,
-                    int max_iter)
+ChiResult solve_chi(double mu, double alpha, const Vec3& r0, double vr, double dt, double abs_tol, double rel_tol, int max_iter)
 {
     double r = norm(r0);
     double chi0;

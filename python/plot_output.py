@@ -3,6 +3,19 @@ import functions
 
 from pathlib import Path
 
+"""
+FewBodyNC plotting command-line entry point.
+
+This script is intentionally small. Most of the logic lives in functions.py
+
+Common commands:
+    python python/plot_output.py
+    python python/plot_output.py --benchmark
+    python python/plot_output.py --use-diagnostics-csv
+    python python/plot_output.py --shadow
+    python python/plot_output.py --convergence
+"""
+
 # ============================================================
 # Paths
 # ============================================================
@@ -19,6 +32,8 @@ DEFAULT_EXECUTABLE_PATH = PROJECT_ROOT / "few_body_nc.exe"
 # Command line interface
 # ============================================================
 
+# Define command-line options for plotting, diagnostics, convergence studies, and benchmark generation
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="FewBodyNC plotting and verification utility.")
     parser.add_argument("--benchmark", action="store_true", help="Run benchmark suite instead of plotting.",)
@@ -30,6 +45,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--convergence", action="store_true", help="Run timestep convergence study.",)
 
     return parser.parse_args()
+
+# Dispatch command-line modes.
+# Only one special mode is run at a time:
+# - Benchmark Suite
+# - Shadow plot
+# - Convergence Study
+# - Normal Verification Suite
 
 def main() -> None:
     args = parse_args()

@@ -2,6 +2,15 @@
 
 #include <cmath>
 
+/* ==============================================================================
+
+    Small 3D vector type used throughout FewBodyNC.
+
+    Vec3 replaces repeated std::vector<double>(3) allocations and 
+    provides lightweight vector arithmetic for positions, velocities, momenta, forces, and tangent variables.
+
+   ============================================================================== */
+
 struct Vec3 {
     double x;
     double y;

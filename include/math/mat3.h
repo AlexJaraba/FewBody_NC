@@ -2,6 +2,14 @@
 
 #include "math/vec3.h"
 
+/* ================================================================================
+
+    Small 3x3 matrix type used for force Jacobians and variational equations.
+
+    Mat3 is intentionally lightweight and stores components directly rather than allocating dynamic arrays.
+
+   ================================================================================ */
+
 struct Mat3 {
     double xx, xy, xz; 
     double yx, yy, yz; 

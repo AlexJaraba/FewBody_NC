@@ -2,6 +2,43 @@
 
 #include "dynamics/jacobi.h"
 
+/* ===============================================================
+
+    Jacobi Coordinate Transformations:
+
+    This file implements the transformations between Cartesian coordinates and Jacobi coordinates, 
+    as well as the reconstruction of Cartesian states from Jacobi states.
+
+    The main functions are:
+    - compute_jacobi_state: Converts a vector of Body objects (with Cartesian positions and velocities) into a CanonicalState in Jacobi coordinates.
+    - reconstruct_bodies: Converts a CanonicalState in Jacobi coordinates back into Cartesian positions and velocities, 
+      updating the Body objects accordingly.
+    
+    For body index k > 0:
+
+        Q_k = r_k - R_{0...k-1}
+    
+    where:
+    
+        R_{0...k-1} is the center of mass of all previous bodies.
+    
+    The conjugate momentum P_k is build using the reduced mass:
+
+        P_k = mu_k * dQ_k/dt
+    
+    with:
+
+        mu_k = m_k = m_k{k-1} / M_k
+    
+    Q_0 and P_0 represent the total center-of-mass coordinate and momentum respectively.
+
+   =============================================================== */
+
+/*
+    Build a CanonicalState from physical Cartesian bodies.
+    The physical masses are preserved so the system can later be reconstructed back into Cartesian coordinates.
+*/
+
 CanonicalState compute_jacobi_state(const std::vector<Body>& bodies) {
     CanonicalState state;
 
@@ -59,6 +96,11 @@ CanonicalState compute_jacobi_state(const std::vector<Body>& bodies) {
     }
     return state;
 }
+
+/*
+    Reconstruct physical Cartesian bodies from the current CanonicalState.
+    This is the only place Jacobi-mode evolution returns to physical body coordinates during normal output/diagnostics.
+*/
 
 void reconstruct_bodies(const CanonicalState& state, std::vector<Body>& bodies) {
     const int N = static_cast<int>(state.Q.size());

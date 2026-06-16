@@ -7,6 +7,23 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+"""
+FewBodyNC plotting and benchmark utilities
+
+This file contains reusable helper functions used by plot_output.py
+
+Responsibilities:
+    - Read output.csv and diagnostics.csv
+    - Compute diagnostics from saved Cartesian output
+    - Plot orbits and conservation diagnostics
+    - Run timestep convergence studies.
+    - Run the full benchmark suite and save plots.
+
+The C++ code always writes physical Cartesian output, even when the simulation is evolved internally in Jacobi coordinates.
+
+"""
+
+
 # ============================================================
 # Paths
 # ============================================================
@@ -34,7 +51,9 @@ class PlotConfig:
     start_marker_size: float = 60.0
 
 # ============================================================
-# Benchmark Tests
+# Benchmark Tests:
+#   Benchmark systems used to demonstrate both the strengths and limits of the current integrators.
+#   These are written directly into data/initial_conditions.txt before each benchmark run.
 # ============================================================
 
 BENCHMARK_TESTS = [
@@ -459,6 +478,10 @@ def rewrite_timestep_only(dt: float, param_path: Path = DEFAULT_PARAM_PATH) -> N
 
     param_path.write_text("\n".join(updated) + "\n")
 
+# Write initial conditions in the exact format expected by the C++ reader:
+#   mass x y z vx vy vz
+# No header row is written
+
 def rewrite_initial_conditions(rows: list[tuple[float, float, float, float, float, float, float]],
                              output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -484,6 +507,10 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
     if result.returncode != 0:
         print(result.stderr)
         raise RuntimeError("Simulation failed.")
+
+# Run a convergence study using the current settings in data/param.txt
+# Only the timestep is changed during the sweep.
+# The original param.txt is restored afterward.
 
 def run_timestep_scaling_study(dt_ref: float = 0.00025, 
                                dts: tuple = (0.01, 0.005, 0.0025, 0.00125), 
@@ -561,6 +588,10 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
     finally:
         param_path.write_text(original_text)
         print("\nRestored original param.txt settings.")
+
+# Run every benchmark test in every selected mode and save the resulting plots.
+# This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
+# The original files should be restored at the end of the run.
 
 def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = False,) -> None:
 

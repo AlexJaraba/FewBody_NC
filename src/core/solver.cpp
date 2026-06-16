@@ -30,7 +30,26 @@
 
 #include "numerics/perturbation_forces.h"
 
-// ======================================================================
+/* ======================================================================
+Solver
+
+Central simulation driver for FewBodyNC.
+
+Responsibilities:
+    - Read simulation parameters
+    - Select the coordinate mode: Jacobi or Cartesian
+    - Select the canonical integrator for Jacobi mode
+    - Advance the system
+    - Write output.csv and diagnostics.csv
+
+Coordinate Modes:
+    - Jacobi mode evolves a CanonicalState using the selected canonical integrator, then reconstructs Cartesian bodies for output and diagnostics
+    - Cartesian mode evolves the Body objects directly using Solver::cartesian_step()
+
+Important:
+    - In Cartesian mode, the integrator string is currently ignored. The Cartesian path is directly velocity-Verlet/leapfrog.
+
+   ====================================================================== */
 
 double tangent_norm(const VariationalState& v) {
     double sum = 0.0;
@@ -104,6 +123,21 @@ void recenter_system(std::vector<Body>& bodies) {
     }
 }
 
+// ==============================================================
+// Main Simulation Loop and Output
+// ==============================================================
+
+/*
+Dispatch the simulation to the selected coordinate mode.
+
+Jacobi Mode:
+- Uses a symplectic integrator on the canonical state.
+- Applies variational operators to track the growth of perturbations.
+- Reconstructs Cartesian states for output and diagnostics.
+Cartesian Mode:
+- Uses a standard leapfrog method to evolve the Cartesian states directly.
+*/
+
 void Solver::run() {
     SolverParams params = readParams("data/param.txt");
 
@@ -121,6 +155,11 @@ void Solver::run() {
     }
 }
 
+/*
+Write the current Cartesian body states to the output CSV file.
+Even in Jacobi mode, we reconstruct the Cartesian states at each output step for diagnostics and output purposes.
+*/
+
 void Solver::write_current_bodies(double time) {
     std::vector<BodyState> states;
     
@@ -131,6 +170,18 @@ void Solver::write_current_bodies(double time) {
 
     writer.write(states);
 }
+
+// ==============================================================
+// Specific Steps for Specified Coordinate Modes
+// ==============================================================
+
+/*
+Run the canonical Jacobi-coordinate integration path.
+- Initializes the canonical state and variational state.
+- In each step, applies the integrator to evolve the canonical state, then applies variational operators to evolve the perturbations.
+- Reconstructs the Cartesian states from the canonical state for diagnostics and output.
+- Computes diagnostics including energy, momentum, and Lyapunov exponent estimates at specified intervals.
+*/
 
 void Solver::run_jacobi(const SolverParams& params) {
     int output_frequency = params.output_frequency;
@@ -203,6 +254,13 @@ void Solver::run_jacobi(const SolverParams& params) {
     diagnostics_writer.close();
 }
 
+/*
+One Cartesian integration step using a leapfrog method.
+v(t + dt/2) = v(t) + (dt/2) * a(t)
+r(t + dt) = r(t) + dt * v(t + dt/2)
+v(t + dt) = v(t + dt/2) + (dt/2) * a(t + dt)
+*/
+
 void Solver::cartesian_step(double dt, double G) {
     for (auto& body : bodies) {
         body.updateAcceleration(bodies, G);
@@ -219,6 +277,12 @@ void Solver::cartesian_step(double dt, double G) {
         body.updateMomentumFromVelocity();
     }
 }
+
+/*
+Run the direct Cartesian integration path.
+- Uses a leapfrog method to evolve the Cartesian states directly.
+- Computes diagnostics at specified intervals.
+*/
 
 void Solver::run_cartesian(const SolverParams& params) {
     const int output_frequency = params.output_frequency;
@@ -263,6 +327,10 @@ void Solver::run_cartesian(const SolverParams& params) {
     }
     diagnostics_writer.close();
 }
+
+// ==============================================================
+// Tests for integrator correctness and local order of convergence
+// ==============================================================
 
 void Solver::TestHernandezAdjoint(double dt) {
     std::cout << "\n=== HERNANDEZ ADJOINT TEST ===\n";

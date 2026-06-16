@@ -6,6 +6,23 @@
 #include "io/io.h"
 #include "math/vec3.h"
 
+/* ============================================================================================================= 
+
+    Input Parsing
+
+    initial_conditions.txt format: mass x y z vx vy vz
+    param.txt format:
+        output_frequency <int>
+        runtime <double>
+        timestep <double>
+        integrator <string>
+        coordinate_mode <jacobi|cartesian>
+        gravitational_constant <double>
+    
+    Lines are parsed as whitespace-separated key/value pairs.
+
+   ============================================================================================================= */
+
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies) {
     std::ifstream infile(filename);
     std::string line;

@@ -1,5 +1,31 @@
 #include "dynamics/jacobi_transform.h"
 
+/* ========================================================================
+
+    Jacobi Projection Matrix
+
+    This file builds the matrix:
+
+        A[a][k] = d r_a / d Q_k
+
+    at a fixed total center of mass.
+
+    This matrix is used to project Cartesian Forces and force Jacobians into Jacobi generalized coordiantes:
+
+        F_Q = A^T F_r
+
+        J_Q = A^T J_r A
+    
+    Correct signs in this matrix are essential for the perturbation force to cancel the Kepler force correctly in the pure two-body limit.
+
+   ========================================================================*/
+
+/*
+    Build A[a][k] = d r_a / d Q_k
+    For a < k, previous bodies move opposite to Q_k through the partial COM.
+    For a == k, body k moves with coefficient M_{k-1} / M_k.
+*/
+
 std::vector<std::vector<double>> build_jacobi_projection_matrix(const CanonicalState& state) {
     const int N = static_cast<int>(state.physical_mass.size());
 

@@ -2,6 +2,14 @@
 
 #include "io/diagnostics_writer.h"
 
+/* ============================================================================================================= 
+
+    Diagnostics CSV Writer
+
+    Writes scalar diagnostic quantities to diagnostics.csv so Python can plot conservation behavior without recomputing diagnostics from output.csv.
+
+   ============================================================================================================= */
+
 DiagnosticsWriter::DiagnosticsWriter(const std::string& filename) : file_(filename), header_written_(false) {file_ << std::setprecision(17);}
 
 void DiagnosticsWriter::write(double time, const Diagnostics& d) {

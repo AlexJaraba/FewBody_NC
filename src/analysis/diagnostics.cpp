@@ -3,6 +3,22 @@
 #include "analysis/diagnostics.h"
 #include "math/vec3.h"
 
+
+/* ====================================================================================================
+
+    Diagnostics
+
+    Computes physical diagnostics from Cartesian body states:
+        - Total energy
+        - Linear Momentum
+        - Angular Momentum
+        - Center-of-mass Drift
+        - Shadow-energy placeholder/estimate
+    
+    Diagnostics are always computed in Cartesian coordinates, even when the integrator evolves the system internally in Jacobi coordinates.
+
+   ==================================================================================================== */
+
 Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, double dt) {
     Diagnostics d{};
 

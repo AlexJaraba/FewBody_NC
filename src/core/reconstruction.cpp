@@ -1,5 +1,28 @@
 #include "core/reconstruction.h"
 
+/* ======================================================================
+
+    Cartesian reconstruction from Jacobi Coordinates.
+
+    This file is the authoritative inverse Jacobi transform.
+
+    Given:
+
+        Q_k = r_k - R_{0...k-1}
+    
+    the reconstruction proceeds recursively:
+
+        r_k = R_{0...k-1} + Q_k
+
+    while preserving the total center-of-mass position and velocity stored in the CanonicalState.
+
+   ====================================================================== */
+
+/*
+    Reconstruct Cartesian positions at fixed total center of mass.
+    The total COM stored in state.com_position anchors the reconstruction.
+*/
+
 std::vector<Vec3> reconstruct_cartesian_positions(const CanonicalState& state) {
     const int N = static_cast<int>(state.Q.size());
     
@@ -32,6 +55,14 @@ std::vector<Vec3> reconstruct_cartesian_positions(const CanonicalState& state) {
     }
     return r;
 };
+
+/*
+    Reconstruct Cartesian velocities at fixed total center of mass.
+    The Jacobi velocity is recovered from:
+
+        dQ_k/dt = P_k / mu_k
+        
+*/
 
 std::vector<Vec3> reconstruct_cartesian_velocities(const CanonicalState& state) {
     const int N = static_cast<int>(state.P.size());

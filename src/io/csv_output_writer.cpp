@@ -3,6 +3,18 @@
 #include "io/csv_output_writer.h"
 #include "core/body.h"
 
+/* ============================================================================================================= 
+
+    CSV Output Writer
+
+    Writes physical Cartesian body states to output.csv
+
+    Output columns: time,id,x,y,z,vx,vy,vz,mass
+
+    This format is consumed by python/functions.py and python/plot_output.py
+
+   ============================================================================================================= */
+
 CSVOutputWriter::CSVOutputWriter(const std::string& filename)
     : file_(filename), header_written_(false) {file_ << std::setprecision(17);}
 
