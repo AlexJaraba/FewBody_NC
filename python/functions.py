@@ -211,7 +211,7 @@ def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | No
     return df.sort_values(by="time").reset_index(drop=True)
 
 # ============================================================
-# Compute diagnostics and final positions
+# Compute functions
 # ============================================================
 
 def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
@@ -282,6 +282,14 @@ def compute_final_positions(df: pd.DataFrame) -> dict[int, np.ndarray]:
     
     return positions
 
+def compute_finite_max(values: np.ndarray) -> float:
+    values = np.asarray(values, dtype=float)
+    finite = values[np.isfinite(values)]
+
+    if finite.size == 0:
+        return float("nan")
+    
+    return float(np.max(finite))
 # ============================================================
 # Error calculations
 # ============================================================
@@ -358,6 +366,26 @@ def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     print(f"Final dL/L0:", dL[-1])
     print(f"Final dP:", dP[-1])
     print(f"Final dRcm:", dRcm[-1])
+
+def error_diagnostic_metric_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> dict:
+    energy = diagnostics["total_energy"].to_numpy()
+    angular = diagnostics["angular_momentum"].to_numpy()
+    linear = diagnostics["linear_momentum"].to_numpy()
+    com = diagnostics["com_drift"].to_numpy()
+
+    dE = error_relative(energy, config.epsilon)
+    dL = error_relative(angular, config.epsilon)
+    dP = error_absolute(linear)
+    dRcm = error_absolute(com)
+
+    return {"max_dE_over_E0": compute_finite_max(dE), 
+            "final_dE_over_E0": float(dE[-1]), 
+            "max_dL_over_L0": compute_finite_max(dL), 
+            "final_dL_over_L0": float(dL[-1]), 
+            "max_dP": compute_finite_max(dP), 
+            "final_dP": float(dP[-1]), 
+            "max_dRcm": compute_finite_max(dRcm), 
+            "final_dRcm": float(dRcm[-1]),}
 
 # ============================================================
 # Plotting
@@ -538,6 +566,45 @@ def rewrite_timestep_only(dt: float, param_path: Path = DEFAULT_PARAM_PATH) -> N
 
     param_path.write_text("\n".join(updated) + "\n")
 
+def rewrite_adaptive_settings(adaptive_timesteps: bool, timestep_levels: int | None = None, timestep_eta: float | None = None, param_path: Path = DEFAULT_PARAM_PATH) -> None:
+    if not param_path.exists():
+        raise FileNotFoundError(f"Could not find param file: {param_path}")
+    
+    replacements = {"adaptive_timesteps": f"adaptive_timesteps {'true' if adaptive_timesteps else 'false'}"
+    }
+
+    if timestep_levels is not None:
+        replacements["timestep_levels"] = f"timestep_levels {timestep_levels}"
+    if timestep_eta is not None:
+        replacements["timestep_eta"] = f"timestep_eta {timestep_eta}"
+    
+    lines = param_path.read_text().splitlines()
+    updated =[]
+    seen = set()
+
+    for line in lines:
+        stripped = line.strip()
+
+        if not stripped:
+            updated.append(line)
+            continue
+        if stripped.startswith('#'):
+            updated.append(line)
+            continue
+
+        key = stripped.split()[0]
+
+        if key in replacements:
+            updated.append(replacements[key])
+            seen.add(key)
+        else:
+            updated.append(line)
+    for key, value in replacements.items():
+        if key not in seen:
+            updated.append(value)
+    
+    param_path.write_text("\n".join(updated) + "\n")
+
 # Write initial conditions in the exact format expected by the C++ reader:
 #   mass x y z vx vy vz
 # No header row is written
@@ -655,7 +722,6 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 # The original files should be restored at the end of the run.
 
 def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = False,) -> None:
-
     if modes is None:
         modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi"},
                  {"name": "hernandez_cartesian", "integrator": "hernandez", "coordinate_mode": "cartesian"},
@@ -728,3 +794,119 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         if original_initial_conditions_text is not None:
             DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
         print("\nRestored original param.txt and initial_conditions.txt settings.")
+
+def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_eta: float | None = None, param_path: Path = DEFAULT_PARAM_PATH) -> None:
+    config = PlotConfig()
+
+    if not param_path.exists():
+        raise FileNotFoundError(f"Could not find param file: {param_path}")
+    
+    original_param_text = param_path.read_text()
+    params = read_param(param_path)
+
+    coordinate_mode = params.get("coordinate_mode", "jacobi")
+    integrator = params.get("integrator", "hernandez")
+
+    if coordinate_mode != "jacobi":
+        raise RuntimeError("Adaptive comparison currently only applies to coordinate_mode jacobi.")
+    if timestep_levels is None:
+        timestep_levels = int(params.get("timestep_levels", 2))
+    if timestep_levels <= 0:
+        timestep_levels = 2
+    if timestep_eta is None:
+        timestep_eta = float(params.get("timestep_eta", 0.001))
+    
+    print("\n=== Step 10.4 Adaptive Comparison Study ===")
+    print(f"coordinate_mode    = {coordinate_mode}")
+    print(f"integrator         = {integrator}")
+    print(f"timestep_levels    = {timestep_levels}")
+    print(f"timestep_eta       = {timestep_eta}")
+    print("This test runs the same setup twice: adaptive off, then adaptive on.")
+
+    results = {}
+
+    try:
+        for label, adaptive_flag in [("fixed", False), ("adaptive", True)]:
+            print("\n" + "=" * 70)
+            print(f"Running {label} case")
+            print("=" * 70)
+
+            rewrite_adaptive_settings(adaptive_timesteps=adaptive_flag, timestep_levels=timestep_levels, timestep_eta=timestep_eta, param_path=param_path)
+
+            clear_simulation_outputs()
+            run_executable()
+
+            output_df = read_output(DEFAULT_OUTPUT_PATH)
+            diagnostics = compute_diagnostics_from_output(output_df, config)
+            final_positions = compute_final_positions(output_df)
+            summary = error_diagnostic_metric_summary(diagnostics, config)
+
+            results[label] = {
+                "output" : output_df,
+                "diagnostics" : diagnostics,
+                "final_positions" : final_positions,
+                "summary" : summary,
+            }
+
+        fixed_summary = results["fixed"]["summary"]
+        adaptive_summary = results["adaptive"]["summary"]
+        fixed_positions = results["fixed"]["final_positions"]
+        adaptive_positions = results["adaptive"]["final_positions"]
+
+        final_positions_difference = error_rms_position(adaptive_positions, fixed_positions)
+
+        rows = []
+
+        for metric in fixed_summary.keys():
+            fixed_value = fixed_summary[metric]
+            adaptive_value = adaptive_summary[metric]
+            if (np.isfinite(fixed_value) and np.isfinite(adaptive_value) and adaptive_value != 0.0):
+                improvement_factor = fixed_value / adaptive_value
+            else:
+                improvement_factor = float("nan")
+            
+            rows.append({"metric": metric, "fixed": fixed_value, "adaptive": adaptive_value, "fixed_over_adaptive": improvement_factor})
+        
+        comparison = pd.DataFrame(rows)
+        comparison_path = PROJECT_ROOT / "adaptive_comparison.csv"
+        comparison.to_csv(comparison_path, index=False)
+
+        print("\n=== Adaptive Comparison Summary ===")
+        print(comparison.to_string(index=False))
+        print()
+        print(f"RMS final-positions difference adaptive vs fixed: {final_positions_difference}")
+        print(f"Saved comparison table to {comparison_path}")
+
+        # Plot Energy-Error comparison
+        fixed_diag = results["fixed"]["diagnostics"]
+        adaptive_diag = results["adaptive"]["diagnostics"]
+        fixed_time = fixed_diag["time"].to_numpy()
+        adaptive_time = adaptive_diag["time"].to_numpy()
+        fixed_dE = error_relative(fixed_diag["total_energy"].to_numpy(), config.epsilon)
+        adaptive_dE = error_relative(adaptive_diag["total_energy"].to_numpy(), config.epsilon)
+
+        fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
+
+        ax.semilogy(fixed_time, error_safe_log_values(fixed_dE, floor=1e-18), label="adaptive false")
+        ax.semilogy(adaptive_time, error_safe_log_values(adaptive_dE, floor=1e-18), label="adaptive true")
+        ax.set_title("Step 10.4 Adaptive vs Fixed Energy Error")
+        ax.set_xlabel("Time")
+        ax.set_ylabel(r"$|E - E_0|/|E_0|$")
+        ax.grid(True, which="both", alpha=0.3)
+        ax.legend()
+
+        plt.show()
+    
+    finally:
+        param_path.write_text(original_param_text)
+        print("\nRestored original param.txt settings.")
+
+# ============================================================
+# Clear .csv files
+# ============================================================
+
+def clear_simulation_outputs() -> None:
+    if DEFAULT_OUTPUT_PATH.exists():
+        DEFAULT_OUTPUT_PATH.unlink()
+    if DEFAULT_DIAGNOSTICS_PATH.exists():
+        DEFAULT_DIAGNOSTICS_PATH.unlink()

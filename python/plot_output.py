@@ -43,6 +43,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--use-diagnostics-csv", action="store_true", help="Use diagnostics.csv for diagnostic plots instead of recomputing from output.csv.",)
     parser.add_argument("--shadow", action="store_true", help="Plot shadow Hamiltonian error from diagnostics.csv.",)
     parser.add_argument("--convergence", action="store_true", help="Run timestep convergence study.",)
+    parser.add_argument("--adaptive-compare", action="store_true", help="Run Step 10.4 adaptive-on vs adaptive-off comparison.",)
+    parser.add_argument("--adaptive-levels", type=int, default=None, help="Timestep levels to use for adaptive comparison.",)
+    parser.add_argument("--adaptive-eta", type=float, default=None, help="Eta value to use for adaptive comparison.",)
 
     return parser.parse_args()
 
@@ -65,6 +68,9 @@ def main() -> None:
         return
     if args.convergence:
         functions.run_timestep_scaling_study()
+        return
+    if args.adaptive_compare:
+        functions.run_adaptive_comparison_study(timestep_levels=args.adaptive_levels, timestep_eta=args.adaptive_eta)
         return
     output_df = functions.read_output(args.output)
     if args.use_diagnostics_csv:
