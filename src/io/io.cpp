@@ -69,7 +69,7 @@ void writeOutput(const std::string& filename, const std::vector<Body>& bodies, d
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, false, 0, 0.03};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, false, 0, 0.03, 1};  // Default values
 
 
     while (std::getline(infile, line)) {
@@ -95,6 +95,8 @@ SolverParams readParams(const std::string& filename) {
                 iss >> params.timestep_levels;
             } else if (param == "timestep_eta") {
                 iss >> params.timestep_eta;
+            } else if (param == "timestep_refresh_interval") {
+                iss >> params.timestep_refresh_interval;
             }
         }
     }

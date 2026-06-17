@@ -889,7 +889,7 @@ def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_e
 
         ax.semilogy(fixed_time, error_safe_log_values(fixed_dE, floor=1e-18), label="adaptive false")
         ax.semilogy(adaptive_time, error_safe_log_values(adaptive_dE, floor=1e-18), label="adaptive true")
-        ax.set_title("Step 10.4 Adaptive vs Fixed Energy Error")
+        ax.set_title("Adaptive vs Fixed Energy Error")
         ax.set_xlabel("Time")
         ax.set_ylabel(r"$|E - E_0|/|E_0|$")
         ax.grid(True, which="both", alpha=0.3)

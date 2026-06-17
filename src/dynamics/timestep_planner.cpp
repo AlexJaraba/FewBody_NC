@@ -149,7 +149,7 @@ TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
 
 void print_timestep_plan_summary(const TimestepPlan& plan) {
     std::cout << "\n=== Adaptive Timestep Planner Diagnostics ===\n";
-    std::cout << "Diagnostic-only mode: integration still uses fixed global dt.\n";
+    std::cout << "Planner summary: levels are used to choose the current substep size.\n";
     std::cout << "Base dt: " << plan.base_dt << "\n";
     std::cout << "Max level: " << plan.max_level << "\n";
 
@@ -188,7 +188,7 @@ void print_timestep_plan_summary(const TimestepPlan& plan) {
 
 void print_timestep_schedule_summary(const TimestepSchedule& schedule) {
     std::cout << "\n=== Diagnostic Timestep Schedule ===\n";
-    std::cout << " Diagnostic-only mode: no subcycling is applied yet.\n";
+    std::cout << "Schedule summary: full-integrator subcycling uses the deepest active level.\n";
     std::cout << "Base dt: " << schedule.base_dt << "\n";
     std::cout << "Max level: " << schedule.max_level << "\n";
 

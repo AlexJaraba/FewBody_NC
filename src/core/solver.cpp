@@ -151,6 +151,7 @@ void Solver::run() {
     if (params.adaptive_timesteps) {
         std::cout << "Timestep Levels: " << params.timestep_levels << std::endl;
         std::cout << "Timestep Eta: " << params.timestep_eta << std::endl;
+        std::cout << "Timestep Refresh Interval: " << params.timestep_refresh_interval << std::endl;
     }
     if (params.coordinate_mode == "cartesian") {
         run_cartesian(params);
@@ -188,10 +189,9 @@ void Solver::write_current_bodies(double time) {
         - one canonical integrator step is taken per base timestep
     
     If addaptive_timesteps is true:
-        - Step 10.3 uses frozen finest-level subcycling
-        - The timewstep planner finds the deepest active timestep level
+        - Step 10.5 uses refreshed finest-level subcycling
+        - The timestep planner is refreshed only at global base-step synchronization points.
         - The full Jacobi integrator is advanced using inner_dt = dt / 2^level
-        - The schedule is frozen for the run
         - Individual pair-local subcycling is not implemented yet
     
     Output and diagnostics are still written only at the base timestep cadence
@@ -212,16 +212,21 @@ void Solver::run_jacobi(const SolverParams& params) {
 
     int adaptive_substeps = 1;
     double inner_dt = dt;
+    int deepest_active_level = 0;
+    const int timestep_refresh_interval = std::max(1, params.timestep_refresh_interval);
 
-    if (params.adaptive_timesteps) {
+    auto refresh_adaptive_schedule = [&](int base_step_index, bool print_full_summary) {
+        if (!params.adaptive_timesteps) {
+            adaptive_substeps = 1;
+            inner_dt = dt;
+            deepest_active_level = 0;
+            return;
+        }
+
         TimestepPlan plan = build_timestep_plan(bodies, fixed_pairs, dt, G, params.timestep_levels, params.timestep_eta);
-
-        print_timestep_plan_summary(plan);
-
         TimestepSchedule schedule = build_timestep_schedule(plan);
-        print_timestep_schedule_summary(schedule);
 
-        int deepest_active_level = 0;
+        deepest_active_level = 0;
 
         for (const TimestepLevelSchedule& level_schedule : schedule.levels) {
             if (!level_schedule.pairs.empty()) {
@@ -231,19 +236,30 @@ void Solver::run_jacobi(const SolverParams& params) {
 
         adaptive_substeps = 1;
 
-        for (int k = 0; k < deepest_active_level; ++k) {
+        for (int k =0; k < deepest_active_level; ++k) {
             adaptive_substeps *= 2;
         }
 
         inner_dt = dt / static_cast<double>(adaptive_substeps);
 
-        std::cout << "Step 10.3: frozen finest-level subcycling is active.\n";
-        std::cout << "Base dt: " << dt << "\n";
-        std::cout << "Deepest active level: " << deepest_active_level << "\n";
-        std::cout << "Substeps per base step: " << adaptive_substeps << "\n";
-        std::cout << "Inner dt: " << inner_dt << "\n";
-        std::cout << "Note: this subcycles the full Jacobi integrator, not individual pairs yet.\n\n";
-    }
+        if (print_full_summary) {
+            print_timestep_plan_summary(plan);
+            print_timestep_schedule_summary(schedule);
+
+            std::cout << "Step 10.5: schedule refresh at global synchronization points is active.\n";
+            std::cout << "Base dt: " << dt << "\n";
+            std::cout << "Initial deepest active level: " << deepest_active_level << "\n";
+            std::cout << "Initial substeps per base step: " << adaptive_substeps << "\n";
+            std::cout << "Initial inner dt: " << inner_dt << "\n";
+            std::cout << "Refresh interval: every " << timestep_refresh_interval << " base step(s)\n";
+            std::cout << "Note: this still subcycles the full Jacobi integrator, not individual pairs yet.\n\n";
+        } 
+        else {
+            std::cout << "[adaptive refresh] base step " << base_step_index << ": deepest_level = " << deepest_active_level << ", substeps = " << adaptive_substeps << ", inner_dt = " << inner_dt << "\n";
+        }
+    };
+
+    refresh_adaptive_schedule(0, true);
 
     VariationalState var_state;
     const int N = static_cast<int>(bodies.size());
@@ -272,6 +288,10 @@ void Solver::run_jacobi(const SolverParams& params) {
     }
 
     for (int step = 1; step <= steps; ++step) {
+        const int current_base_step = step - 1;
+        if (params.adaptive_timesteps && current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
+            refresh_adaptive_schedule(current_base_step, false);
+        }
         for (int substep = 0; substep < adaptive_substeps; ++substep) {
             integrator->step(state, inner_dt, G);
             variational_drift_operator(state, var_state, inner_dt);
