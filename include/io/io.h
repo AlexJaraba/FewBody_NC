@@ -12,6 +12,10 @@ struct SolverParams {
   std::string integrator;
   std::string coordinate_mode;
   double gravitational_constant;
+
+  bool adaptive_timesteps;
+  int timestep_levels;
+  double timestep_eta;
 };
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies);

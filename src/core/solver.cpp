@@ -29,6 +29,7 @@
 #include "math/vec3.h"
 
 #include "numerics/perturbation_forces.h"
+#include "dynamics/timestep_planner.h"
 
 /* ======================================================================
 Solver
@@ -145,7 +146,12 @@ void Solver::run() {
     std::cout << "dt = " << params.timestep << std::endl;
     std::cout << "Loaded timestep: " << params.timestep << std::endl;
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
+    std::cout << "Adaptive Timesteps: " << (params.adaptive_timesteps ? "true" : "false") << std::endl;
 
+    if (params.adaptive_timesteps) {
+        std::cout << "Timestep Levels: " << params.timestep_levels << std::endl;
+        std::cout << "Timestep Eta: " << params.timestep_eta << std::endl;
+    }
     if (params.coordinate_mode == "cartesian") {
         run_cartesian(params);
     } else if (params.coordinate_mode == "jacobi") {
@@ -196,6 +202,15 @@ void Solver::run_jacobi(const SolverParams& params) {
 
     CanonicalState state = compute_jacobi_state(bodies);
 
+    if (params.adaptive_timesteps) {
+        TimestepPlan plan = build_timestep_plan(bodies, fixed_pairs, dt, G, params.timestep_levels, params.timestep_eta);
+
+        print_timestep_plan_summary(plan);
+
+        std::cout << "Step 10.1 only: adaptive timestep planning is diagnostic-only.\n";
+        std::cout << "The Jacobi integrator still advances with the fixed global timestep.\n";
+    }
+
     VariationalState var_state;
     const int N = static_cast<int>(bodies.size());
 
@@ -238,15 +253,15 @@ void Solver::run_jacobi(const SolverParams& params) {
             double tangent = std::max(tangent_norm(var_state), 1e-300);
             double lambda = std::log(tangent / 1e-10) / time;
 
-            std::cout << "Step: " << step << ", Time: " << time 
-                    << ", | Total Energy: " << diag.total_energy 
-                    << ", | Linear Momentum: " << diag.linear_momentum 
-                    << ", | Angular Momentum: " << diag.angular_momentum 
-                    << ", | Shadow Energy: " << diag.shadow_energy 
-                    << ", | COM Drift: " << diag.com_drift
-                    << ", | Lyapunov Exponent: " << lambda
-                    << ", | Tangent Norm: " << tangent
-                    << std::endl;
+            // std::cout << "Step: " << step << ", Time: " << time 
+            //         << ", | Total Energy: " << diag.total_energy 
+            //         << ", | Linear Momentum: " << diag.linear_momentum 
+            //         << ", | Angular Momentum: " << diag.angular_momentum 
+            //         << ", | Shadow Energy: " << diag.shadow_energy 
+            //         << ", | COM Drift: " << diag.com_drift
+            //         << ", | Lyapunov Exponent: " << lambda
+            //         << ", | Tangent Norm: " << tangent
+            //         << std::endl;
             diagnostics_writer.write(step * dt, diag);
             write_current_bodies(step * dt);
         }
@@ -291,6 +306,11 @@ void Solver::run_cartesian(const SolverParams& params) {
     const double G = params.gravitational_constant;
     const int steps = static_cast<int>(runtime / dt);
 
+    if (params.adaptive_timesteps) {
+        std::cout << "Adaptive timestep planning currently applies only to Jacobi mode.\n";
+        std::cout << "Cartesian mode will continue using fixed global dt.\n";
+    }
+
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
 
     {
@@ -306,7 +326,7 @@ void Solver::run_cartesian(const SolverParams& params) {
         write_current_bodies(0.0);
     }
 
-    for (int step = 1; step < steps; ++step) {
+    for (int step = 1; step <= steps; ++step) {
         cartesian_step(dt, G);
 
         const double time = step * dt;

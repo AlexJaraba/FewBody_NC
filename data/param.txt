@@ -1,6 +1,9 @@
 output_frequency 10
 runtime 36525
 timestep 0.1
-coordinate_mode cartesian
-integrator leapfrog
+coordinate_mode jacobi
+integrator hernandez
 gravitational_constant 0.000296014912
+adaptive_timesteps true
+timestep_levels 2
+timestep_eta 0.03

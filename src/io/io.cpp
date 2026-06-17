@@ -2,6 +2,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 #include "io/io.h"
 #include "math/vec3.h"
@@ -22,6 +24,11 @@
     Lines are parsed as whitespace-separated key/value pairs.
 
    ============================================================================================================= */
+
+namespace {bool parse_bool(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {return static_cast<char>(std::tolower(c)); });
+    return value == "true" || value == "1" || value == "yes" || value == "on";
+}}
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies) {
     std::ifstream infile(filename);
@@ -62,7 +69,7 @@ void writeOutput(const std::string& filename, const std::vector<Body>& bodies, d
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, false, 0, 0.03};  // Default values
 
 
     while (std::getline(infile, line)) {
@@ -80,7 +87,15 @@ SolverParams readParams(const std::string& filename) {
                 iss >> params.coordinate_mode;
             } else if (param == "gravitational_constant") {
 	            iss >> params.gravitational_constant;
-	    }
+            } else if (param == "adaptive_timesteps") {
+                std::string value;
+                iss >> value;
+                params.adaptive_timesteps = parse_bool(value);
+            } else if (param == "timestep_levels") {
+                iss >> params.timestep_levels;
+            } else if (param == "timestep_eta") {
+                iss >> params.timestep_eta;
+            }
         }
     }
 
