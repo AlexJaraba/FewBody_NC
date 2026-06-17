@@ -129,14 +129,14 @@ void recenter_system(std::vector<Body>& bodies) {
 // ==============================================================
 
 /*
-Dispatch the simulation to the selected coordinate mode.
+    Dispatch the simulation to the selected coordinate mode.
 
-Jacobi Mode:
-- Uses a symplectic integrator on the canonical state.
-- Applies variational operators to track the growth of perturbations.
-- Reconstructs Cartesian states for output and diagnostics.
-Cartesian Mode:
-- Uses a standard leapfrog method to evolve the Cartesian states directly.
+    Jacobi Mode:
+    - Uses a symplectic integrator on the canonical state.
+    - Applies variational operators to track the growth of perturbations.
+    - Reconstructs Cartesian states for output and diagnostics.
+    Cartesian Mode:
+    - Uses a standard leapfrog method to evolve the Cartesian states directly.
 */
 
 void Solver::run() {
@@ -162,8 +162,8 @@ void Solver::run() {
 }
 
 /*
-Write the current Cartesian body states to the output CSV file.
-Even in Jacobi mode, we reconstruct the Cartesian states at each output step for diagnostics and output purposes.
+    Write the current Cartesian body states to the output CSV file.
+    Even in Jacobi mode, we reconstruct the Cartesian states at each output step for diagnostics and output purposes.
 */
 
 void Solver::write_current_bodies(double time) {
@@ -182,11 +182,19 @@ void Solver::write_current_bodies(double time) {
 // ==============================================================
 
 /*
-Run the canonical Jacobi-coordinate integration path.
-- Initializes the canonical state and variational state.
-- In each step, applies the integrator to evolve the canonical state, then applies variational operators to evolve the perturbations.
-- Reconstructs the Cartesian states from the canonical state for diagnostics and output.
-- Computes diagnostics including energy, momentum, and Lyapunov exponent estimates at specified intervals.
+    Run the canonical Jacobi-coordinate integration path.
+
+    If adaptive_timesteps is false:
+        - one canonical integrator step is taken per base timestep
+    
+    If addaptive_timesteps is true:
+        - Step 10.3 uses frozen finest-level subcycling
+        - The timewstep planner finds the deepest active timestep level
+        - The full Jacobi integrator is advanced using inner_dt = dt / 2^level
+        - The schedule is frozen for the run
+        - Individual pair-local subcycling is not implemented yet
+    
+    Output and diagnostics are still written only at the base timestep cadence
 */
 
 void Solver::run_jacobi(const SolverParams& params) {
@@ -202,6 +210,9 @@ void Solver::run_jacobi(const SolverParams& params) {
 
     CanonicalState state = compute_jacobi_state(bodies);
 
+    int adaptive_substeps = 1;
+    double inner_dt = dt;
+
     if (params.adaptive_timesteps) {
         TimestepPlan plan = build_timestep_plan(bodies, fixed_pairs, dt, G, params.timestep_levels, params.timestep_eta);
 
@@ -210,8 +221,28 @@ void Solver::run_jacobi(const SolverParams& params) {
         TimestepSchedule schedule = build_timestep_schedule(plan);
         print_timestep_schedule_summary(schedule);
 
-        std::cout << "Step 10.2 only: adaptive timestep planning is diagnostic-only.\n";
-        std::cout << "The Jacobi integrator still advances with the fixed global timestep.\n";
+        int deepest_active_level = 0;
+
+        for (const TimestepLevelSchedule& level_schedule : schedule.levels) {
+            if (!level_schedule.pairs.empty()) {
+                deepest_active_level = std::max(deepest_active_level, level_schedule.level);
+            }
+        }
+
+        adaptive_substeps = 1;
+
+        for (int k = 0; k < deepest_active_level; ++k) {
+            adaptive_substeps *= 2;
+        }
+
+        inner_dt = dt / static_cast<double>(adaptive_substeps);
+
+        std::cout << "Step 10.3: frozen finest-level subcycling is active.\n";
+        std::cout << "Base dt: " << dt << "\n";
+        std::cout << "Deepest active level: " << deepest_active_level << "\n";
+        std::cout << "Substeps per base step: " << adaptive_substeps << "\n";
+        std::cout << "Inner dt: " << inner_dt << "\n";
+        std::cout << "Note: this subcycles the full Jacobi integrator, not individual pairs yet.\n\n";
     }
 
     VariationalState var_state;
@@ -241,10 +272,11 @@ void Solver::run_jacobi(const SolverParams& params) {
     }
 
     for (int step = 1; step <= steps; ++step) {
-        integrator->step(state, dt, G);
-
-        variational_drift_operator(state, var_state, dt);
-        variational_kick_operator(state, var_state, fixed_pairs, dt, G);
+        for (int substep = 0; substep < adaptive_substeps; ++substep) {
+            integrator->step(state, inner_dt, G);
+            variational_drift_operator(state, var_state, inner_dt);
+            variational_kick_operator(state, var_state, fixed_pairs, inner_dt, G);
+        }
 
         reconstruct_bodies(state, bodies);
 
@@ -273,10 +305,10 @@ void Solver::run_jacobi(const SolverParams& params) {
 }
 
 /*
-One Cartesian integration step using a leapfrog method.
-v(t + dt/2) = v(t) + (dt/2) * a(t)
-r(t + dt) = r(t) + dt * v(t + dt/2)
-v(t + dt) = v(t + dt/2) + (dt/2) * a(t + dt)
+    One Cartesian integration step using a leapfrog method.
+        v(t + dt/2) = v(t) + (dt/2) * a(t)
+        r(t + dt) = r(t) + dt * v(t + dt/2)
+        v(t + dt) = v(t + dt/2) + (dt/2) * a(t + dt)
 */
 
 void Solver::cartesian_step(double dt, double G) {
@@ -297,9 +329,9 @@ void Solver::cartesian_step(double dt, double G) {
 }
 
 /*
-Run the direct Cartesian integration path.
-- Uses a leapfrog method to evolve the Cartesian states directly.
-- Computes diagnostics at specified intervals.
+    Run the direct Cartesian integration path.
+        - Uses a leapfrog method to evolve the Cartesian states directly.
+        - Computes diagnostics at specified intervals.
 */
 
 void Solver::run_cartesian(const SolverParams& params) {

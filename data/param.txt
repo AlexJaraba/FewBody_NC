@@ -4,6 +4,6 @@ timestep 0.1
 coordinate_mode jacobi
 integrator hernandez
 gravitational_constant 0.000296014912
-adaptive_timesteps true
+adaptive_timesteps false
 timestep_levels 2
 timestep_eta 0.001
