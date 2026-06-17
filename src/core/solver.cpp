@@ -207,7 +207,10 @@ void Solver::run_jacobi(const SolverParams& params) {
 
         print_timestep_plan_summary(plan);
 
-        std::cout << "Step 10.1 only: adaptive timestep planning is diagnostic-only.\n";
+        TimestepSchedule schedule = build_timestep_schedule(plan);
+        print_timestep_schedule_summary(schedule);
+
+        std::cout << "Step 10.2 only: adaptive timestep planning is diagnostic-only.\n";
         std::cout << "The Jacobi integrator still advances with the fixed global timestep.\n";
     }
 

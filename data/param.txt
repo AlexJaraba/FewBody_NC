@@ -6,4 +6,4 @@ integrator hernandez
 gravitational_constant 0.000296014912
 adaptive_timesteps true
 timestep_levels 2
-timestep_eta 0.03
+timestep_eta 0.001

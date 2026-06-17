@@ -67,7 +67,25 @@ namespace {
         }
         return level;
     }
-};
+
+    double timestep_for_level(double base_dt, int level) {
+        double dt = base_dt;
+
+        for (int k = 0; k < level; ++k) {
+            dt *= 0.5;
+        }
+        return dt;
+    }
+
+    int stubsteps_for_level(int level) {
+        int substeps = 1;
+
+        for (int k = 0; k < level; ++k) {
+            substeps *= 2;
+        }
+        return substeps;
+    }
+}
 
 TimestepPlan build_timestep_plan(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double base_dt, double G, int max_level, double eta) {
     TimestepPlan plan;
@@ -98,6 +116,35 @@ TimestepPlan build_timestep_plan(const std::vector<Body>& bodies, const std::vec
         plan.pair_info.push_back({pair, timescale, suggested_dt, level});
     }
     return plan;
+}
+
+TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
+    TimestepSchedule schedule;
+    schedule.enabled = plan.enabled;
+    schedule.base_dt = plan.base_dt;
+    schedule.max_level = plan.max_level;
+    schedule.levels.reserve(plan.max_level + 1);
+
+    for (int level = 0; level <= plan.max_level; ++level) {
+        TimestepLevelSchedule level_schedule;
+        level_schedule.level = level;
+        level_schedule.dt = timestep_for_level(plan.base_dt, level);
+        level_schedule.substeps_per_base_step = stubsteps_for_level(level);
+
+        schedule.levels.push_back(level_schedule);
+    }
+    for (const PairTimestepInfo& info : plan.pair_info) {
+        int level = info.level;
+
+        if (level < 0) {
+            level = 0;
+        }
+        if (level > plan.max_level) {
+            level = plan.max_level;
+        }
+        schedule.levels[level].pairs.push_back(info.pair);
+    }
+    return schedule;
 }
 
 void print_timestep_plan_summary(const TimestepPlan& plan) {
@@ -137,4 +184,34 @@ void print_timestep_plan_summary(const TimestepPlan& plan) {
                   << "\n";
     }
     std::cout << "=========================================================\n\n";
+}
+
+void print_timestep_schedule_summary(const TimestepSchedule& schedule) {
+    std::cout << "\n=== Diagnostic Timestep Schedule ===\n";
+    std::cout << " Diagnostic-only mode: no subcycling is applied yet.\n";
+    std::cout << "Base dt: " << schedule.base_dt << "\n";
+    std::cout << "Max level: " << schedule.max_level << "\n";
+
+    if (schedule.levels.empty()) {
+        std::cout << "No timestep levels avaiable.\n";
+        std::cout << "=========================================\n\n";
+        return;
+    }
+
+    for (const TimestepLevelSchedule& level_schedule : schedule.levels) {
+        std::cout << "Level " << level_schedule.level << ":\n";
+        std::cout << " dt = " << level_schedule.dt << "\n";
+        std::cout << " substeps per base step = " << level_schedule.substeps_per_base_step << "\n";
+        std::cout << " pair count = " << level_schedule.pairs.size() << "\n";
+
+        if (!level_schedule.pairs.empty()) {
+            std::cout << " pairs:";
+            for (const Pair& pair : level_schedule.pairs) {
+                std::cout << " (" << pair.i << ", " << pair.j << ")";
+            }
+            std::cout << "\n";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "=================================================\n\n";
 }
