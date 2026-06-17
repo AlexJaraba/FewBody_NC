@@ -4,7 +4,9 @@ timestep 0.1
 coordinate_mode jacobi
 integrator hernandez
 gravitational_constant 0.000296014912
+
 adaptive_timesteps true
 timestep_levels 2
 timestep_eta 0.001
-timestep_refresh_interval 100
+timestep_refresh_interval 1
+timestep_level_decrease_delay 3

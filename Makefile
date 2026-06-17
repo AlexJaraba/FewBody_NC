@@ -33,7 +33,6 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 clean:
 	@if exist $(BUILD_DIR) rmdir /S /Q $(BUILD_DIR)
 	@if exist $(TARGET).exe del /Q $(TARGET).exe
-	@if exist output.csv del /Q output.csv
-	@if exist diagnostics.csv del /Q diagnostics.csv
+	@if exist *.csv del /Q *.csv
 	@if exist benchmark_plots rmdir /S /Q benchmark_plots
 	@if exist python\__pycache__ rmdir /S /Q python\__pycache__

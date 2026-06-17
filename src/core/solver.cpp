@@ -152,6 +152,7 @@ void Solver::run() {
         std::cout << "Timestep Levels: " << params.timestep_levels << std::endl;
         std::cout << "Timestep Eta: " << params.timestep_eta << std::endl;
         std::cout << "Timestep Refresh Interval: " << params.timestep_refresh_interval << std::endl;
+        std::cout << "Timestep Level Decrease Delay: " << params.timestep_level_decrease_delay << std::endl;
     }
     if (params.coordinate_mode == "cartesian") {
         run_cartesian(params);
@@ -188,9 +189,11 @@ void Solver::write_current_bodies(double time) {
     If adaptive_timesteps is false:
         - one canonical integrator step is taken per base timestep
     
-    If addaptive_timesteps is true:
-        - Step 10.5 uses refreshed finest-level subcycling
+    If adaptive_timesteps is true:
+        - Step 10.6 uses safe refreshed finest-level subcycling
         - The timestep planner is refreshed only at global base-step synchronization points.
+        - If a deeper level is needed, the code accepts it immediately
+        - If a shallower level is requested, the decrease is delayed to avoid rapid timestep-level oscillations
         - The full Jacobi integrator is advanced using inner_dt = dt / 2^level
         - Individual pair-local subcycling is not implemented yet
     
@@ -212,50 +215,105 @@ void Solver::run_jacobi(const SolverParams& params) {
 
     int adaptive_substeps = 1;
     double inner_dt = dt;
-    int deepest_active_level = 0;
+    
+    int planner_deepest_level = 0;
+    int active_adaptive_level = 0;
+    int pending_lower_level = -1;
+    int pending_lower_level_count = 0;
+
     const int timestep_refresh_interval = std::max(1, params.timestep_refresh_interval);
+    const int timestep_level_decrease_delay = std::max(1, params.timestep_level_decrease_delay);
+
+    auto apply_adaptive_level = [&]() {
+        adaptive_substeps = 1;
+        for (int k = 0; k < active_adaptive_level; ++k) {
+            adaptive_substeps *= 2;
+        }
+        inner_dt = dt / static_cast<double>(adaptive_substeps);
+    };
 
     auto refresh_adaptive_schedule = [&](int base_step_index, bool print_full_summary) {
         if (!params.adaptive_timesteps) {
             adaptive_substeps = 1;
             inner_dt = dt;
-            deepest_active_level = 0;
+            planner_deepest_level = 0;
+            active_adaptive_level = 0;
+            pending_lower_level = -1;
+            pending_lower_level_count = 0;
             return;
         }
 
         TimestepPlan plan = build_timestep_plan(bodies, fixed_pairs, dt, G, params.timestep_levels, params.timestep_eta);
         TimestepSchedule schedule = build_timestep_schedule(plan);
 
-        deepest_active_level = 0;
+        planner_deepest_level = 0;
 
         for (const TimestepLevelSchedule& level_schedule : schedule.levels) {
             if (!level_schedule.pairs.empty()) {
-                deepest_active_level = std::max(deepest_active_level, level_schedule.level);
+                planner_deepest_level = std::max(planner_deepest_level, level_schedule.level);
             }
         }
 
-        adaptive_substeps = 1;
-
-        for (int k =0; k < deepest_active_level; ++k) {
-            adaptive_substeps *= 2;
+        if (base_step_index == 0) {
+            active_adaptive_level = planner_deepest_level;
+            pending_lower_level = -1;
+            pending_lower_level_count = 0;
+        }
+        else if (planner_deepest_level > active_adaptive_level) {
+            // Safety rule:
+            // If the planner asks for a deeper level, accept immediately
+            active_adaptive_level = planner_deepest_level;
+            pending_lower_level = -1;
+            pending_lower_level_count = 0;
+        }
+        else if (planner_deepest_level < active_adaptive_level) {
+            // Stability rule:
+            // If the planner asks for a shallower level, delay the decrease
+            if (pending_lower_level == planner_deepest_level) {
+                ++pending_lower_level_count;
+            }
+            else {
+                pending_lower_level = planner_deepest_level;
+                pending_lower_level_count = 1;
+            }
+            if (pending_lower_level_count >= timestep_level_decrease_delay) {
+                active_adaptive_level = std::max(planner_deepest_level, active_adaptive_level - 1);
+            }
+        }
+        else {
+            pending_lower_level = -1;
+            pending_lower_level_count = 0;
         }
 
-        inner_dt = dt / static_cast<double>(adaptive_substeps);
+        apply_adaptive_level();
 
         if (print_full_summary) {
             print_timestep_plan_summary(plan);
             print_timestep_schedule_summary(schedule);
 
-            std::cout << "Step 10.5: schedule refresh at global synchronization points is active.\n";
+            std::cout << "Step 10.6: safe refreshed adaptive subcycling is active.\n";
             std::cout << "Base dt: " << dt << "\n";
-            std::cout << "Initial deepest active level: " << deepest_active_level << "\n";
-            std::cout << "Initial substeps per base step: " << adaptive_substeps << "\n";
-            std::cout << "Initial inner dt: " << inner_dt << "\n";
+            std::cout << "Planner deepest level: " << planner_deepest_level << "\n";
+            std::cout << "Active adaptive level: " << active_adaptive_level << "\n";
+            std::cout << "Substeps per base step: " << adaptive_substeps << "\n";
+            std::cout << "Inner dt: " << inner_dt << "\n";
             std::cout << "Refresh interval: every " << timestep_refresh_interval << " base step(s)\n";
+            std::cout << "Level decrease delay: " << timestep_level_decrease_delay << " refresh(es)\n";
+            std::cout << "Note: deeper levels are accepted immediately; shallower levels are delayed.\n";
             std::cout << "Note: this still subcycles the full Jacobi integrator, not individual pairs yet.\n\n";
         } 
         else {
-            std::cout << "[adaptive refresh] base step " << base_step_index << ": deepest_level = " << deepest_active_level << ", substeps = " << adaptive_substeps << ", inner_dt = " << inner_dt << "\n";
+            std::cout << "[adaptive refresh] base step " << base_step_index 
+                      << ": planner_level = " << planner_deepest_level 
+                      << ", active_level = " << active_adaptive_level 
+                      << ", substeps = " << adaptive_substeps
+                      << ", inner_dt = " << inner_dt;
+            if (pending_lower_level >= 0) {
+                std::cout << ", pending_lower_level = " << pending_lower_level
+                          << ", pending_count = " << pending_lower_level_count
+                          << "/" << timestep_level_decrease_delay;
+            }
+            std::cout << "\n";
         }
     };
 

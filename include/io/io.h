@@ -17,6 +17,7 @@ struct SolverParams {
   int timestep_levels;
   double timestep_eta;
   int timestep_refresh_interval;
+  int timestep_level_decrease_delay;
 };
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies);
