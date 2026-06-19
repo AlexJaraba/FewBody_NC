@@ -27,6 +27,7 @@ public:
     void TestHB15PairStateRoundTrip();
     void TestHB15PairKeplerMap();
     void TestHB15PairKeplerSuite();
+    void TestHB15SymmetricOrdering();
 
 private:
     std::vector<Body>& bodies;

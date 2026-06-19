@@ -880,3 +880,48 @@ void Solver::TestHB15PairKeplerSuite() {
         run_case("Eccentric binary, e = 0.6, one orbit", m0, m1, Vec3(r_pericenter, 0.0, 0.0), Vec3(0.0, pericenter_speed, 0.0), dt, steps);
     }
 }
+
+void Solver::TestHB15SymmetricOrdering() {
+    std::cout << "\n=== HB15 Symmetric Ordering Test ===\n";
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    std::vector<Body> test_bodies;
+
+    test_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    test_bodies.emplace_back(1.0e-3, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.0172020985, 0.0));
+    test_bodies.emplace_back(5.0e-4, Vec3(2.3, 0.0, 0.0), Vec3(0.0, 0.0113, 0.0));
+
+    std::vector<Body> initial = test_bodies;
+    std::vector<Pair> test_pairs = {{0, 1}, {0, 2}, {1, 2}};
+
+    HB15 hb15(test_pairs);
+
+    const double dt = 0.05;
+    const int steps = 100;
+
+    for(int step = 0; step < steps; ++step) {
+        hb15.step(test_bodies, dt, G);
+    }
+    for (int step = 0; step < steps; ++step) {
+        hb15.step(test_bodies, -dt, G);
+    }
+
+    double max_position_error = 0.0;
+    double max_velocity_error = 0.0;
+
+    for (size_t i = 0; i < test_bodies.size(); ++i) {
+        const double position_error = (test_bodies[i].position - initial[i].position).norm();
+        const double velocity_error = (test_bodies[i].velocity - initial[i].velocity).norm();
+
+        max_position_error = std::max(max_position_error, position_error);
+        max_velocity_error = std::max(max_velocity_error, velocity_error);
+    }
+
+    std::cout << "Forward steps: " << steps << "\n";
+    std::cout << "Backward steps: " << steps << "\n";
+    std::cout << "dt: " << dt << "\n";
+    std::cout << "Max position error: " << max_position_error << "\n";
+    std::cout << "Max velocity error: " << max_velocity_error << "\n";
+}

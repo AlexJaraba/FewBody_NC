@@ -26,6 +26,8 @@ int main() {
     // Create solver and run simulation
     Solver sim(bodies, output);
 
+    sim.TestHB15SymmetricOrdering();
+
     sim.run();
 
     // Run reversibility test
