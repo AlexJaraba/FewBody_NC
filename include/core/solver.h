@@ -25,6 +25,7 @@ public:
     void TestHernandezAdjoint(double dt);
     void TestLocalOrder();
     void TestHB15PairStateRoundTrip();
+    void TestHB15PairKeplerMap();
 
 private:
     std::vector<Body>& bodies;

@@ -20,6 +20,7 @@
 #include "integrators/yoshida4.h"
 #include "integrators/integrator.h"
 #include "integrators/hb15_pair_state.h"
+#include "integrators/hb15_pair_map.h"
 
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
@@ -680,4 +681,66 @@ void Solver::TestHB15PairStateRoundTrip() {
     std::cout << "Pair total momentum round-trip error: " << total_momentum_error << "\n";
 
     bodies = initial;
+}
+
+void Solver::TestHB15PairKeplerMap() {
+    std::cout << "\n=== HB15 Pair Kepler Map Test ===\n";
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    const double m0 = 1.0;
+    const double m1 = 1.0e-6;
+    const double total_mass = m0 + m1;
+    const double separation = 1.0;
+    const double circular_speed = std::sqrt(G * total_mass / separation);
+
+    const Vec3 q0(separation, 0.0, 0.0);
+    const Vec3 u0(0.0, circular_speed, 0.0);
+    const Vec3 R0;
+    const Vec3 V0;
+
+    std::vector<Body> test_bodies;
+
+    test_bodies.emplace_back(m0, R0 + (m1 / total_mass) * q0, V0 + (m1 / total_mass) * u0);
+    test_bodies.emplace_back(m1, R0 + (m0 / total_mass) * q0, V0 + (m0 / total_mass) * u0);
+
+    std::vector<Body> initial = test_bodies;
+
+    HB15PairState before = HB15PairState::from_bodies(test_bodies, 0, 1);
+
+    const double dt = 0.1;
+    const double energy_before = before.two_body_energy(G);
+    const Vec3 angular_momentum_before = before.two_body_angular_momentum();
+    const Vec3 total_momentum_before = before.total_momentum();
+
+    HB15PairMapResult forward = apply_hb15_pair_kepler_map(test_bodies, 0, 1, dt, G);
+
+    HB15PairState after = HB15PairState::from_bodies(test_bodies, 0, 1);
+
+    const double energy_after = after.two_body_energy(G);
+    const Vec3 angular_momentum_after = after.two_body_angular_momentum();
+    const Vec3 total_momentum_after = after.total_momentum();
+
+    HB15PairMapResult backward = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+
+    // Error Calculations
+    const double pos0_reversibility_error = (test_bodies[0].position - initial[0].position).norm();
+    const double pos1_reversibility_error = (test_bodies[1].position - initial[1].position).norm();
+    const double vel0_reversibility_error = (test_bodies[0].velocity - initial[0].velocity).norm();
+    const double vel1_reversibility_error = (test_bodies[1].velocity - initial[1].velocity).norm();
+    const double energy_error = std::abs(energy_after - energy_before);
+    const double angular_momentum_error = (angular_momentum_after - angular_momentum_before).norm();
+    const double total_momentum_error = (total_momentum_after - total_momentum_before).norm();
+
+    // Terminal Statements
+    std::cout << "Forward converged: " << (forward.converged ? "true" : "false") << ", iterations: " << forward.iterations << "\n";
+    std::cout << "Backward converged: " << (backward.converged ? "true" : "false") << ", iterations: " << backward.iterations << "\n";
+    std::cout << "Forward pair energy error: " << energy_error << "\n";
+    std::cout << "Forward pair angular momentum error: " << angular_momentum_error << "\n";
+    std::cout << "Forward pair total momentum error: " << total_momentum_error << "\n";
+    std::cout << "Forward-backward position error body 0: " << pos0_reversibility_error << "\n";
+    std::cout << "Forward-backward position error body 1: " << pos1_reversibility_error << "\n";
+    std::cout << "Forward-backward velocity error body 0: " << vel0_reversibility_error << "\n";
+    std::cout << "Forward-backward velocity error body 1: " << vel1_reversibility_error << "\n";
 }
