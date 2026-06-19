@@ -10,7 +10,7 @@
 
     at a fixed total center of mass.
 
-    This matrix is used to project Cartesian Forces and force Jacobians into Jacobi generalized coordiantes:
+    This matrix is used to project Cartesian forces and force Jacobians into Jacobi generalized coordiantes:
 
         F_Q = A^T F_r
 

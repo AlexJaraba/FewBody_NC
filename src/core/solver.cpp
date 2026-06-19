@@ -204,7 +204,7 @@ void Solver::run_jacobi(const SolverParams& params) {
     int output_frequency = params.output_frequency;
     double runtime = params.runtime;
     double dt = params.timestep;
-    double G = params.gravitational_constant;  // Set the global gravitational constant
+    double G = params.gravitational_constant;
     const int steps = static_cast<int>(runtime / dt);
 
     if (!integrator) {

@@ -22,7 +22,7 @@
         symmetric_kepler_operator
     
     The Hernandez integrator is built from these operators.
-    In the active Jacobi split, the Kepler operator evolves each Jacobi coordinate under its two-body Kepler Hamiltonin.
+    In the active Jacobi split, the Kepler operator evolves each Jacobi coordinate under its two-body Kepler Hamiltonian.
     The kick operator applies the perturbation force.
 
    ===================================================================== */

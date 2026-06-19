@@ -13,7 +13,7 @@
 
     This file solves for the universal anomaly chi used by the Kepler propagator.
     The Stumpff functions C(z) and S(z) allow the same formulation to work for elliptic, near-parabolic, and hyperbolic cases.
-    Kepler solve failures usually indicate an overly large timestep, a near collision, or an orbit outside the safe range of the current Newton Sovler.
+    Kepler solve failures usually indicate an overly large timestep, a near collision, or an orbit outside the safe range of the current Newton sovler.
 
    =============================================================================*/
 

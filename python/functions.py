@@ -259,7 +259,7 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
     rcm = np.sum(mass[:, :, None] * pos, axis=1) / total_mass[:, None]
     com_drift = np.linalg.norm(rcm, axis=1)
 
-    # Print Statements
+    # Diagnostic Table
     diagnostics = pd.DataFrame({
         "time": times,
         "kinetic_energy": kinetic,
@@ -579,7 +579,7 @@ def rewrite_adaptive_settings(adaptive_timesteps: bool, timestep_levels: int | N
         replacements["timestep_eta"] = f"timestep_eta {timestep_eta}"
     
     lines = param_path.read_text().splitlines()
-    updated =[]
+    updated = []
     seen = set()
 
     for line in lines:
@@ -816,7 +816,7 @@ def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_e
     if timestep_eta is None:
         timestep_eta = float(params.get("timestep_eta", 0.001))
     
-    print("\n=== Step 10.4 Adaptive Comparison Study ===")
+    print("\n=== Adaptive Comparison Study ===")
     print(f"coordinate_mode    = {coordinate_mode}")
     print(f"integrator         = {integrator}")
     print(f"timestep_levels    = {timestep_levels}")

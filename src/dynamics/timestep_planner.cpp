@@ -77,7 +77,7 @@ namespace {
         return dt;
     }
 
-    int stubsteps_for_level(int level) {
+    int substeps_for_level(int level) {
         int substeps = 1;
 
         for (int k = 0; k < level; ++k) {
@@ -129,7 +129,7 @@ TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
         TimestepLevelSchedule level_schedule;
         level_schedule.level = level;
         level_schedule.dt = timestep_for_level(plan.base_dt, level);
-        level_schedule.substeps_per_base_step = stubsteps_for_level(level);
+        level_schedule.substeps_per_base_step = substeps_for_level(level);
 
         schedule.levels.push_back(level_schedule);
     }
@@ -193,7 +193,7 @@ void print_timestep_schedule_summary(const TimestepSchedule& schedule) {
     std::cout << "Max level: " << schedule.max_level << "\n";
 
     if (schedule.levels.empty()) {
-        std::cout << "No timestep levels avaiable.\n";
+        std::cout << "No timestep levels available.\n";
         std::cout << "=========================================\n\n";
         return;
     }

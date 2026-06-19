@@ -9,7 +9,7 @@
     Diagnostics
 
     Computes physical diagnostics from Cartesian body states:
-        - Total energy
+        - Total Energy
         - Linear Momentum
         - Angular Momentum
         - Center-of-mass Drift
@@ -33,6 +33,9 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
         for (int j = i + 1; j < N; ++j) {
             Vec3 dr = bodies[j].position - bodies[i].position;
             double r = dr.norm();
+            if (r < 1e-14) {
+                continue;
+            }
             d.potential_energy -= (G * bodies[i].mass * bodies[j].mass) / r;
         }
     }
@@ -87,6 +90,9 @@ double compute_perturbation_energy(const std::vector<Body>& bodies, const std::v
         int j = pair.j;
         Vec3 dr = bodies[j].position - bodies[i].position;
         double r = dr.norm();
+        if (r < 1e-14) {
+            continue;
+        }
         E -= (G * bodies[i].mass * bodies[j].mass) / r;
     }
     return E;
