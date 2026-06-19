@@ -22,6 +22,7 @@
 #include "integrators/integrator.h"
 #include "integrators/hb15_pair_state.h"
 #include "integrators/hb15_pair_map.h"
+#include "integrators/hb15.h"
 
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
@@ -427,6 +428,17 @@ void Solver::run_cartesian(const SolverParams& params) {
         std::cout << "Cartesian mode will continue using fixed global dt.\n";
     }
 
+    const bool use_leapfrog = (params.integrator == "leapfrog");
+    const bool use_hb15 = (params.integrator == "hb15");
+
+    if (!use_leapfrog && !use_hb15) {
+        throw std::runtime_error("Cartesian mode currently supports integrator 'leapfrog' or 'hb15'.");
+    }
+
+    std::cout << "Cartesian integrator: " << params.integrator << "\n";
+
+    HB15 hb15_integrator(fixed_pairs);
+
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
 
     {
@@ -443,7 +455,12 @@ void Solver::run_cartesian(const SolverParams& params) {
     }
 
     for (int step = 1; step <= steps; ++step) {
-        cartesian_step(dt, G);
+        if (use_hb15) {
+            hb15_integrator.step(bodies, dt, G);
+        }
+        else {
+            cartesian_step(dt, G);
+        }
 
         const double time = step * dt;
 

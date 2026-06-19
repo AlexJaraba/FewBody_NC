@@ -1,11 +1,11 @@
 output_frequency 1
 runtime 10
-timestep 0.1
-coordinate_mode jacobi
-integrator hernandez
+timestep 1
+coordinate_mode cartesian
+integrator hb15
 gravitational_constant 0.000296014912
 
-adaptive_timesteps true
+adaptive_timesteps false
 timestep_levels 2
 timestep_eta 0.001
 timestep_refresh_interval 1
