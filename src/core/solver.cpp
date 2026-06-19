@@ -1032,3 +1032,100 @@ void Solver::TestHB15FixedStepValidation() {
         run_case("Three-body fixed-step stability", three_body, dt, steps);
     }
 }
+
+void Solver::TestHB15Reversibility() {
+    std::cout << "\n=== HB15 Direct Reversibility Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto make_all_pairs = [](const std::vector<Body>& test_bodies) {
+        std::vector<Pair> pairs;
+        const int N = static_cast<int>(test_bodies.size());
+
+        for (int i = 0; i < N; ++i) {
+            for (int j = i + 1; j < N; ++j) {
+                pairs.push_back({i, j});
+            }
+        }
+
+        return pairs;
+    };
+
+    auto update_all_momenta = [](std::vector<Body>& test_bodies) {
+        for (auto& body : test_bodies) {
+            body.updateMomentumFromVelocity();
+        }
+    };
+
+    auto run_case = [&](const std::string& name, std::vector<Body> test_bodies, double dt, int steps) {
+        std::cout << "\n--- " << name << " ---\n";
+
+        recenter_system(test_bodies);
+        update_all_momenta(test_bodies);
+
+        const std::vector<Body> initial = test_bodies;
+        const std::vector<Pair> pairs = make_all_pairs(test_bodies);
+        HB15 hb15(pairs);
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(test_bodies, dt, G);
+        }
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(test_bodies, -dt, G);
+        }
+
+        double max_position_error = 0.0;
+        double max_velocity_error = 0.0;
+        double max_momentum_error = 0.0;
+
+        for (size_t i = 0; i < test_bodies.size(); ++i) {
+            const double position_error= (test_bodies[i].position - initial[i].position).norm();
+            const double velocity_error = (test_bodies[i].velocity - initial[i].velocity).norm();
+            const double momentum_error = (test_bodies[i].momentum - initial[i].momentum).norm();
+
+            max_position_error = std::max(max_position_error, position_error);
+            max_velocity_error = std::max(max_velocity_error, velocity_error);
+            max_momentum_error = std::max(max_momentum_error, momentum_error);
+        }
+
+        const Diagnostics final = compute_diagnostics(test_bodies, G, dt);
+
+        std::cout << "Bodies: " << test_bodies.size() << "\n";
+        std::cout << "Pairs: " << pairs.size() << "\n";
+        std::cout << "dt: " << dt << "\n";
+        std::cout << "Forward Steps: " << steps << "\n";
+        std::cout << "Backward Steps: " << steps << "\n";
+        std::cout << "Max position error: " << max_position_error << "\n";
+        std::cout << "Max velocity error: " << max_velocity_error << "\n";
+        std::cout << "Max momentum error: " << max_momentum_error << "\n";
+        std::cout << "Final linear momentum: " << final.linear_momentum << "\n";
+        std::cout << "Final COM drift: " << final.com_drift << "\n";
+    };
+
+    {
+        const double m0 = 1.0;
+        const double m1 = 1.0e-6;
+        const double total_mass = m0 + m1;
+        const double separation = 1.0;
+        const double circular_speed = std::sqrt(G * total_mass / separation);
+
+        std::vector<Body> two_body;
+
+        two_body.emplace_back(m0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+        two_body.emplace_back(m1, Vec3(separation, 0.0, 0.0), Vec3(0.0, circular_speed, 0.0));
+
+        run_case("Two-body HB15 reversibility", two_body, 0.25, 1000);
+    }
+
+    {
+        std::vector<Body> three_body;
+
+        three_body.emplace_back(1.0, Vec3(-0.00239640539191213, 0.0, 0.0), Vec3(0.0, -2.23224877762317e-05, 0.0));
+        three_body.emplace_back(0.001, Vec3(0.997603594608088, 0.0, 0.0), Vec3(0.0, 0.0171913618044373, 0.0));
+        three_body.emplace_back(0.0005, Vec3(2.79760359460809, 0.0, 0.0), Vec3(0.0, 0.0102622519435887, 0.0));
+
+        run_case("Three-body fixed-step stability", three_body, 0.25, 1460);
+    }
+}

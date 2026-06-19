@@ -24,11 +24,13 @@ public:
     void ReversibilityTest();
     void TestHernandezAdjoint(double dt);
     void TestLocalOrder();
+
     void TestHB15PairStateRoundTrip();
     void TestHB15PairKeplerMap();
     void TestHB15PairKeplerSuite();
     void TestHB15SymmetricOrdering();
     void TestHB15FixedStepValidation();
+    void TestHB15Reversibility();
 
 private:
     std::vector<Body>& bodies;
