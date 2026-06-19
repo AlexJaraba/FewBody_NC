@@ -478,7 +478,12 @@ def plot_verification_suite(output_df: pd.DataFrame,
     ax_com = fig.add_subplot(gs[1, 3])
     plot_error(ax_com, time, dRcm, "Center of Mass Drift", r"$|R_{\rm cm} - R_{\rm cm,0}|$", floor=1e-30)
 
-    fig.suptitle("FewBodyNC Verification Suite", fontsize=16)
+    if save_path is not None:
+        title = f"FewBodyNc Verification Suite: {save_path.parent.name} / {save_path.stem}"
+    else:
+        title = "FewBodyNC Verification Suite"
+        
+    fig.suptitle(title, fontsize=16)
     
     if save_path is not None:
         save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -721,10 +726,10 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 # This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
 # The original files should be restored at the end of the run.
 
-def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = False,) -> None:
+def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = True,) -> None:
     if modes is None:
         modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi"},
-                 {"name": "hernandez_cartesian", "integrator": "hernandez", "coordinate_mode": "cartesian"},
+                 {"name": "hb15", "integrator": "hb15", "coordinate_mode": "cartesian"},
                  {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian"}]
     
     config = PlotConfig()

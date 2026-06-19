@@ -1,6 +1,6 @@
-output_frequency 1
-runtime 10
-timestep 1
+output_frequency 20
+runtime 365
+timestep 0.25
 coordinate_mode cartesian
 integrator hb15
 gravitational_constant 0.000296014912
