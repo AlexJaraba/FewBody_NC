@@ -25,6 +25,9 @@ int main() {
     
     // Create solver and run simulation
     Solver sim(bodies, output);
+
+    sim.TestHB15PairStateRoundTrip();
+
     sim.run();
 
     // Run reversibility test

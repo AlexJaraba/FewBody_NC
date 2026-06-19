@@ -24,6 +24,7 @@ public:
     void ReversibilityTest();
     void TestHernandezAdjoint(double dt);
     void TestLocalOrder();
+    void TestHB15PairStateRoundTrip();
 
 private:
     std::vector<Body>& bodies;

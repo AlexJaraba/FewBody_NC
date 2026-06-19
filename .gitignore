@@ -4,6 +4,10 @@ build/
 *.out
 *.exe
 
+# Output Files
+*.csv
+benchmark_plots/
+
 # Logs
 *.log
 
@@ -16,5 +20,7 @@ Thumbs.db
 .idea/
 
 # Python cache (for your python folder)
+.venv/
 __pycache__/
+python/__pycache__/
 *.pyc

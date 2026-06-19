@@ -19,6 +19,7 @@
 #include "integrators/hernandez.h"
 #include "integrators/yoshida4.h"
 #include "integrators/integrator.h"
+#include "integrators/hb15_pair_state.h"
 
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
@@ -627,4 +628,56 @@ void Solver::ReversibilityTest() {
     }
     std::cout << "Max Position Error: " << max_pos_error << "\n";
     std::cout << "Max Velocity Error: " << max_vel_error << "\n";
+}
+
+void Solver::TestHB15PairStateRoundTrip() {
+    std::cout << "\n=== HB15 Pair State Round-Trip Test===\n";
+
+    if (bodies.size() < 2) {
+        std::cout << "Skipped: At least TWO bodies required.";
+        return;
+    }
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    const int i = 0;
+    const int j = 1;
+
+    std::vector<Body> initial = bodies;
+
+    HB15PairState before = HB15PairState::from_bodies(bodies, i, j); // Store Before Change
+
+    const double pair_energy_before = before.two_body_energy(G);
+    const Vec3 pair_angular_momentum_before = before.two_body_angular_momentum();
+    const Vec3 pair_total_momentum_before = before.total_momentum();
+
+    before.write_to_bodies(bodies);
+
+    HB15PairState after = HB15PairState::from_bodies(bodies, i, j); // Store After Change
+
+    const double pair_energy_after = after.two_body_energy(G);
+    const Vec3 pair_angular_momentum_after = after.two_body_angular_momentum();
+    const Vec3 pair_total_momentum_after = after.total_momentum();
+
+    // Error Calculations
+    const double pos_i_error = (bodies[i].position - initial[i].position).norm();
+    const double pos_j_error = (bodies[j].position - initial[j].position).norm();
+    const double vel_i_error = (bodies[i].velocity - initial[i].velocity).norm();
+    const double vel_j_error = (bodies[j].velocity - initial[j].velocity).norm();
+    const double energy_error = std::abs(pair_energy_after - pair_energy_before);
+    const double angular_momentum_error = (pair_angular_momentum_after - pair_angular_momentum_before).norm();
+    const double total_momentum_error = (pair_total_momentum_after - pair_total_momentum_before).norm();
+
+    // Terminal Statements
+    std::cout << "Pair tested: (" << i << ", " << j << ")\n";
+    std::cout << "Position error body i: " << pos_i_error << "\n";
+    std::cout << "Position error body j: " << pos_j_error << "\n";
+    std::cout << "Velocity error body i: " << vel_i_error << "\n";
+    std::cout << "Velocity error body j: " << vel_j_error << "\n";
+    std::cout << "Pair energy round-trip error: " << energy_error << "\n";
+    std::cout << "Pair angular momentum round-trip error: " << angular_momentum_error << "\n";
+    std::cout << "Pair total momentum round-trip error: " << total_momentum_error << "\n";
+
+    bodies = initial;
 }
