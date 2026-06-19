@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iomanip>
 #include <algorithm>
+#include <string>
 
 #include "core/solver.h"
 #include "core/body.h"
@@ -743,4 +744,122 @@ void Solver::TestHB15PairKeplerMap() {
     std::cout << "Forward-backward position error body 1: " << pos1_reversibility_error << "\n";
     std::cout << "Forward-backward velocity error body 0: " << vel0_reversibility_error << "\n";
     std::cout << "Forward-backward velocity error body 1: " << vel1_reversibility_error << "\n";
+}
+
+void Solver::TestHB15PairKeplerSuite() {
+    std::cout << "\n=== HB15 Pair Kepler Map Suite ===\n";
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    const double pi = std::acos(-1.0);
+
+    auto make_pair_bodies = [](double m0, double m1, const Vec3& q0, const Vec3& u0) {
+        const double total_mass = m0 + m1;
+        
+        const Vec3 R0;
+        const Vec3 V0;
+
+        std::vector<Body> test_bodies;
+        test_bodies.emplace_back(m0, R0 + (m1 / total_mass) * q0, V0 + (m1 / total_mass) * u0);
+        test_bodies.emplace_back(m1, R0 - (m0 / total_mass) * q0, V0 - (m0 / total_mass) * u0);
+
+        return test_bodies;
+    };
+    auto run_case = [&](const std::string& name, double m0, double m1, const Vec3& q0, const Vec3& u0, double dt, int steps) {
+        std::cout << "\n---" << name << " ---\n";
+        
+        std::vector<Body> test_bodies = make_pair_bodies(m0, m1, q0, u0);
+        std::vector<Body> initial_bodies = test_bodies;
+
+        HB15PairState initial_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+
+        const double energy_initial = initial_pair.two_body_energy(G);
+        const Vec3 angular_momentum_initial = initial_pair.two_body_angular_momentum();
+        const Vec3 total_momentum_initial = initial_pair.total_momentum();
+
+        double max_energy_error = 0.0;
+        double max_angular_momentum_error = 0.0;
+        double max_total_momentum_error = 0.0;
+        
+        bool all_converged = true;
+
+        int max_iterations = 0;
+
+        for (int step = 0; step < steps; ++step) {
+            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+            if (!result.converged) {
+                all_converged = false;
+            }
+            max_iterations = std::max(max_iterations, result.iterations);
+
+            HB15PairState current_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+
+            const double energy_current = current_pair.two_body_energy(G);
+            const Vec3 angular_momentum_current = current_pair.two_body_angular_momentum();
+            const Vec3 total_momentum_current = current_pair.total_momentum();
+
+            max_energy_error = std::max(max_energy_error, std::abs(energy_current - energy_initial));
+            max_angular_momentum_error = std::max(max_angular_momentum_error, (angular_momentum_current - angular_momentum_initial).norm());
+            max_total_momentum_error = std::max(max_total_momentum_error, (total_momentum_current - total_momentum_initial).norm());
+        }
+
+        HB15PairState final_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+
+        const double one_period_relative_position_error = (final_pair.relative_position - initial_pair.relative_position).norm();
+        const double one_period_relative_velocity_error = (final_pair.relative_velocity - initial_pair.relative_velocity).norm();
+
+        for (int step = 0; step < steps; ++step) {
+            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+            if (!result.converged) {
+                all_converged = false;
+            }
+            max_iterations = std::max(max_iterations, result.iterations);
+        }
+
+        const double forward_backward_position_error_body_0 = (test_bodies[0].position - initial_bodies[0].position).norm();
+        const double forward_backward_position_error_body_1 = (test_bodies[1].position - initial_bodies[1].position).norm();
+        const double forward_backward_velocity_error_body_0 = (test_bodies[0].velocity - initial_bodies[0].velocity).norm();
+        const double forward_backward_velocity_error_body_1 = (test_bodies[1].velocity - initial_bodies[1].velocity).norm();
+
+        std::cout << "All Kepler solves converged: " << (all_converged ? "true" : "false") << "\n";
+        std::cout << "Max Newton iterations: " << max_iterations << "\n";
+        std::cout << "Max pair energy error: " << max_energy_error << "\n";
+        std::cout << "Max pair angular momentum error: " << max_angular_momentum_error << "\n";
+        std::cout << "Max pair total momentum error: " << max_total_momentum_error << "\n";
+        std::cout << "One-period relative position error: " << one_period_relative_position_error << "\n";
+        std::cout << "One-period relative velocity error: " << one_period_relative_velocity_error << "\n";
+        std::cout << "Forward-backward position error body 0: " << forward_backward_position_error_body_0 << "\n";
+        std::cout << "Forward-backward position error body 1: " << forward_backward_position_error_body_1 << "\n";
+        std::cout << "Forward-backward velocity error body 0: " << forward_backward_velocity_error_body_0 << "\n";
+        std::cout << "Forward-backward velocity error body 1: " << forward_backward_velocity_error_body_1 << "\n";
+    };
+
+    const double m0 = 1.0;
+    const double m1 = 1e-6;
+    const double total_mass = m0 + m1;
+
+    // Circulat Binary Test
+    {
+        const double a = 1.0;
+        const double r = a;
+        const double circular_speed = std::sqrt(G * total_mass / r);
+        const double period = 2.0 * pi * std::sqrt((a * a * a) / (G * total_mass));
+        const int steps = 512;
+        const double dt = period / static_cast<double>(steps);
+
+        run_case("Circular binary, one orbit", m0, m1, Vec3(r, 0.0, 0.0), Vec3(0.0, circular_speed, 0.0), dt, steps);
+    }
+    // Eccentric Binary Test
+    {
+        const double a = 1.0;
+        const double e = 0.6;
+        const double r_pericenter = a * (1.0 - e);
+        const double pericenter_speed = std::sqrt(G * total_mass * (1.0 + e) / (a * (1.0 - e)));
+        const double period = 2.0 * pi * std::sqrt((a * a * a) / (G * total_mass));
+        const int steps = 1024;
+        const double dt = period / static_cast<double>(steps);
+
+        run_case("Eccentric binary, e = 0.6, one orbit", m0, m1, Vec3(r_pericenter, 0.0, 0.0), Vec3(0.0, pericenter_speed, 0.0), dt, steps);
+    }
 }
