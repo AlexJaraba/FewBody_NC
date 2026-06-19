@@ -925,3 +925,110 @@ void Solver::TestHB15SymmetricOrdering() {
     std::cout << "Max position error: " << max_position_error << "\n";
     std::cout << "Max velocity error: " << max_velocity_error << "\n";
 }
+
+void Solver::TestHB15FixedStepValidation() {
+    std::cout << "\n=== HB15 Fixed-Step Validation Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto make_all_pairs = [](const std::vector<Body>& test_bodies) {
+        std::vector<Pair> pairs;
+        const int N = static_cast<int>(test_bodies.size());
+
+        for (int i = 0; i < N; ++i) {
+            for (int j = i + 1; j < N; ++j) {
+                pairs.push_back({i, j});
+            }
+        }
+
+        return pairs;
+    };
+
+    auto update_all_momenta = [](std::vector<Body>& test_bodies) {
+        for (auto& body : test_bodies) {
+            body.updateMomentumFromVelocity();
+        }
+    };
+
+    auto run_case = [&](const std::string& name, std::vector<Body> test_bodies, double dt, int steps) {
+        std::cout << "\n--- " << name << " ---\n";
+
+        recenter_system(test_bodies);
+        update_all_momenta(test_bodies);
+
+        const std::vector<Pair> pairs = make_all_pairs(test_bodies);
+        HB15 hb15(pairs);
+
+        const Diagnostics initial = compute_diagnostics(test_bodies, G, dt);
+
+        double max_relative_energy_error = 0.0;
+        double max_relative_angular_momentum_error = 0.0;
+        double max_linear_momentum = initial.linear_momentum;
+        double max_com_drift = initial.com_drift;
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(test_bodies, dt, G);
+
+            const Diagnostics current = compute_diagnostics(test_bodies, G, dt);
+
+            const double energy_scale = std::max(1.0e-30, std::abs(initial.total_energy));
+            const double angular_momentum_scale = std::max(1.0e-30, std::abs(initial.angular_momentum));
+            const double relative_energy_error = std::abs(current.total_energy - initial.total_energy) / energy_scale;
+            const double relative_angular_momentum_error = std::abs(current.angular_momentum - initial.angular_momentum) / angular_momentum_scale;
+
+            max_relative_energy_error = std::max(max_relative_energy_error, relative_energy_error);
+            max_relative_angular_momentum_error = std::max(max_relative_angular_momentum_error, relative_angular_momentum_error);
+            max_linear_momentum = std::max(max_linear_momentum, current.linear_momentum);
+            max_com_drift = std::max(max_com_drift, current.com_drift);
+        }
+        const Diagnostics final = compute_diagnostics(test_bodies, G, dt);
+
+        std::cout << "Bodies: " << test_bodies.size() << "\n";
+        std::cout << "Pairs: " << pairs.size() << "\n";
+        std::cout << "dt: " << dt << "\n";
+        std::cout << "Steps: " << steps << "\n";
+        std::cout << "Runtime: " << dt * static_cast<double>(steps) << "\n";
+        std::cout << "Initial energy: " << initial.total_energy << "\n";
+        std::cout << "Final energy: " << final.total_energy << "\n";
+        std::cout << "Max relative energy error: " << max_relative_energy_error << "\n";
+        std::cout << "Initial angular momentum: " << initial.angular_momentum << "\n";
+        std::cout << "Final angular momentum: " << final.angular_momentum << "\n";
+        std::cout << "Max relative angular momentum error: " << max_relative_angular_momentum_error << "\n";
+        std::cout << "Max linear momentum: " << max_linear_momentum << "\n";
+        std::cout << "Max COM drift: " << max_com_drift << "\n";
+    };
+
+    {
+        const double m0 = 1.0;
+        const double m1 = 1.0e-6;
+        const double total_mass = m0 + m1;
+        const double separation = 1.0;
+        const double circular_speed = std::sqrt(G * total_mass / separation);
+
+        std::vector<Body> two_body;
+
+        two_body.emplace_back(m0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+        two_body.emplace_back(m1, Vec3(separation, 0.0, 0.0), Vec3(0.0, circular_speed, 0.0));
+
+        const double period = 2.0 * std::acos(-1.0) * std::sqrt((separation * separation * separation) / (G * total_mass));
+        const int steps = 512;
+        const double dt = period / static_cast<double>(steps);
+
+        run_case("Two-body circular exactness", two_body, dt, steps);
+    }
+
+    {
+        std::vector<Body> three_body;
+
+        three_body.emplace_back(1.0, Vec3(-0.00239640539191213, 0.0, 0.0), Vec3(0.0, -2.23224877762317e-05, 0.0));
+        three_body.emplace_back(0.001, Vec3(0.997603594608088, 0.0, 0.0), Vec3(0.0, 0.0171913618044373, 0.0));
+        three_body.emplace_back(0.0005, Vec3(2.79760359460809, 0.0, 0.0), Vec3(0.0, 0.0102622519435887, 0.0));
+
+        const double dt = 0.25;
+        const int steps = static_cast<int>(365.0 / dt);
+
+        run_case("Three-body fixed-step stability", three_body, dt, steps);
+    }
+}
