@@ -18,7 +18,7 @@ namespace {
             H_correction = -(N - 2) T
         
         where T is the total Cartesian kinetic energy.
-        The second-order symmetric HB16 step applies pair maps in two half sweeps:
+        The second-order symmetric HB15 step applies pair maps in two half sweeps:
 
             correction half drift
             forward pair half maps

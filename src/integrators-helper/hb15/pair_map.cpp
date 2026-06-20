@@ -6,9 +6,9 @@
 
 /* ====================================================================================
 
-    Apply one physical pairwsie Kepler map.
+    Apply one physical pairwise Kepler map.
 
-    The universal-variab;le propagator expects canonical relative momentum:
+    The universal-variable propagator expects canonical relative momentum:
 
         p_rel = mu * u
     

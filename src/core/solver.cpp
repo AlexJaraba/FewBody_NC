@@ -53,9 +53,6 @@ Coordinate Modes:
     - Jacobi mode evolves a CanonicalState using the selected canonical integrator, then reconstructs Cartesian bodies for output and diagnostics
     - Cartesian mode evolves the Body objects directly using Solver::cartesian_step()
 
-Important:
-    - In Cartesian mode, the integrator string is currently ignored. The Cartesian path is directly velocity-Verlet/leapfrog.
-
    ====================================================================== */
 
 double tangent_norm(const VariationalState& v) {
@@ -723,7 +720,7 @@ void Solver::TestHB15PairKeplerMap() {
     std::vector<Body> test_bodies;
 
     test_bodies.emplace_back(m0, R0 + (m1 / total_mass) * q0, V0 + (m1 / total_mass) * u0);
-    test_bodies.emplace_back(m1, R0 + (m0 / total_mass) * q0, V0 + (m0 / total_mass) * u0);
+    test_bodies.emplace_back(m1, R0 - (m0 / total_mass) * q0, V0 - (m0 / total_mass) * u0);
 
     std::vector<Body> initial = test_bodies;
 
@@ -806,7 +803,7 @@ void Solver::TestHB15PairKeplerSuite() {
         int max_iterations = 0;
 
         for (int step = 0; step < steps; ++step) {
-            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, dt, G);
             if (!result.converged) {
                 all_converged = false;
             }
@@ -858,7 +855,7 @@ void Solver::TestHB15PairKeplerSuite() {
     const double m1 = 1e-6;
     const double total_mass = m0 + m1;
 
-    // Circulat Binary Test
+    // Circular Binary Test
     {
         const double a = 1.0;
         const double r = a;

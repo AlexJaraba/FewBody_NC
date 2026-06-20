@@ -88,7 +88,7 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
 
 PairDiagnostics compute_pair_diagnostics(const std::vector<Body>& bodies, int i, int j, double G) {
     if (i < 0 || j < 0) {
-        throw std::runtime_error("compute_pair_diagnostics recieved a negative index.");
+        throw std::runtime_error("compute_pair_diagnostics received a negative index.");
     }
     if (i == j) {
         throw std::runtime_error("compute_pair_diagnostics received identical pair indices.");
