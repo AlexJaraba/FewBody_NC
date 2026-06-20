@@ -1,6 +1,6 @@
 #include <stdexcept>
 
-#include "integrators/hb15_pair_state.h"
+#include "integrators-helper/hb15/pair_state.h"
 
 namespace {
     void validate_pair_indices(const std::vector<Body>& bodies, int i, int j) {

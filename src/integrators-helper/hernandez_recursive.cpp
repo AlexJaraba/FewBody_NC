@@ -1,4 +1,4 @@
-#include "integrators/hernandez_recursive.h"
+#include "integrators-helper/hernandez_recursive.h"
 #include "dynamics/operators.h"
 
 void recursive_hernandez_step(std::shared_ptr<HierarchyNode> node, CanonicalState& state, double dt, double G) {

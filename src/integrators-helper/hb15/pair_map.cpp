@@ -1,7 +1,7 @@
 #include <stdexcept>
 
-#include "integrators/hb15_pair_map.h"
-#include "integrators/hb15_pair_state.h"
+#include "integrators-helper/hb15/pair_map.h"
+#include "integrators-helper/hb15/pair_state.h"
 #include "numerics/propagator.h"
 
 /* ====================================================================================

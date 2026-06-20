@@ -31,6 +31,7 @@ public:
     void TestHB15SymmetricOrdering();
     void TestHB15FixedStepValidation();
     void TestHB15Reversibility();
+    void TestHB15StateRoundTrip();
 
 private:
     std::vector<Body>& bodies;

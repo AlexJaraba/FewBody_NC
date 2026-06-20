@@ -20,9 +20,11 @@
 #include "integrators/hernandez.h"
 #include "integrators/yoshida4.h"
 #include "integrators/integrator.h"
-#include "integrators/hb15_pair_state.h"
-#include "integrators/hb15_pair_map.h"
 #include "integrators/hb15.h"
+
+#include "integrators-helper/hb15/pair_state.h"
+#include "integrators-helper/hb15/pair_map.h"
+#include "integrators-helper/hb15/state.h"
 
 #include "dynamics/pairing.h"
 #include "dynamics/pair_graph.h"
@@ -1128,4 +1130,70 @@ void Solver::TestHB15Reversibility() {
 
         run_case("Three-body fixed-step stability", three_body, 0.25, 1460);
     }
+}
+
+void Solver::TestHB15StateRoundTrip() {
+    std::cout << "\n=== HB15 Cartesian State Round-Trip Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    std::vector<Body> test_bodies;
+
+    test_bodies.emplace_back(1.0, Vec3(-0.00239640539191213, 0.0, 0.0), Vec3(0.0, -2.23224877762317e-05, 0.0));
+    test_bodies.emplace_back(0.001, Vec3(0.997603594608088, 0.0, 0.0), Vec3(0.0, 0.0171913618044373, 0.0));
+    test_bodies.emplace_back(0.0005, Vec3(2.79760359460809, 0.0, 0.0), Vec3(0.0, 0.0102622519435887, 0.0));
+
+    for (Body& body : test_bodies) {
+        body.updateMomentumFromVelocity();
+    }
+
+    const std::vector<Body> original_bodies = test_bodies;
+    const HB15State state = HB15State::from_bodies(test_bodies);
+    const std::vector<Body> reconstructed_bodies = state.to_bodies();
+
+    double max_mass_error = 0.0;
+    double max_position_error = 0.0;
+    double max_velocity_error = 0.0;
+    double max_momentum_error = 0.0;
+
+    for (std::size_t i = 0; i <original_bodies.size(); ++i) {
+        const double mass_error = std::abs(reconstructed_bodies[i].mass - original_bodies[i].mass);
+        const double position_error = (reconstructed_bodies[i].position - original_bodies[i].position).norm();
+        const double velocity_error = (reconstructed_bodies[i].velocity - original_bodies[i].velocity).norm();
+        const double momentum_error = (reconstructed_bodies[i].momentum - original_bodies[i].momentum).norm();
+
+        max_mass_error = std::max(max_mass_error, mass_error);
+        max_position_error = std::max(max_position_error, position_error);
+        max_velocity_error = std::max(max_velocity_error, velocity_error);
+        max_momentum_error = std::max(max_momentum_error, momentum_error);
+    }
+
+    std::vector<Body> overwritten_bodies = test_bodies;
+    state.write_to_bodies(overwritten_bodies);
+
+    double max_write_position_error = 0.0;
+    double max_write_velocity_error = 0.0;
+    double max_write_momentum_error = 0.0;
+
+    for (std::size_t i = 0; i < original_bodies.size(); ++i) {
+        const double position_error = (overwritten_bodies[i].position - original_bodies[i].position).norm();
+        const double velocity_error = (overwritten_bodies[i].velocity - original_bodies[i].velocity).norm();
+        const double momentum_error = (overwritten_bodies[i].momentum - original_bodies[i].momentum).norm();
+
+        max_write_position_error = std::max(max_write_position_error, position_error);
+        max_write_velocity_error = std::max(max_write_velocity_error, velocity_error);
+        max_write_momentum_error = std::max(max_write_momentum_error, momentum_error);
+    }
+
+    std::cout << "Bodies: " << state.size() << "\n";
+    std::cout << "Total mass: " << state.total_mass() << "\n";
+    std::cout << "Total momentum norm: " << state.total_momenta().norm() << "\n";
+    std::cout << "COM position norm: " << state.com_positions().norm() << "\n";
+    std::cout << "COM velocity norm: " << state.com_velocity().norm() << "\n";
+    std::cout << "to_bodies max mass error: " << max_mass_error << "\n";
+    std::cout << "to_bodies max position error: " << max_position_error << "\n";
+    std::cout << "to_bodies max velocity error: " << max_velocity_error << "\n";
+    std::cout << "to_bodies max momentum error: " << max_momentum_error << "\n";
+    std::cout << "write_to_bodies max position error: " << max_write_position_error << "\n";
+    std::cout << "write_to_bodies max velocity error: " << max_write_velocity_error << "\n";
+    std::cout << "write_to_bodies max momentum error: " << max_write_momentum_error << "\n";
 }
