@@ -653,8 +653,8 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 
     runtime = float(params.get("runtime", 1.0))
     output_frequency = int(params.get("output_frequency", 10))
-    integrator = params.get("integrator", "hernandez")
-    coordinate_mode = params.get("coordinate_mode", "jacobi")
+    integrator = params.get("integrator", "hb15")
+    coordinate_mode = params.get("coordinate_mode", "cartesian")
     G = float(params.get("gravitational_constant", 0.000296014912))
 
     print("\nConvergence test using current param.txt settings:")
@@ -748,6 +748,7 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
 
         total_runs = len(BENCHMARK_TESTS) * len(modes)
         run_number = 0
+        benchmark_rows = []
 
         for mode in modes:
             mode_dir = output_dir / mode["name"]
@@ -789,10 +790,97 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                 plot_path = mode_dir / f"{test['name']}.png"
                 plot_verification_suite(output_df = output, diagnostics = diagnostics, config = config, save_path = plot_path, show=False,)
                 print(f"Saved plot to {plot_path}")
+
+                energy = diagnostics["total_energy"].to_numpy()
+                angular = diagnostics["angular_momentum"].to_numpy()
+                linear = diagnostics["linear_momentum"].to_numpy()
+                com = diagnostics["com_drift"].to_numpy()
+                time = diagnostics["time"].to_numpy()
+                dE = error_relative(energy, config.epsilon)
+                dL = error_relative(angular, config.epsilon)
+                dP = error_absolute(linear)
+                dRcm = error_absolute(com)
+
+                benchmark_rows.append({
+                    "run_number": run_number,
+                    "mode": mode["name"],
+                    "integrator": mode["integrator"],
+                    "coordinate_mode": mode["coordinate_mode"],
+                    "test": test["name"],
+                    "dt": test["dt"],
+                    "runtime": test["runtime"],
+                    "output_frequency": test["output_frequency"],
+                    "final_time": time[-1] if len(time) else np.nan,
+                    "initial_energy": energy[0] if len(energy) else np.nan,
+                    "final_energy": energy[-1] if len(energy) else np.nan,
+                    "max_dE_over_E0": np.max(dE) if len(dE) else np.nan,
+                    "final_dE_over_E0": dE[-1] if len(dE) else np.nan,
+                    "initial_angular_momentum": angular[0] if len(angular) else np.nan,
+                    "final_angular_momentum": angular[-1] if len(angular) else np.nan,
+                    "max_dL_over_L0": np.max(dL) if len(dL) else np.nan,
+                    "final_dL_over_L0": dL[-1] if len(dL) else np.nan,
+                    "initial_linear_momentum": linear[0] if len(linear) else np.nan,
+                    "final_linear_momentum": linear[-1] if len(linear) else np.nan,
+                    "max_dP": np.max(dP) if len(dP) else np.nan,
+                    "final_dP": dP[-1] if len(dP) else np.nan,
+                    "initial_com_drift": com[0] if len(com) else np.nan,
+                    "final_com_drift": com[-1] if len(com) else np.nan,
+                    "max_dRcm": np.max(dRcm) if len(dRcm) else np.nan,
+                    "final_dRcm": dRcm[-1] if len(dRcm) else np.nan,})
         
         print("\nBenchmark suite complete.")
         print(f"Plots saved to {output_dir}")
-    
+
+        if not benchmark_rows:
+            print("No benchmark results were collected")
+            return
+        
+        summary = pd.DataFrame(benchmark_rows)
+        summary_path = output_dir / "benchmark_summary.csv"
+        summary.to_csv(summary_path, index=False)
+
+        comparison_columns = [
+            "test",
+            "mode",
+            "dt",
+            "runtime",
+            "max_dE_over_E0",
+            "final_dE_over_E0",
+            "max_dL_over_L0",
+            "final_dL_over_L0",
+            "max_dP",
+            "final_dP",
+            "max_dRcm",
+            "final_dRcm",
+            "final_com_drift",
+        ]
+
+        print("\n" + "=" * 90)
+        print("BENCHMARK COMPARISON TABLE")
+        print("=" * 90)
+        print(f"Saved summary CSV to {summary_path}")
+
+        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 220, "display.float_format", "{:.6e}".format):
+            print(summary[comparison_columns].to_string(index=False))
+
+        print("\n" + "=" * 90)
+        print("BEST MODE PER TEST BY MAX |dE/E0|")
+        print("=" * 90)
+
+        best_rows = (summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
+        best_columns = ["test", "mode", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
+
+        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
+            print(best_rows[best_columns].to_string(index=False))
+        
+        print("\n" + "=" * 90)
+        print("WORST 10 RUNS BY MAX |dE/E0|")
+
+        worst_rows = summary.sort_values("max_dE_over_E0", ascending=False).head(10)
+
+        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
+            print(worst_rows[best_columns].to_string(index=False))
+
     finally:
         if original_param_text is not None:
             DEFAULT_PARAM_PATH.write_text(original_param_text)

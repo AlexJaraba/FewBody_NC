@@ -26,7 +26,6 @@ public:
     void TestLocalOrder();
 
     void TestHB15PairStateRoundTrip();
-    void TestHB15PairKeplerMap();
     void TestHB15PairKeplerSuite();
     void TestHB15PairDiagnostics();
     void TestHB15SymmetricOrdering();
