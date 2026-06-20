@@ -28,6 +28,7 @@ public:
     void TestHB15PairStateRoundTrip();
     void TestHB15PairKeplerMap();
     void TestHB15PairKeplerSuite();
+    void TestHB15PairDiagnostics();
     void TestHB15SymmetricOrdering();
     void TestHB15FixedStepValidation();
     void TestHB15Reversibility();

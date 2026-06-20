@@ -883,6 +883,43 @@ void Solver::TestHB15PairKeplerSuite() {
     }
 }
 
+void Solver::TestHB15PairDiagnostics() {
+    std::cout << "\n=== HB15 Pair Diagnostics Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    std::vector<Body> test_bodies;
+    test_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    test_bodies.emplace_back(1.0e-6, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.01720209895, 0.0));
+
+    for (Body& body : test_bodies) {
+        body.updateMomentumFromVelocity();
+    }
+
+    const PairDiagnostics initial = compute_pair_diagnostics(test_bodies, 0, 1, G);
+
+    print_pair_diagnostics(std::cout, initial, "Initial pair diagnostics:");
+
+    const double dt = 0.25;
+    const HB15PairMapResult forward_result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, dt, G);
+    const PairDiagnostics after_forward = compute_pair_diagnostics(test_bodies, 0, 1, G);
+    const PairDiagnosticDeviation forward_deviation = compare_pair_diagnostics(after_forward, initial);
+
+    std::cout << "Forward converged: " << std::boolalpha << forward_result.converged << ", iterations: " << forward_result.iterations << "\n";
+
+    print_pair_diagnostics_deviation(std::cout, forward_deviation, "Forward pair diagnostic deviation:");
+
+    const HB15PairMapResult backward_result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+    const PairDiagnostics after_backward = compute_pair_diagnostics(test_bodies, 0, 1, G);
+    const PairDiagnosticDeviation backward_deviation = compare_pair_diagnostics(after_backward, initial);
+
+    std::cout << "Backward converged: " << std::boolalpha << backward_result.converged << ", iterations: " << backward_result.iterations << "\n";
+
+    print_pair_diagnostics_deviation(std::cout, backward_deviation, "Forward-backward pair diagnostic deviation:");
+}
+
 void Solver::TestHB15SymmetricOrdering() {
     std::cout << "\n=== HB15 Symmetric Ordering Test ===\n";
 
