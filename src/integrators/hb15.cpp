@@ -42,22 +42,26 @@ namespace {
         }
     }
     /*
-        Flow of a pure kinetic Hamiltonian * c * T.
-        For a Hamiltonian * c * T, where
+        Flow of the HB15 kinetic remainder Hamiltonian.
+        In the all-pairs HB15 split, the sum of pair Kepler Hamiltonians counts each body's kinetic energy N - 1 times.
+        The true Newtonian Hamiltonian needs one copy, so the remainder/correction term is:
 
-            T = sum_i([p_i]^2 / [2 * m_i])
+            H_remainder = -(N - 2) * T
         
-        the exact flow is:
+        where:
 
-            r_i -> r_i + c * dt * v_t
-            v_i -> unchanged
+            T = sum_i[(p_i)^2 / (2 * m_i)]
         
-        In the all-pairs HB15 split, c = -(N - 2), because the sum of all pair Kepler Hamiltonians counts each body's kinetic energy N - 1 times.
-        While the true Newtonian Hamiltonian needs it once.
+        Since this remainder is purely kinetic, its exact flow is a drift:
+
+            r_i -> r_i + remainder_dt * v_i
+            v_i -> v_i
+        
+        The coefficient -(N - 2) is already included in remainder_dt
     */
-    void apply_kinetic_correction_drift(std::vector<Body>& bodies, double drift_dt) {
+    void apply_hb15_remainder_flow(std::vector<Body>& bodies, double remainder_dt) {
         for (Body& body : bodies) {
-            body.position += drift_dt * body.velocity;
+            body.position += remainder_dt * body.velocity;
             body.updateMomentumFromVelocity();
         }
     }
@@ -91,7 +95,7 @@ void HB15::step(std::vector<Body>& bodies, double dt, double G) {
         return;
     }
 
-    apply_kinetic_correction_drift(bodies, bookkeeping.correction_half_dt);
+    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
 
     for (const Pair& pair : pairs_) {
         apply_checked_pair_map(bodies, pair, bookkeeping.pair_half_dt, G);
@@ -100,7 +104,7 @@ void HB15::step(std::vector<Body>& bodies, double dt, double G) {
         apply_checked_pair_map(bodies, *it, bookkeeping.pair_half_dt, G);
     }
 
-    apply_kinetic_correction_drift(bodies, bookkeeping.correction_half_dt);
+    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
 const std::vector<Pair>& HB15::pairs() const {

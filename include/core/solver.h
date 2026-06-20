@@ -33,6 +33,7 @@ public:
     void TestHB15FixedStepValidation();
     void TestHB15Reversibility();
     void TestHB15StateRoundTrip();
+    void TestHB15RemainderOperator();
 
 private:
     std::vector<Body>& bodies;

@@ -1234,3 +1234,112 @@ void Solver::TestHB15StateRoundTrip() {
     std::cout << "write_to_bodies max velocity error: " << max_write_velocity_error << "\n";
     std::cout << "write_to_bodies max momentum error: " << max_write_momentum_error << "\n";
 }
+
+void Solver::TestHB15RemainderOperator() {
+    std::cout << "\n=== HB15 Remainder Operator Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+    
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto make_all_pairs = [](const std::vector<Body>& test_bodies) {
+        std::vector<Pair> pairs;
+        const int N = static_cast<int>(test_bodies.size());
+
+        for (int i = 0; i < N; ++i) {
+            for (int j = i + 1; j < N; ++j) {
+                pairs.push_back({i, j});
+            }
+        }
+
+        return pairs;
+    };
+
+    auto update_all_momenta = [](std::vector<Body>& test_bodies) {
+        for (Body& body : test_bodies) {
+            body.updateMomentumFromVelocity();
+        }
+    };
+    auto max_state_difference = [](const std::vector<Body>& a, const std::vector<Body>& b) {
+        double max_position_error = 0.0;
+        double max_velocity_error = 0.0;
+        double max_momentum_error = 0.0;
+
+        for (std::size_t i = 0; i < a.size(); ++i) {
+            max_position_error = std::max(max_position_error, (a[i].position - b[i].position).norm());
+            max_velocity_error = std::max(max_velocity_error, (a[i].velocity - b[i].velocity).norm());
+            max_momentum_error = std::max(max_momentum_error, (a[i].momentum - b[i].momentum).norm());
+        }
+
+        std::cout << "Max HB15 vs direct pair-map position error: " << max_position_error << "\n";
+        std::cout << "Max HB15 vs direct pair-map velocity error: " << max_velocity_error << "\n";
+        std::cout << "Max HB15 vs direct pair-map momentum error: " << max_momentum_error << "\n";
+    };
+
+    {
+        std::cout << "\n-- N = 2 remainder-zero check --\n";
+        const double dt = 0.25;
+        std::vector<Body> hb15_bodies;
+
+        hb15_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+        hb15_bodies.emplace_back(1.0e-6, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.01720209895, 0.0));
+
+        update_all_momenta(hb15_bodies);
+        
+        std::vector<Body> direct_pair_bodies = hb15_bodies;
+
+        HB15 hb15(make_all_pairs(hb15_bodies));
+        hb15.step(hb15_bodies, dt, G);
+
+        const HB15PairMapResult direct_result = apply_hb15_pair_kepler_map(direct_pair_bodies, 0, 1, dt, G);
+
+        std::cout << "Direct pair map converged: " << std::boolalpha << direct_result.converged << ", iterations: " << direct_result.iterations << "\n";
+        max_state_difference(hb15_bodies, direct_pair_bodies);
+    }
+
+    {
+        std::cout << "\n--- N = 3 bounded remainder-composition check ---\n";
+
+        std::vector<Body> three_body;
+        three_body.emplace_back(1.0, Vec3(-0.00239640539191213, 0.0, 0.0), Vec3(0.0, -2.23224877762317e-05, 0.0));
+        three_body.emplace_back(0.001, Vec3(0.997603594608088, 0.0, 0.0), Vec3(0.0, 0.0171913618044373, 0.0));
+        three_body.emplace_back(0.0005, Vec3(2.79760359460809, 0.0, 0.0), Vec3(0.0, 0.0102622519435887, 0.0));
+
+        recenter_system(three_body);
+        update_all_momenta(three_body);
+
+        const double dt = 0.25;
+        const int steps = 1460;
+
+        HB15 hb15(make_all_pairs(three_body));
+
+        const Diagnostics initial = compute_diagnostics(three_body, G, dt);
+        
+        double max_relative_energy_error = 0.0;
+        double max_relative_angular_momentum_error = 0.0;
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(three_body, dt, G);
+
+            const Diagnostics current = compute_diagnostics(three_body, G, dt);
+            const double energy_scale = std::max(1.0e-30, std::abs(initial.total_energy));
+            const double angular_momentum_scale = std::max(1.0e-30, std::abs(initial.angular_momentum));
+            const double relative_energy_error = std::abs(current.total_energy - initial.total_energy) / energy_scale;
+            const double relative_angular_momentum_error = std::abs(current.angular_momentum - initial.angular_momentum) / angular_momentum_scale;
+
+            max_relative_energy_error = std::max(max_relative_energy_error, relative_energy_error);
+            max_relative_angular_momentum_error = std::max(max_relative_angular_momentum_error, relative_angular_momentum_error);
+        }
+
+        const Diagnostics final = compute_diagnostics(three_body, G, dt);
+
+        std::cout << "Steps: " << steps << "\n";
+        std::cout << "Runtime: " << dt * static_cast<double>(steps) << "\n";
+        std::cout << "Initial energy: " << initial.total_energy << "\n";
+        std::cout << "Final energy: " << final.total_energy << "\n";
+        std::cout << "Max relative energy error: " << max_relative_energy_error << "\n";
+        std::cout << "Max relative angular momentum error: " << max_relative_angular_momentum_error << "\n";
+        std::cout << "Final linear momentum: " << final.linear_momentum << "\n";
+        std::cout << "Final COM drift: " << final.com_drift << "\n";
+    }
+}
