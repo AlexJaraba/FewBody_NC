@@ -23,7 +23,7 @@ struct HB15State {
     bool empty() const;
     void validate() const;
     double total_mass() const;
-    Vec3 total_momenta() const;
+    Vec3 total_momentum() const;
     Vec3 com_positions() const;
     Vec3 com_velocity() const;
 };

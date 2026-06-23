@@ -11,6 +11,8 @@
 #include "integrators/hernandez.h"
 #include "integrators/yoshida4.h"
 #include "dynamics/pairing.h"
+#include "analysis/validation_tests.h"
+
 
 class CSVOutputWriter;
 
@@ -19,22 +21,11 @@ void recenter_system(std::vector<Body>& bodies);
 class Solver {
 public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
-
     void run();
-    void ReversibilityTest();
-    void TestHernandezAdjoint(double dt);
-    void TestLocalOrder();
-
-    void TestHB15PairStateRoundTrip();
-    void TestHB15PairKeplerSuite();
-    void TestHB15PairDiagnostics();
-    void TestHB15SymmetricOrdering();
-    void TestHB15FixedStepValidation();
-    void TestHB15Reversibility();
-    void TestHB15StateRoundTrip();
-    void TestHB15RemainderOperator();
+    Tests tests;
 
 private:
+    friend class Tests;
     std::vector<Body>& bodies;
     std::vector<Pair> fixed_pairs;
     std::unique_ptr<Integrator> integrator;

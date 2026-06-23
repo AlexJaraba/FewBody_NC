@@ -29,7 +29,7 @@ int main() {
     sim.run();
 
     // Run reversibility test
-    sim.ReversibilityTest();
+    sim.tests.ReversibilityTest();
 
     // Close output file
     output.close();

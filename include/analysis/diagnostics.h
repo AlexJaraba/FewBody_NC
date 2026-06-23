@@ -4,7 +4,6 @@
 #include <vector>
 
 #include "core/body.h"
-#include "dynamics/pairing.h"
 #include "math/vec3.h"
 
 struct Diagnostics {

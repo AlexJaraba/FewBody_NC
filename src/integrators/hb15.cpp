@@ -65,29 +65,29 @@ namespace {
             body.updateMomentumFromVelocity();
         }
     }
+
+    HB15HamiltonianBookKeeping make_hb15_bookkeeping(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt) {
+        HB15HamiltonianBookKeeping bookkeeping;
+
+        bookkeeping.body_count = static_cast<int>(bodies.size());
+        bookkeeping.pair_count = static_cast<int>(pairs.size());
+
+        if (bookkeeping.body_count <= 1) {
+            bookkeeping.kinetic_correction_coefficient = 0.0;
+            bookkeeping.pair_half_dt = 0.0;
+            bookkeeping.correction_half_dt = 0.0;
+            return bookkeeping;
+        }
+
+        bookkeeping.kinetic_correction_coefficient = -static_cast<double>(bookkeeping.body_count - 2);
+        bookkeeping.pair_half_dt = 0.5 * dt;
+        bookkeeping.correction_half_dt = 0.5 * bookkeeping.kinetic_correction_coefficient * dt;
+
+        return bookkeeping;
+    }
 }
 
 HB15::HB15(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs(fixed_pairs)) {}
-
-HB15HamiltonianBookKeeping make_hb15_bookkeeping(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt) {
-    HB15HamiltonianBookKeeping bookkeeping;
-
-    bookkeeping.body_count = static_cast<int>(bodies.size());
-    bookkeeping.pair_count = static_cast<int>(pairs.size());
-
-    if (bookkeeping.body_count <= 1) {
-        bookkeeping.kinetic_correction_coefficient = 0.0;
-        bookkeeping.pair_half_dt = 0.0;
-        bookkeeping.correction_half_dt = 0.0;
-        return bookkeeping;
-    }
-
-    bookkeeping.kinetic_correction_coefficient = -static_cast<double>(bookkeeping.body_count - 2);
-    bookkeeping.pair_half_dt = 0.5 * dt;
-    bookkeeping.correction_half_dt = 0.5 * bookkeeping.kinetic_correction_coefficient * dt;
-
-    return bookkeeping;
-}
 
 void HB15::step(std::vector<Body>& bodies, double dt, double G) {
     const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);

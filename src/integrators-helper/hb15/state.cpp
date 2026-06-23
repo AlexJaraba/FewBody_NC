@@ -76,7 +76,7 @@ double HB15State::total_mass() const {
     return total;
 }
 
-Vec3 HB15State::total_momenta() const {
+Vec3 HB15State::total_momentum() const {
     validate();
 
     Vec3 total;
@@ -100,5 +100,5 @@ Vec3 HB15State::com_positions() const {
 
 Vec3 HB15State::com_velocity() const {
     validate();
-    return total_momenta() / total_mass();
+    return total_momentum() / total_mass();
 }

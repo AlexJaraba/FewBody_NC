@@ -128,22 +128,6 @@ PairDiagnosticDeviation compare_pair_diagnostics(const PairDiagnostics& current,
     return deviation;
 };
 
-double compute_perturbation_energy(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double G) {
-    double E = 0.0;
-
-    for (const auto& pair : pairs) {
-        int i = pair.i;
-        int j = pair.j;
-        Vec3 dr = bodies[j].position - bodies[i].position;
-        double r = dr.norm();
-        if (r < 1e-14) {
-            continue;
-        }
-        E -= (G * bodies[i].mass * bodies[j].mass) / r;
-    }
-    return E;
-}
-
 void print_pair_diagnostics(std::ostream& os, const PairDiagnostics& diagnostics, const char* label) {
     os << label << "\n";
     os << "Pair: (" << diagnostics.i << ", " << diagnostics.j << ")\n";
