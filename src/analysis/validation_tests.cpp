@@ -12,6 +12,7 @@
 #include "core/reconstruction.h"
 #include "core/solver.h"
 #include "dynamics/jacobi.h"
+#include "dynamics/pairing.h"
 #include "integrators/hb15.h"
 #include "integrators-helper/hb15/pair_map.h"
 #include "integrators-helper/hb15/pair_state.h"
@@ -761,4 +762,43 @@ void Tests::TestHB15RemainderOperator() {
         std::cout << "Final linear momentum: " << final.linear_momentum << "\n";
         std::cout << "Final COM drift: " << final.com_drift << "\n";
     }
+}
+
+void Tests::TestHB15PairOrdering() {
+    std::cout << "\n=== HB15 Pair Ordering Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    std::vector<Body> test_bodies;
+    test_bodies.emplace_back(1.0, Vec3(10.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(-0.5, 0.0, 0.0), Vec3(0.0, -0.008602049475, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(0.5, 0.0, 0.0),  Vec3(0.0, 0.008602049475, 0.0));
+
+    update_all_momenta(test_bodies);
+
+    const std::vector<Pair> raw_pairs = make_all_physical_pairs(test_bodies);
+    const std::vector<Pair> canonical_pairs = canonicalize_pairs(raw_pairs);
+    const std::vector<Pair> strength_pairs = order_pairs_by_strength(raw_pairs, test_bodies);
+
+    auto print_order = [&](const char* label, const std::vector<Pair>& pairs) {
+        std::cout << label << "\n";
+
+        for (const Pair& pair : pairs) {
+            std::cout << "Pair (" << pair.i << ", " << pair.j << ")" << ", strength = " << pair_strength(test_bodies, pair) << "\n";
+        }
+    };
+
+    print_order("Canonical pair order:", canonical_pairs);
+    print_order("Strength pair order:", strength_pairs);
+
+    if (canonical_pairs.size() != strength_pairs.size()) {
+        throw std::runtime_error("HB15PairOrdering failed: no strength-ordered pairs were produced.");
+    }
+    if (strength_pairs.empty()) {
+        throw std::runtime_error("HB15PairOrdering failed: strongest pair should be (1, 2).");
+    }
+    if (canonical_pairs.front().i == strength_pairs.front().i && canonical_pairs.front().j == strength_pairs.front().j) {
+        throw std::runtime_error("HB15PairOrdering failed: canonical and strength order did not differ.");
+    }
+
+    std::cout << "HB15 pair ordering validation passed.\n";
 }

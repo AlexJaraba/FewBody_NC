@@ -15,6 +15,7 @@ public:
     void TestHB15PairStateRoundTrip();
     void TestHB15PairDiagnostics();
     void TestHB15PairKeplerSuite();
+    void TestHB15PairOrdering();
     
     void TestHB15SymmetricOrdering();
     void TestHB15RemainderOperator();

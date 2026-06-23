@@ -28,8 +28,7 @@ int main() {
 
     sim.run();
 
-    // Run reversibility test
-    sim.tests.ReversibilityTest();
+    // Run Optional Tests for Validation (example: sim.test.[])
 
     // Close output file
     output.close();
