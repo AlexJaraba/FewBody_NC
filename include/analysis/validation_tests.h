@@ -11,6 +11,7 @@ public:
     void TestLocalOrder();
     void ReversibilityTest();
     void TestHierarchyTreeModel();
+    void TestHierarchySelectionCriteria();
 
     void TestHB15StateRoundTrip();
     void TestHB15PairStateRoundTrip();

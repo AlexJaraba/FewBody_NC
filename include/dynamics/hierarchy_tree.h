@@ -5,6 +5,29 @@
 
 #include "core/body.h"
 #include "dynamics/hierarchy_node.h"
+#include "dynamics/pairing.h"
+
+struct HierarchySelectionCriteria {
+    // External separation / internal binary separation
+    // Larger means the binary is spartially isolated
+    double min_separation_ratio = 5.0;
+
+    // Internal pair strength / strongest external pair strength
+    // Larger means the binary dominates its perturbations
+    double min_strength_ratio = 10.0;
+};
+
+struct HierarchyBinaryCandidate {
+    Pair pair;
+    int node_id = -1;
+    double internal_separation = 0.0;
+    double nearest_external_separation = 0.0;
+    double separation_ratio = 0.0;
+    double internal_strength = 0.0;
+    double strongest_external_strength = 0.0;
+    double strength_ratio = 0.0;
+    bool accepted = false;
+};
 
 class HierarchyTree {
 public:
@@ -19,6 +42,8 @@ public:
     const std::vector<std::shared_ptr<HierarchyNode>>& nodes() const;
 
     std::vector<int> leaf_body_indices() const;
+    std::vector<HierarchyBinaryCandidate> leaf_binary_candidates(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
+    std::vector<Pair> selected_leaf_pairs(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
 
     void validate(int expected_leaf_count) const;
 private:

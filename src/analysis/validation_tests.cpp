@@ -909,3 +909,60 @@ void Tests::TestHierarchyTreeModel() {
     }
     std::cout << "Hierarchy tree model validation passed.\n";
 }
+
+void Tests::TestHierarchySelectionCriteria() {
+    std::cout << "\n=== Hierarchy Selection Criteria Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    HierarchySelectionCriteria criteria;
+    criteria.min_separation_ratio = 5.0;
+    criteria.min_strength_ratio = 10.0;
+
+    std::vector<Body> hierarchical_bodies;
+    hierarchical_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0, -0.01, 0.0));
+    hierarchical_bodies.emplace_back(1.0, Vec3(0.05, 0.0, 0.0),  Vec3(0.0, 0.01, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(9.95, 0.0, 0.0),  Vec3(0.0, -0.005, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0, 0.005, 0.0));
+
+    update_all_momenta(hierarchical_bodies);
+
+    HierarchyTree hierarchical_tree(hierarchical_bodies);
+
+    const std::vector<HierarchyBinaryCandidate> hierarchical_candidates = hierarchical_tree.leaf_binary_candidates(hierarchical_bodies, criteria);
+    const std::vector<Pair> selected_pairs = hierarchical_tree.selected_leaf_pairs(hierarchical_bodies, criteria);
+
+    std::cout << "Hierarchical candidates:\n";
+
+    for (const HierarchyBinaryCandidate& candidate : hierarchical_candidates) {
+        std::cout << "Pair (" << candidate.pair.i << ", " << candidate.pair.j << ")"
+                  << ", separation ratio = " << candidate.separation_ratio
+                  << ", strength ratio = " << candidate.strength_ratio
+                  << ", accepted = " << candidate.accepted << "\n";
+    }
+
+    if (selected_pairs.size() != 2) {
+        throw std::runtime_error("TestHierarchySelectionCriteria failed: expected two selected pairs.");
+    }
+    if (selected_pairs[0].i != 0 || selected_pairs[0].j != 1) {
+        throw std::runtime_error("TestHierarchySelectionCriteria failed: first selected pair should be (0, 1).");
+    }
+    if (selected_pairs[1].i != 2 || selected_pairs[1].j != 3) {
+        throw std::runtime_error("TestHierarchySelectionCriteria failed: second selected pair should be (2, 3).");
+    }
+
+    std::vector<Body> nonhierarchical_bodies;
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0),                Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(1.0, 0.0, 0.0),                Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.5, 0.8660254037844386, 0.0), Vec3(0.0, 0.0, 0.0));
+
+    update_all_momenta(nonhierarchical_bodies);
+
+    HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
+
+    const std::vector<Pair> nonhierarchical_selected_pairs = nonhierarchical_tree.selected_leaf_pairs(nonhierarchical_bodies, criteria);
+    
+    if (!nonhierarchical_selected_pairs.empty()) {
+        throw std::runtime_error("TestHierarchySelection failed: non-hierarchical triangle should select no pairs.");
+    }
+    std::cout << "Hierarchy selection criteria validation passed.\n";
+}
