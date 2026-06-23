@@ -17,6 +17,7 @@ public:
     void TestHB15PairKeplerSuite();
     void TestHB15PairOrdering();
     
+    void TestHB15HierarchyDiagnostics();
     void TestHB15SymmetricOrdering();
     void TestHB15RemainderOperator();
     void TestHB15FixedStepValidation();

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <limits>
 
 #include "dynamics/pairing.h"
 
@@ -36,6 +37,23 @@ double pair_strength(const std::vector<Body>& bodies, const Pair& pair) {
     const double r2 = std::max(dr.norm2(), 1.0e-300);
 
     return (bodies[pair.i].mass * bodies[pair.j].mass) / r2;
+}
+
+double strongest_pair_strength_ratio(const std::vector<Pair>& pairs, const std::vector<Body>& bodies) {
+    const std::vector<Pair> ordered_pairs = order_pairs_by_strength(pairs, bodies);
+
+    if (ordered_pairs.size() < 2) {
+        return std::numeric_limits<double>::infinity();
+    }
+
+    const double strongest = pair_strength(bodies, ordered_pairs[0]);
+    const double second_strongest = pair_strength(bodies, ordered_pairs[1]);
+
+    if (second_strongest <= 0.0) {
+        return std::numeric_limits<double>::infinity();
+    }
+
+    return strongest / second_strongest;
 }
 
 std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs) {

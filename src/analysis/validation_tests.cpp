@@ -802,3 +802,39 @@ void Tests::TestHB15PairOrdering() {
 
     std::cout << "HB15 pair ordering validation passed.\n";
 }
+
+void Tests::TestHB15HierarchyDiagnostics() {
+    std::cout << "\n=== HB15 Hierarchy Diagnostics Test ==\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    std::vector<Body> test_bodies;
+    test_bodies.emplace_back(1.0, Vec3(10.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(-0.5, 0.0, 0.0), Vec3(0.0, -0.008602049475, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(0.5, 0.0, 0.0),  Vec3(0.0, 0.008602049475, 0.0));
+
+    update_all_momenta(test_bodies);
+
+    const std::vector<Pair> pairs = make_all_physical_pairs(test_bodies);
+    const std::vector<Pair> strength_ordered_pairs = order_pairs_by_strength(pairs, test_bodies);
+    const double ratio = strongest_pair_strength_ratio(pairs, test_bodies);
+
+    std::cout << "Pair strength ranking:\n";
+
+    for (const Pair& pair : strength_ordered_pairs) {
+        std::cout << "Pair (" << pair.i << ", " << pair.j << ")" << ", strength = " << pair_strength(test_bodies, pair) << "\n";
+    }
+
+    std::cout <<"Strongest / second strongest ratio: " << ratio << "\n";
+
+    if (strength_ordered_pairs.empty()) {
+        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: no pairs were produced.");
+    }
+    if (strength_ordered_pairs.front().i != 1 || strength_ordered_pairs.front().j != 2) {
+        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: strongest pair should be (1, 2).");
+    }
+    if (ratio < 10.0) {
+        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: hierarchy ratio is too weak.");
+    }
+
+    std::cout << "HB15 hierarchy diagnostics validation passed.\n";
+}

@@ -28,7 +28,7 @@ int main() {
 
     sim.run();
 
-    // Run Optional Tests for Validation (example: sim.test.[])
+    // Run Optional Tests for Validation (example: sim.test.[]())
 
     // Close output file
     output.close();
