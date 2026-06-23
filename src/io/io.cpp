@@ -69,7 +69,7 @@ void writeOutput(const std::string& filename, const std::vector<Body>& bodies, d
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, false, 0, 0.03, 1, 3};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, "canonical",false, 0, 0.03, 1, 3};  // Default values
 
 
     while (std::getline(infile, line)) {
@@ -87,6 +87,8 @@ SolverParams readParams(const std::string& filename) {
                 iss >> params.coordinate_mode;
             } else if (param == "gravitational_constant") {
 	            iss >> params.gravitational_constant;
+            } else if (param == "pair_order") {
+                iss >> params.pair_order;
             } else if (param == "adaptive_timesteps") {
                 std::string value;
                 iss >> value;

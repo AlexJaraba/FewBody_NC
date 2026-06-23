@@ -81,11 +81,29 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
     fixed_pairs.clear();
 
     fixed_pairs = make_all_physical_pairs(bodies);
+    fixed_pairs = canonicalize_pairs(fixed_pairs);
+
+    if (params.coordinate_mode == "cartesian" && params.integrator == "hb15") {
+        if (params.pair_order == "canonical") {
+            fixed_pairs = canonicalize_pairs(fixed_pairs);
+        }
+        else if (params.pair_order == "strength") {
+            fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
+        }
+        else {
+            throw std::runtime_error("Invalid pair_order. Use 'canonical' or 'strength'.");
+        }
+    }
 
     std::cout << "Graph Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
     std::cout << "Graph Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
     std::cout << "Physical Pairs Used For Full Perturbation Split: " << fixed_pairs.size() << std::endl;
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
+
+    // Pairing
+    if (params.coordinate_mode == "cartesian" && params.integrator == "hb15") {
+        std::cout << "HB15 Pair Order: " << params.pair_order << std::endl;
+    }
 
     // Coordinate Mode
     if (params.coordinate_mode == "cartesian") {
@@ -439,6 +457,10 @@ void Solver::run_cartesian(const SolverParams& params) {
     }
 
     std::cout << "Cartesian integrator: " << params.integrator << "\n";
+
+    if (use_hb15) {
+        std::cout << "HB15 Pair Order: " << params.pair_order << "\n";
+    }
 
     HB15 hb15_integrator(fixed_pairs);
 

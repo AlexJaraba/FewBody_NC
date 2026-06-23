@@ -12,6 +12,7 @@ struct SolverParams {
   std::string integrator;
   std::string coordinate_mode;
   double gravitational_constant;
+  std::string pair_order;
 
   bool adaptive_timesteps;
   int timestep_levels;

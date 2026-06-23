@@ -87,7 +87,7 @@ namespace {
     }
 }
 
-HB15::HB15(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs(fixed_pairs)) {}
+HB15::HB15(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
 
 void HB15::step(std::vector<Body>& bodies, double dt, double G) {
     const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);
