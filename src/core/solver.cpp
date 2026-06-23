@@ -61,6 +61,7 @@ double tangent_norm(const VariationalState& v) {
 }
 
 namespace {
+    constexpr double AUTO_HIERARCHY_RATIO_THRESHOLD = 100.0;
     std::vector<Pair> make_all_physical_pairs(const std::vector<Body>& test_bodies) {
         std::vector<Pair> pairs;
         const int N = static_cast<int>(test_bodies.size());
@@ -82,16 +83,30 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
 
     fixed_pairs = make_all_physical_pairs(bodies);
     fixed_pairs = canonicalize_pairs(fixed_pairs);
+    effective_pair_order = "canonical";
+    hierarchy_ratio = strongest_pair_strength_ratio(fixed_pairs, bodies);
 
     if (params.coordinate_mode == "cartesian" && params.integrator == "hb15") {
         if (params.pair_order == "canonical") {
             fixed_pairs = canonicalize_pairs(fixed_pairs);
+            effective_pair_order = "canonical";
         }
         else if (params.pair_order == "strength") {
             fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
+            effective_pair_order = "strength";
+        }
+        else if (params.pair_order == "auto") {
+            if (hierarchy_ratio >= AUTO_HIERARCHY_RATIO_THRESHOLD) {
+                fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
+                effective_pair_order = "strength";
+            }
+            else {
+                fixed_pairs = canonicalize_pairs(fixed_pairs);
+                effective_pair_order = "canonical";
+            }
         }
         else {
-            throw std::runtime_error("Invalid pair_order. Use 'canonical' or 'strength'.");
+            throw std::runtime_error("Invalid pair_order. Use 'canonical', 'strength', or 'auto'.");
         }
     }
 
@@ -102,7 +117,10 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
 
     // Pairing
     if (params.coordinate_mode == "cartesian" && params.integrator == "hb15") {
-        std::cout << "HB15 Pair Order: " << params.pair_order << std::endl;
+        std::cout << "HB15 Pair Order Requested: " << params.pair_order << std::endl;
+        std::cout << "HB15 Hierarchy Ratio: " << hierarchy_ratio << std::endl;
+        std::cout << "HB15 Auto Hierarchy Threshold: " << AUTO_HIERARCHY_RATIO_THRESHOLD << std::endl;
+        std::cout << "HB15 Effective Pair Order: " << effective_pair_order << std::endl;
     }
 
     // Coordinate Mode
@@ -459,7 +477,8 @@ void Solver::run_cartesian(const SolverParams& params) {
     std::cout << "Cartesian integrator: " << params.integrator << "\n";
 
     if (use_hb15) {
-        std::cout << "HB15 Pair Order: " << params.pair_order << "\n";
+        std::cout << "HB15 Pair Order Requested: " << params.pair_order << "\n";
+        std::cout << "Hb15 Effective Pair ORder: " << effective_pair_order << "\n";
     }
 
     HB15 hb15_integrator(fixed_pairs);

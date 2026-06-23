@@ -114,7 +114,7 @@ std::vector<Pair> order_pairs_by_strength(const std::vector<Pair>& pairs, const 
         double strength;
     };
 
-    const std::vector<Pair> unique_pairs = canonicalize_pairs_preserve_order(pairs);
+    const std::vector<Pair> unique_pairs = canonicalize_pairs(pairs);
 
     std::vector<PairWithStrength> ranked_pairs;
     ranked_pairs.reserve(unique_pairs.size());

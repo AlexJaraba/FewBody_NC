@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 #include "core/body.h"
 #include "io/csv_output_writer.h"
@@ -30,10 +31,12 @@ private:
     std::vector<Pair> fixed_pairs;
     std::unique_ptr<Integrator> integrator;
     CSVOutputWriter& writer;
+    
+    std::string effective_pair_order = "canonical";
+    double hierarchy_ratio = 0.0;
 
     void run_jacobi(const SolverParams& params);
     void run_cartesian(const SolverParams& params);
-
     void cartesian_step(double dt, double G);
     void write_current_bodies(double time);
 };

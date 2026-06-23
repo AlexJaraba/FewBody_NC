@@ -1,10 +1,10 @@
-output_frequency 1
-runtime 10
-timestep 0.001
+output_frequency 20
+runtime 365
+timestep 0.025
 coordinate_mode cartesian
 integrator hb15
 gravitational_constant 0.000296014912
-pair_order canonical
+pair_order auto
 
 adaptive_timesteps false
 timestep_levels 2

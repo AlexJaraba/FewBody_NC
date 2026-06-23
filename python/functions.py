@@ -733,6 +733,7 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi", "pair_order": "canonical"},
                  {"name": "hb15_canonical", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "canonical"},
                  {"name": "hb15_strength", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "strength"},
+                 {"name": "hb15_auto", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "auto"},
                  {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian", "pair_order": "canonical"}]
     
     config = PlotConfig()
