@@ -10,6 +10,7 @@ public:
     void TestHernandezAdjoint(double dt);
     void TestLocalOrder();
     void ReversibilityTest();
+    void TestHierarchyTreeModel();
 
     void TestHB15StateRoundTrip();
     void TestHB15PairStateRoundTrip();

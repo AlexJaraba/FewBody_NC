@@ -13,6 +13,8 @@
 #include "core/solver.h"
 #include "dynamics/jacobi.h"
 #include "dynamics/pairing.h"
+#include "dynamics/hierarchy_node.h"
+#include "dynamics/hierarchy_tree.h"
 #include "integrators/hb15.h"
 #include "integrators-helper/hb15/pair_map.h"
 #include "integrators-helper/hb15/pair_state.h"
@@ -837,4 +839,73 @@ void Tests::TestHB15HierarchyDiagnostics() {
     }
 
     std::cout << "HB15 hierarchy diagnostics validation passed.\n";
+}
+
+void Tests::TestHierarchyTreeModel() {
+    std::cout << "\n=== Hierarchy Tree Model Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    std::vector<Body> test_bodies;
+    test_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0, -0.01, 0.0));
+    test_bodies.emplace_back(1.0, Vec3(0.05, 0.0, 0.0),  Vec3(0.0, 0.01, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(9.95, 0.0, 0.0),  Vec3(0.0, -0.005, 0.0));
+    test_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0, 0.005, 0.0));
+
+    update_all_momenta(test_bodies);
+
+    HierarchyTree tree(test_bodies);
+    tree.validate(static_cast<int>(test_bodies.size()));
+
+    if (!tree.root) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: root is null.");
+    }
+    if (tree.leaf_count() != 4) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: tree should contain 4 leaves.");
+    }
+    if (tree.node_count() != 7) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: a full 4-leaf binary tree should have 7 nodes.");
+    }
+
+    const std::vector<int> leaves = tree.leaf_body_indices();
+
+    if (leaves != std::vector<int>{0, 1, 2, 3}) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: leaf indices are incorrect.");
+    }
+    if (!tree.root->left || !tree.root->right) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: root should be binary.");
+    }
+
+    const std::vector<int> left_cluster = tree.root->left->body_indices;
+    const std::vector<int> right_cluster = tree.root->right->body_indices;
+
+    std::cout << "Node count: " << tree.node_count() << "\n";
+    std::cout << "Leaf count: " << tree.leaf_count() << "\n";
+    std::cout << "Root mass: " << tree.root->total_mass << "\n";
+    std::cout << "Root internal separation: " << tree.root->internal_separation << "\n";
+    std::cout << "Root internal strength: " << tree.root->internal_strength << "\n";
+    std::cout << "Root left cluster:";
+
+    for (int index : left_cluster) {
+        std::cout << " " << index;
+    }
+    std::cout << "\n";
+    std::cout << "Root right cluster:";
+    for (int index : right_cluster) {
+        std::cout << " " << index;
+    }
+    std::cout << "\n";
+
+    if (left_cluster != std::vector<int>{0, 1}) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: left root cluster should be {0, 1}.");
+    }
+    if (right_cluster != std::vector<int>{2, 3}) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: right root cluster should be {2, 3}.");
+    }
+    if (!tree.root->left->is_binary()) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: left child should be binary.");
+    }
+    if (!tree.root->right->is_binary()) {
+        throw std::runtime_error("TestHierarchyTreeModel failed: right child should be binary.");
+    }
+    std::cout << "Hierarchy tree model validation passed.\n";
 }
