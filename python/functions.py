@@ -517,7 +517,8 @@ def rewrite_param(dt: float,
                   output_frequency: int, 
                   integrator: str, 
                   coordinate_mode: str, 
-                  G: float = 0.000296014912, 
+                  G: float = 0.000296014912,
+                  pair_order: str = "canonical", 
                   param_path: Path = DEFAULT_PARAM_PATH) -> None:
 
     if not param_path.exists():
@@ -528,7 +529,8 @@ def rewrite_param(dt: float,
                     "timestep": f"timestep {dt}", 
                     "integrator": f"integrator {integrator}", 
                     "coordinate_mode": f"coordinate_mode {coordinate_mode}", 
-                    "gravitational_constant": f"gravitational_constant {G}"}
+                    "gravitational_constant": f"gravitational_constant {G}",
+                    "pair_order": f"pair_order {pair_order}"}
 
     lines = param_path.read_text().splitlines()
     updated = []
@@ -728,9 +730,10 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 
 def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = True,) -> None:
     if modes is None:
-        modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi"},
-                 {"name": "hb15", "integrator": "hb15", "coordinate_mode": "cartesian"},
-                 {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian"}]
+        modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi", "pair_order": "canonical"},
+                 {"name": "hb15_canonical", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "canonical"},
+                 {"name": "hb15_strength", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "strength"},
+                 {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian", "pair_order": "canonical"}]
     
     config = PlotConfig()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -769,14 +772,50 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                             output_frequency = test["output_frequency"], 
                             integrator = mode["integrator"], 
                             coordinate_mode = mode["coordinate_mode"],
-                            G = config.G,)
+                            G = config.G,
+                            pair_order = mode.get("pair_order", "canonical"))
                 
                 if DEFAULT_OUTPUT_PATH.exists():
                     DEFAULT_OUTPUT_PATH.unlink()
                 if DEFAULT_DIAGNOSTICS_PATH.exists():
                     DEFAULT_DIAGNOSTICS_PATH.unlink()
                 
-                run_executable()
+                try:
+                    run_executable()
+                except RuntimeError as exc:
+                    print(f"Benchmark run failed: {exc}")
+                    benchmark_rows.append({
+                        "run_number": run_number,
+                        "mode": mode["name"],
+                        "integrator": mode["integrator"],
+                        "coordinate_mode": mode["coordinate_mode"],
+                        "pair_order": mode.get("pair_order", "canonical"),
+                        "test": test["name"],
+                        "dt": test["dt"],
+                        "runtime": test["runtime"],
+                        "output_frequency": test["output_frequency"],
+                        "status": "failed",
+                        "error": str(exc),
+                        "final_time": np.nan,
+                        "initial_energy": np.nan,
+                        "final_energy": np.nan,
+                        "max_dE_over_E0": np.nan,
+                        "final_dE_over_E0": np.nan,
+                        "initial_angular_momentum": np.nan,
+                        "final_angular_momentum": np.nan,
+                        "max_dL_over_L0": np.nan,
+                        "final_dL_over_L0": np.nan,
+                        "initial_linear_momentum": np.nan,
+                        "final_linear_momentum": np.nan,
+                        "max_dP": np.nan,
+                        "final_dP": np.nan,
+                        "initial_com_drift": np.nan,
+                        "final_com_drift": np.nan,
+                        "max_dRcm": np.nan,
+                        "final_dRcm": np.nan,
+                    })
+                    continue
+
                 output = read_output(DEFAULT_OUTPUT_PATH)
 
                 if use_diagnostics_csv:
@@ -806,10 +845,13 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                     "mode": mode["name"],
                     "integrator": mode["integrator"],
                     "coordinate_mode": mode["coordinate_mode"],
+                    "pair_order": mode.get("pair_order", "canonical"),
                     "test": test["name"],
                     "dt": test["dt"],
                     "runtime": test["runtime"],
                     "output_frequency": test["output_frequency"],
+                    "status": "success",
+                    "error": "",
                     "final_time": time[-1] if len(time) else np.nan,
                     "initial_energy": energy[0] if len(energy) else np.nan,
                     "final_energy": energy[-1] if len(energy) else np.nan,
@@ -838,12 +880,22 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         summary = pd.DataFrame(benchmark_rows)
         summary_path = output_dir / "benchmark_summary.csv"
         summary.to_csv(summary_path, index=False)
+        successful_summary = summary[summary["status"] == "success"].copy()
+
+        if successful_summary.empty:
+            print("No successful benchmark runs were collected.")
+            return
 
         comparison_columns = [
             "test",
             "mode",
+            "integrator",
+            "coordinate_mode",
+            "pair_order",
             "dt",
             "runtime",
+            "status",
+            "error",
             "max_dE_over_E0",
             "final_dE_over_E0",
             "max_dL_over_L0",
@@ -867,8 +919,8 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         print("BEST MODE PER TEST BY MAX |dE/E0|")
         print("=" * 90)
 
-        best_rows = (summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
-        best_columns = ["test", "mode", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
+        best_rows = (successful_summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
+        best_columns = ["test", "mode", "pair_order", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
 
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(best_rows[best_columns].to_string(index=False))
@@ -876,8 +928,8 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         print("\n" + "=" * 90)
         print("WORST 10 RUNS BY MAX |dE/E0|")
 
-        worst_rows = summary.sort_values("max_dE_over_E0", ascending=False).head(10)
-
+        worst_rows = successful_summary.sort_values("max_dE_over_E0", ascending=False).head(10)
+        
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(worst_rows[best_columns].to_string(index=False))
 
