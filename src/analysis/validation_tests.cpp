@@ -1202,7 +1202,7 @@ void Tests::TestHernandezRecursiveOrderingValidation() {
 }
 
 void Tests::TestHernandezPairLevelScheduler() {
-    std::cout << "\n=== HB16 Pair-Level Scheduler Test ===\n";
+    std::cout << "\n=== Hernandez Pair-Level Scheduler Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");

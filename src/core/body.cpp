@@ -52,7 +52,3 @@ BodyState Body::toState(double time) const {
 double Body::kineticEnergy() const {
     return 0.5 * mass * velocity.norm2();
 }
-
-double Body::momentumMagnitudeSquared() const {
-    return momentum.norm2();
-}

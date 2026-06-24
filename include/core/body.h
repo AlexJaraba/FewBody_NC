@@ -22,5 +22,4 @@ struct Body {
     void updateVelocityFromMomentum();
     void updateMomentumFromVelocity();
     double kineticEnergy() const;
-    double momentumMagnitudeSquared() const;
 };

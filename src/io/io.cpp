@@ -48,24 +48,6 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
     std::cout << "Number of bodies read: " << bodies.size() << std::endl;
 }
 
-void writeOutput(const std::string& filename, const std::vector<Body>& bodies, double time) {
-    std::ofstream outfile(filename, std::ios_base::app);  // Append to the file
-
-    outfile << time;  // Start with the current time
-
-    for (const auto& body : bodies) {
-        outfile 
-            << " " << body.mass
-            << " " << body.position.x
-            << " " << body.position.y
-            << " " << body.position.z
-            << " " << body.velocity.x
-            << " " << body.velocity.y
-            << " " << body.velocity.z;
-    }
-    outfile << "\n";  // Newline at the end of each timestep
-}
-
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;

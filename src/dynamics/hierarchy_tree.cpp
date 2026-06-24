@@ -37,12 +37,12 @@ namespace {
         }
         return pairs;
     }
-    void append_recursive_selected_lear_pairs_from_node(const std::shared_ptr<HierarchyNode>& node, const std::vector<Pair>& selected_pairs, std::vector<Pair>& ordered_pairs) {
+    void append_recursive_selected_leaf_pairs_from_node(const std::shared_ptr<HierarchyNode>& node, const std::vector<Pair>& selected_pairs, std::vector<Pair>& ordered_pairs) {
         if (!node || node->is_leaf()) {
             return;
         }
-        append_recursive_selected_lear_pairs_from_node(node->left, selected_pairs, ordered_pairs);
-        append_recursive_selected_lear_pairs_from_node(node->right, selected_pairs, ordered_pairs);
+        append_recursive_selected_leaf_pairs_from_node(node->left, selected_pairs, ordered_pairs);
+        append_recursive_selected_leaf_pairs_from_node(node->right, selected_pairs, ordered_pairs);
 
         if (node->is_binary() && node->left->is_leaf() && node->right->is_leaf()) {
             const Pair pair = normalized_pair(node->left->body_index, node->right->body_index);
@@ -230,7 +230,7 @@ std::vector<Pair> HierarchyTree::recursive_selected_leaf_pairs(const std::vector
     const std::vector<Pair> selected_pairs = selected_leaf_pairs(bodies, criteria);
     std::vector<Pair> ordered_pairs;
 
-    append_recursive_selected_lear_pairs_from_node(root, selected_pairs, ordered_pairs);
+    append_recursive_selected_leaf_pairs_from_node(root, selected_pairs, ordered_pairs);
 
     return canonicalize_pairs_preserve_order(ordered_pairs);
 }

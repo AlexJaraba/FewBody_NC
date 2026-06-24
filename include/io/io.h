@@ -22,5 +22,4 @@ struct SolverParams {
 };
 
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies);
-void writeOutput(const std::string& filename, const std::vector<Body>& bodies, double time);
 SolverParams readParams(const std::string& filename);

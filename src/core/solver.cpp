@@ -410,7 +410,7 @@ void Solver::run_jacobi(const SolverParams& params) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
 
             double tangent = std::max(tangent_norm(var_state), 1e-300);
-            double lambda = std::log(tangent / 1e-10) / time;
+            // double lambda = std::log(tangent / 1e-10) / time;
 
             // std::cout << "Step: " << step << ", Time: " << time 
             //         << ", | Total Energy: " << diag.total_energy 
@@ -556,7 +556,7 @@ void Solver::run_cartesian(const SolverParams& params) {
             cartesian_step(dt, G);
         }
 
-        const double time = step * dt;
+        // const double time = step * dt;
 
         if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);

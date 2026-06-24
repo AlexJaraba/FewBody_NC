@@ -5,22 +5,6 @@
 
 #include "dynamics/pairing.h"
 
-bool is_kepler_pair(int i, int j, const std::vector<Pair>& pairs) {
-    for (const auto& p : pairs) {
-        if ((p.i == i && p.j == j) || (p.i == j && p.j == i)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool pair_exists(int i, int j, const std::vector<Pair>& pairs) {
-    for (const auto& p : pairs) {
-        if ((p.i == i && p.j == j) || (p.i == j && p.j == i)) {return true;}
-    }
-    return false;
-}
-
 Pair canonicalize_pair(int i, int j) {
     if (i < j) {
         return {i, j};
@@ -76,12 +60,6 @@ std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs) {
     }), canonical.end());
 
     return canonical;
-}
-
-std::vector<Pair> reverse_pairs(const std::vector<Pair>& pairs) {
-    std::vector<Pair> reversed = pairs;
-    std::reverse(reversed.begin(), reversed.end());
-    return reversed;
 }
 
 std::vector<Pair> canonicalize_pairs_preserve_order(const std::vector<Pair>& pairs) {

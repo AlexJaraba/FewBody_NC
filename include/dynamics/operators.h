@@ -32,16 +32,3 @@ void symmetric_kepler_operator(
     double dt,
     double G
 );
-
-void test_kepler_reversibility(
-    CanonicalState& initial_state,
-    double dt,
-    double G
-);
-
-void test_kick_reversibility(
-    CanonicalState& initial_state,
-    const std::vector<Pair>& pairs,
-    double dt,
-    double G
-);
