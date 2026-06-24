@@ -8,15 +8,15 @@
 
 /* ============================================================================
 
-    HB15State stores the full Cartesian canonical state for the HB15 path.
+    HernandezState stores the full Cartesian canonical state for the Hernandez path.
 
    ============================================================================ */
 
-struct HB15State {
+struct HernandezState {
     std::vector<double> masses;
     std::vector<Vec3> positions;
     std::vector<Vec3> momenta;
-    static HB15State from_bodies(const std::vector<Body>& bodies);
+    static HernandezState from_bodies(const std::vector<Body>& bodies);
     void write_to_bodies(std::vector<Body>& bodies) const;
     std::vector<Body> to_bodies() const;
     std::size_t size() const;

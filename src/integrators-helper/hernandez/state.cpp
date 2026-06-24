@@ -1,9 +1,9 @@
 #include <stdexcept>
 
-#include "integrators-helper/hb15/state.h"
+#include "integrators-helper/hernandez/state.h"
 
-HB15State HB15State::from_bodies(const std::vector<Body>& bodies) {
-    HB15State state;
+HernandezState HernandezState::from_bodies(const std::vector<Body>& bodies) {
+    HernandezState state;
     
     state.masses.reserve(bodies.size());
     state.positions.reserve(bodies.size());
@@ -18,11 +18,11 @@ HB15State HB15State::from_bodies(const std::vector<Body>& bodies) {
     return state;
 }
 
-void HB15State::write_to_bodies(std::vector<Body>& bodies) const {
+void HernandezState::write_to_bodies(std::vector<Body>& bodies) const {
     validate();
 
     if (bodies.size() != size()) {
-        throw std::runtime_error("HB15State::write_to_bodies size mismatch.");
+        throw std::runtime_error("HernandezState::write_to_bodies size mismatch.");
     }
 
     for (std::size_t i = 0; i < size(); ++i) {
@@ -33,7 +33,7 @@ void HB15State::write_to_bodies(std::vector<Body>& bodies) const {
     }
 }
 
-std::vector<Body> HB15State::to_bodies() const {
+std::vector<Body> HernandezState::to_bodies() const {
     validate();
 
     std::vector<Body> bodies;
@@ -46,26 +46,26 @@ std::vector<Body> HB15State::to_bodies() const {
     return bodies;
 }
 
-std::size_t HB15State::size() const {
+std::size_t HernandezState::size() const {
     return masses.size();
 }
 
-bool HB15State::empty() const {
+bool HernandezState::empty() const {
     return size() == 0;
 }
 
-void HB15State::validate() const {
+void HernandezState::validate() const {
     if (masses.size() != positions.size() || masses.size() != momenta.size()) {
-        throw std::runtime_error("HB15State has inconsistent vector size.");
+        throw std::runtime_error("HernandezState has inconsistent vector size.");
     }
     for (double mass : masses) {
         if (mass <= 0.0) {
-            throw std::runtime_error("HB15State contains a non-positive mass.");
+            throw std::runtime_error("HernandezState contains a non-positive mass.");
         }
     }
 }
 
-double HB15State::total_mass() const {
+double HernandezState::total_mass() const {
     validate();
 
     double total = 0.0;
@@ -76,7 +76,7 @@ double HB15State::total_mass() const {
     return total;
 }
 
-Vec3 HB15State::total_momentum() const {
+Vec3 HernandezState::total_momentum() const {
     validate();
 
     Vec3 total;
@@ -87,7 +87,7 @@ Vec3 HB15State::total_momentum() const {
     return total;
 }
 
-Vec3 HB15State::com_positions() const {
+Vec3 HernandezState::com_positions() const {
     validate();
 
     const double total = total_mass();
@@ -98,7 +98,7 @@ Vec3 HB15State::com_positions() const {
     return center / total;
 }
 
-Vec3 HB15State::com_velocity() const {
+Vec3 HernandezState::com_velocity() const {
     validate();
     return total_momentum() / total_mass();
 }

@@ -16,10 +16,10 @@
 #include "dynamics/hierarchy_node.h"
 #include "dynamics/hierarchy_tree.h"
 #include "dynamics/timestep_planner.h"
-#include "integrators/hb15.h"
-#include "integrators-helper/hb15/pair_map.h"
-#include "integrators-helper/hb15/pair_state.h"
-#include "integrators-helper/hb15/state.h"
+#include "integrators/hernandez.h"
+#include "integrators-helper/hernandez/pair_map.h"
+#include "integrators-helper/hernandez/pair_state.h"
+#include "integrators-helper/hernandez/state.h"
 #include "io/io.h"
 #include "math/vec3.h"
 
@@ -35,7 +35,7 @@ namespace {
         return pairs;
     }
 
-    std::vector<Body> make_hb15_two_body_circular_test(double G) {
+    std::vector<Body> make_hernandez_two_body_circular_test(double G) {
         const double m0 = 1.0;
         const double m1 = 1.0e-6;
         const double total_mass = m0 + m1;
@@ -49,7 +49,7 @@ namespace {
         return test_bodies;
     }
 
-    std::vector<Body> make_hb15_three_body_planet_test() {
+    std::vector<Body> make_hernandez_three_body_planet_test() {
         std::vector<Body> test_bodies;
 
         test_bodies.emplace_back(1.0, Vec3(-0.00239640539191213, 0.0, 0.0), Vec3(0.0, -2.23224877762317e-05, 0.0));
@@ -232,8 +232,8 @@ void Tests::ReversibilityTest() {
     std::cout << "Max Velocity Error: " << max_vel_error << "\n";
 }
 
-void Tests::TestHB15PairStateRoundTrip() {
-    std::cout << "\n=== HB15 Pair State Round-Trip Test ===\n";
+void Tests::TestHernandezPairStateRoundTrip() {
+    std::cout << "\n=== Hernandez Pair State Round-Trip Test ===\n";
 
     if (solver_.bodies.size() < 2) {
         std::cout << "Skipped: At least TWO bodies required.";
@@ -248,7 +248,7 @@ void Tests::TestHB15PairStateRoundTrip() {
 
     std::vector<Body> initial = solver_.bodies;
 
-    HB15PairState before = HB15PairState::from_bodies(solver_.bodies, i, j); // Store Before Change
+    HernandezPairState before = HernandezPairState::from_bodies(solver_.bodies, i, j); // Store Before Change
 
     const double pair_energy_before = before.two_body_energy(G);
     const Vec3 pair_angular_momentum_before = before.two_body_angular_momentum();
@@ -256,7 +256,7 @@ void Tests::TestHB15PairStateRoundTrip() {
 
     before.write_to_bodies(solver_.bodies);
 
-    HB15PairState after = HB15PairState::from_bodies(solver_.bodies, i, j); // Store After Change
+    HernandezPairState after = HernandezPairState::from_bodies(solver_.bodies, i, j); // Store After Change
 
     const double pair_energy_after = after.two_body_energy(G);
     const Vec3 pair_angular_momentum_after = after.two_body_angular_momentum();
@@ -284,8 +284,8 @@ void Tests::TestHB15PairStateRoundTrip() {
     solver_.bodies = initial;
 }
 
-void Tests::TestHB15PairKeplerSuite() {
-    std::cout << "\n=== HB15 Pair Kepler Map Suite ===\n";
+void Tests::TestHernandezPairKeplerSuite() {
+    std::cout << "\n=== Hernandez Pair Kepler Map Suite ===\n";
 
     SolverParams params = readParams("data/param.txt");
     const double G = params.gravitational_constant;
@@ -310,7 +310,7 @@ void Tests::TestHB15PairKeplerSuite() {
         std::vector<Body> test_bodies = make_pair_bodies(m0, m1, q0, u0);
         std::vector<Body> initial_bodies = test_bodies;
 
-        HB15PairState initial_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+        HernandezPairState initial_pair = HernandezPairState::from_bodies(test_bodies, 0, 1);
 
         const double energy_initial = initial_pair.two_body_energy(G);
         const Vec3 angular_momentum_initial = initial_pair.two_body_angular_momentum();
@@ -325,13 +325,13 @@ void Tests::TestHB15PairKeplerSuite() {
         int max_iterations = 0;
 
         for (int step = 0; step < steps; ++step) {
-            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, dt, G);
+            HernandezPairMapResult result = apply_hernandez_pair_kepler_map(test_bodies, 0, 1, dt, G);
             if (!result.converged) {
                 all_converged = false;
             }
             max_iterations = std::max(max_iterations, result.iterations);
 
-            HB15PairState current_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+            HernandezPairState current_pair = HernandezPairState::from_bodies(test_bodies, 0, 1);
 
             const double energy_current = current_pair.two_body_energy(G);
             const Vec3 angular_momentum_current = current_pair.two_body_angular_momentum();
@@ -342,13 +342,13 @@ void Tests::TestHB15PairKeplerSuite() {
             max_total_momentum_error = std::max(max_total_momentum_error, (total_momentum_current - total_momentum_initial).norm());
         }
 
-        HB15PairState final_pair = HB15PairState::from_bodies(test_bodies, 0, 1);
+        HernandezPairState final_pair = HernandezPairState::from_bodies(test_bodies, 0, 1);
 
         const double one_period_relative_position_error = (final_pair.relative_position - initial_pair.relative_position).norm();
         const double one_period_relative_velocity_error = (final_pair.relative_velocity - initial_pair.relative_velocity).norm();
 
         for (int step = 0; step < steps; ++step) {
-            HB15PairMapResult result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+            HernandezPairMapResult result = apply_hernandez_pair_kepler_map(test_bodies, 0, 1, -dt, G);
             if (!result.converged) {
                 all_converged = false;
             }
@@ -402,8 +402,8 @@ void Tests::TestHB15PairKeplerSuite() {
     }
 }
 
-void Tests::TestHB15PairDiagnostics() {
-    std::cout << "\n=== HB15 Pair Diagnostics Test ===\n";
+void Tests::TestHernandezPairDiagnostics() {
+    std::cout << "\n=== Hernandez Pair Diagnostics Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
@@ -422,7 +422,7 @@ void Tests::TestHB15PairDiagnostics() {
     print_pair_diagnostics(std::cout, initial, "Initial pair diagnostics:");
 
     const double dt = 0.25;
-    const HB15PairMapResult forward_result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, dt, G);
+    const HernandezPairMapResult forward_result = apply_hernandez_pair_kepler_map(test_bodies, 0, 1, dt, G);
     const PairDiagnostics after_forward = compute_pair_diagnostics(test_bodies, 0, 1, G);
     const PairDiagnosticDeviation forward_deviation = compare_pair_diagnostics(after_forward, initial);
 
@@ -430,7 +430,7 @@ void Tests::TestHB15PairDiagnostics() {
 
     print_pair_diagnostics_deviation(std::cout, forward_deviation, "Forward pair diagnostic deviation:");
 
-    const HB15PairMapResult backward_result = apply_hb15_pair_kepler_map(test_bodies, 0, 1, -dt, G);
+    const HernandezPairMapResult backward_result = apply_hernandez_pair_kepler_map(test_bodies, 0, 1, -dt, G);
     const PairDiagnostics after_backward = compute_pair_diagnostics(test_bodies, 0, 1, G);
     const PairDiagnosticDeviation backward_deviation = compare_pair_diagnostics(after_backward, initial);
 
@@ -439,8 +439,8 @@ void Tests::TestHB15PairDiagnostics() {
     print_pair_diagnostics_deviation(std::cout, backward_deviation, "Forward-backward pair diagnostic deviation:");
 }
 
-void Tests::TestHB15SymmetricOrdering() {
-    std::cout << "\n=== HB15 Symmetric Ordering Test ===\n";
+void Tests::TestHernandezSymmetricOrdering() {
+    std::cout << "\n=== Hernandez Symmetric Ordering Test ===\n";
 
     SolverParams params = readParams("data/param.txt");
     const double G = params.gravitational_constant;
@@ -454,16 +454,16 @@ void Tests::TestHB15SymmetricOrdering() {
     std::vector<Body> initial = test_bodies;
     std::vector<Pair> test_pairs = {{0, 1}, {0, 2}, {1, 2}};
 
-    HB15 hb15(test_pairs);
+    Hernandez hernandez(test_pairs);
 
     const double dt = 0.05;
     const int steps = 100;
 
     for(int step = 0; step < steps; ++step) {
-        hb15.step(test_bodies, dt, G);
+        hernandez.step(test_bodies, dt, G);
     }
     for (int step = 0; step < steps; ++step) {
-        hb15.step(test_bodies, -dt, G);
+        hernandez.step(test_bodies, -dt, G);
     }
 
     double max_position_error = 0.0;
@@ -484,8 +484,8 @@ void Tests::TestHB15SymmetricOrdering() {
     std::cout << "Max velocity error: " << max_velocity_error << "\n";
 }
 
-void Tests::TestHB15FixedStepValidation() {
-    std::cout << "\n=== HB15 Fixed-Step Validation Test ===\n";
+void Tests::TestHernandezFixedStepValidation() {
+    std::cout << "\n=== Hernandez Fixed-Step Validation Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
@@ -498,7 +498,7 @@ void Tests::TestHB15FixedStepValidation() {
         update_all_momenta(test_bodies);
 
         const std::vector<Pair> pairs = make_all_physical_pairs(test_bodies);
-        HB15 hb15(pairs);
+        Hernandez hernandez(pairs);
 
         const Diagnostics initial = compute_diagnostics(test_bodies, G, dt);
 
@@ -508,7 +508,7 @@ void Tests::TestHB15FixedStepValidation() {
         double max_com_drift = initial.com_drift;
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step(test_bodies, dt, G);
+            hernandez.step(test_bodies, dt, G);
 
             const Diagnostics current = compute_diagnostics(test_bodies, G, dt);
 
@@ -542,7 +542,7 @@ void Tests::TestHB15FixedStepValidation() {
     {
         const double total_mass = 1.0 + 1.0e-6;
         const double separation = 1.0;
-        std::vector<Body> two_body = make_hb15_two_body_circular_test(G);
+        std::vector<Body> two_body = make_hernandez_two_body_circular_test(G);
 
         const double period = 2.0 * std::acos(-1.0) * std::sqrt((separation * separation * separation) / (G * total_mass));
         const int steps = 512;
@@ -552,7 +552,7 @@ void Tests::TestHB15FixedStepValidation() {
     }
 
     {
-        std::vector<Body> three_body = make_hb15_three_body_planet_test();
+        std::vector<Body> three_body = make_hernandez_three_body_planet_test();
 
         const double dt = 0.25;
         const int steps = static_cast<int>(365.0 / dt);
@@ -561,8 +561,8 @@ void Tests::TestHB15FixedStepValidation() {
     }
 }
 
-void Tests::TestHB15Reversibility() {
-    std::cout << "\n=== HB15 Direct Reversibility Test ===\n";
+void Tests::TestHernandezReversibility() {
+    std::cout << "\n=== Hernandez Direct Reversibility Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
@@ -576,13 +576,13 @@ void Tests::TestHB15Reversibility() {
 
         const std::vector<Body> initial = test_bodies;
         const std::vector<Pair> pairs = make_all_physical_pairs(test_bodies);
-        HB15 hb15(pairs);
+        Hernandez hernandez(pairs);
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step(test_bodies, dt, G);
+            hernandez.step(test_bodies, dt, G);
         }
         for (int step = 0; step < steps; ++step) {
-            hb15.step(test_bodies, -dt, G);
+            hernandez.step(test_bodies, -dt, G);
         }
 
         double max_position_error = 0.0;
@@ -614,25 +614,25 @@ void Tests::TestHB15Reversibility() {
     };
 
     {
-        std::vector<Body> two_body = make_hb15_two_body_circular_test(G);
-        run_case("Two-body HB15 reversibility", two_body, 0.25, 1000);
+        std::vector<Body> two_body = make_hernandez_two_body_circular_test(G);
+        run_case("Two-body Hernandez reversibility", two_body, 0.25, 1000);
     }
 
     {
-        std::vector<Body> three_body = make_hb15_three_body_planet_test();
+        std::vector<Body> three_body = make_hernandez_three_body_planet_test();
         run_case("Three-body fixed-step stability", three_body, 0.25, 1460);
     }
 }
 
-void Tests::TestHB15StateRoundTrip() {
-    std::cout << "\n=== HB15 Cartesian State Round-Trip Test ===\n";
+void Tests::TestHernandezStateRoundTrip() {
+    std::cout << "\n=== Hernandez Cartesian State Round-Trip Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
-    std::vector<Body> test_bodies = make_hb15_three_body_planet_test();
+    std::vector<Body> test_bodies = make_hernandez_three_body_planet_test();
     update_all_momenta(test_bodies);
 
     const std::vector<Body> original_bodies = test_bodies;
-    const HB15State state = HB15State::from_bodies(test_bodies);
+    const HernandezState state = HernandezState::from_bodies(test_bodies);
     const std::vector<Body> reconstructed_bodies = state.to_bodies();
 
     double max_mass_error = 0.0;
@@ -683,8 +683,8 @@ void Tests::TestHB15StateRoundTrip() {
     std::cout << "write_to_bodies max momentum error: " << max_write_momentum_error << "\n";
 }
 
-void Tests::TestHB15RemainderOperator() {
-    std::cout << "\n=== HB15 Remainder Operator Test ===\n";
+void Tests::TestHernandezRemainderOperator() {
+    std::cout << "\n=== Hernandez Remainder Operator Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
     
     SolverParams params = readParams("data/param.txt");
@@ -701,32 +701,32 @@ void Tests::TestHB15RemainderOperator() {
             max_momentum_error = std::max(max_momentum_error, (a[i].momentum - b[i].momentum).norm());
         }
 
-        std::cout << "Max HB15 vs direct pair-map position error: " << max_position_error << "\n";
-        std::cout << "Max HB15 vs direct pair-map velocity error: " << max_velocity_error << "\n";
-        std::cout << "Max HB15 vs direct pair-map momentum error: " << max_momentum_error << "\n";
+        std::cout << "Max Hernandez vs direct pair-map position error: " << max_position_error << "\n";
+        std::cout << "Max Hernandez vs direct pair-map velocity error: " << max_velocity_error << "\n";
+        std::cout << "Max Hernandez vs direct pair-map momentum error: " << max_momentum_error << "\n";
     };
 
     {
         std::cout << "\n-- N = 2 remainder-zero check --\n";
         const double dt = 0.25;
-        std::vector<Body> hb15_bodies = make_hb15_two_body_circular_test(G);
-        update_all_momenta(hb15_bodies);
+        std::vector<Body> hernandez_bodies = make_hernandez_two_body_circular_test(G);
+        update_all_momenta(hernandez_bodies);
         
-        std::vector<Body> direct_pair_bodies = hb15_bodies;
+        std::vector<Body> direct_pair_bodies = hernandez_bodies;
 
-        HB15 hb15(make_all_physical_pairs(hb15_bodies));
-        hb15.step(hb15_bodies, dt, G);
+        Hernandez hernandez(make_all_physical_pairs(hernandez_bodies));
+        hernandez.step(hernandez_bodies, dt, G);
 
-        const HB15PairMapResult direct_result = apply_hb15_pair_kepler_map(direct_pair_bodies, 0, 1, dt, G);
+        const HernandezPairMapResult direct_result = apply_hernandez_pair_kepler_map(direct_pair_bodies, 0, 1, dt, G);
 
         std::cout << "Direct pair map converged: " << std::boolalpha << direct_result.converged << ", iterations: " << direct_result.iterations << "\n";
-        max_state_difference(hb15_bodies, direct_pair_bodies);
+        max_state_difference(hernandez_bodies, direct_pair_bodies);
     }
 
     {
         std::cout << "\n--- N = 3 bounded remainder-composition check ---\n";
 
-        std::vector<Body> three_body = make_hb15_three_body_planet_test();
+        std::vector<Body> three_body = make_hernandez_three_body_planet_test();
 
         recenter_system(three_body);
         update_all_momenta(three_body);
@@ -734,7 +734,7 @@ void Tests::TestHB15RemainderOperator() {
         const double dt = 0.25;
         const int steps = 1460;
 
-        HB15 hb15(make_all_physical_pairs(three_body));
+        Hernandez hernandez(make_all_physical_pairs(three_body));
 
         const Diagnostics initial = compute_diagnostics(three_body, G, dt);
         
@@ -742,7 +742,7 @@ void Tests::TestHB15RemainderOperator() {
         double max_relative_angular_momentum_error = 0.0;
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step(three_body, dt, G);
+            hernandez.step(three_body, dt, G);
 
             const Diagnostics current = compute_diagnostics(three_body, G, dt);
             const double energy_scale = std::max(1.0e-30, std::abs(initial.total_energy));
@@ -767,8 +767,8 @@ void Tests::TestHB15RemainderOperator() {
     }
 }
 
-void Tests::TestHB15PairOrdering() {
-    std::cout << "\n=== HB15 Pair Ordering Test ===\n";
+void Tests::TestHernandezPairOrdering() {
+    std::cout << "\n=== Hernandez Pair Ordering Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     std::vector<Body> test_bodies;
@@ -794,20 +794,20 @@ void Tests::TestHB15PairOrdering() {
     print_order("Strength pair order:", strength_pairs);
 
     if (canonical_pairs.size() != strength_pairs.size()) {
-        throw std::runtime_error("HB15PairOrdering failed: no strength-ordered pairs were produced.");
+        throw std::runtime_error("HernandezPairOrdering failed: no strength-ordered pairs were produced.");
     }
     if (strength_pairs.empty()) {
-        throw std::runtime_error("HB15PairOrdering failed: strongest pair should be (1, 2).");
+        throw std::runtime_error("HernandezPairOrdering failed: strongest pair should be (1, 2).");
     }
     if (canonical_pairs.front().i == strength_pairs.front().i && canonical_pairs.front().j == strength_pairs.front().j) {
-        throw std::runtime_error("HB15PairOrdering failed: canonical and strength order did not differ.");
+        throw std::runtime_error("HernandezPairOrdering failed: canonical and strength order did not differ.");
     }
 
-    std::cout << "HB15 pair ordering validation passed.\n";
+    std::cout << "Hernandez pair ordering validation passed.\n";
 }
 
-void Tests::TestHB15HierarchyDiagnostics() {
-    std::cout << "\n=== HB15 Hierarchy Diagnostics Test ==\n";
+void Tests::TestHernandezHierarchyDiagnostics() {
+    std::cout << "\n=== Hernandez Hierarchy Diagnostics Test ==\n";
     std::cout << std::scientific << std::setprecision(17);
 
     std::vector<Body> test_bodies;
@@ -830,16 +830,16 @@ void Tests::TestHB15HierarchyDiagnostics() {
     std::cout <<"Strongest / second strongest ratio: " << ratio << "\n";
 
     if (strength_ordered_pairs.empty()) {
-        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: no pairs were produced.");
+        throw std::runtime_error("TestHernandezHierarchyDiagnostics failed: no pairs were produced.");
     }
     if (strength_ordered_pairs.front().i != 1 || strength_ordered_pairs.front().j != 2) {
-        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: strongest pair should be (1, 2).");
+        throw std::runtime_error("TestHernandezHierarchyDiagnostics failed: strongest pair should be (1, 2).");
     }
     if (ratio < 10.0) {
-        throw std::runtime_error("TestHB15HierarchyDiagnostics failed: hierarchy ratio is too weak.");
+        throw std::runtime_error("TestHernandezHierarchyDiagnostics failed: hierarchy ratio is too weak.");
     }
 
-    std::cout << "HB15 hierarchy diagnostics validation passed.\n";
+    std::cout << "Hernandez hierarchy diagnostics validation passed.\n";
 }
 
 void Tests::TestHierarchyTreeModel() {
@@ -968,8 +968,8 @@ void Tests::TestHierarchySelectionCriteria() {
     std::cout << "Hierarchy selection criteria validation passed.\n";
 }
 
-void Tests::TestHB15RecursiveOrderingPrototype() {
-    std::cout << "\n=== HB15 Recursive Ordering Prototype Test ===\n";
+void Tests::TestHernandezRecursiveOrderingPrototype() {
+    std::cout << "\n=== Hernandez Recursive Ordering Prototype Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     auto require_pair = [](const Pair& pair, int expected_i, int expected_j, const std::string& message) {
@@ -1007,25 +1007,25 @@ void Tests::TestHB15RecursiveOrderingPrototype() {
     HierarchyTree hierarchical_tree(hierarchical_bodies);
 
     const std::vector<Pair> recursive_selected_pairs = hierarchical_tree.recursive_selected_leaf_pairs(hierarchical_bodies, criteria);
-    const std::vector<Pair> recursive_full_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+    const std::vector<Pair> recursive_full_order = hierarchical_tree.recursive_hernandez_pair_order(hierarchical_bodies, criteria);
 
     print_pairs("Recursive selected hierarchy pairs:", recursive_selected_pairs);
-    print_pairs("Recursive full HB15 pair order:", recursive_full_order);
+    print_pairs("Recursive full Hernandez pair order:", recursive_full_order);
 
     if (recursive_selected_pairs.size() != 2) {
-        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: expected two recursive selected pairs.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingPrototype failed: expected two recursive selected pairs.");
     }
 
-    require_pair(recursive_selected_pairs[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: first recursive selected pair should be (0, 1).");
-    require_pair(recursive_selected_pairs[1], 2, 3, "TestHB15RecursiveOrderingPrototype failed: second recursive selected pair should be (2, 3).");
+    require_pair(recursive_selected_pairs[0], 0, 1, "TestHernandezRecursiveOrderingPrototype failed: first recursive selected pair should be (0, 1).");
+    require_pair(recursive_selected_pairs[1], 2, 3, "TestHernandezRecursiveOrderingPrototype failed: second recursive selected pair should be (2, 3).");
 
     if (recursive_full_order.size() != 6) {
-        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: full four-body order should contain six pairs.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingPrototype failed: full four-body order should contain six pairs.");
     }
 
-    require_unique_pairs(recursive_full_order, "TestHB15RecursiveOrderingPrototype failed: recursive full order contains duplicate pairs.");
-    require_pair(recursive_full_order[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: full order should start with pair (0, 1).");
-    require_pair(recursive_full_order[1], 2, 3, "TestHB15RecursiveOrderingPrototype failed: full order should place (2, 3) second.");
+    require_unique_pairs(recursive_full_order, "TestHernandezRecursiveOrderingPrototype failed: recursive full order contains duplicate pairs.");
+    require_pair(recursive_full_order[0], 0, 1, "TestHernandezRecursiveOrderingPrototype failed: full order should start with pair (0, 1).");
+    require_pair(recursive_full_order[1], 2, 3, "TestHernandezRecursiveOrderingPrototype failed: full order should place (2, 3) second.");
 
     std::vector<Body> nonhierarchical_bodies;
     nonhierarchical_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
@@ -1036,25 +1036,25 @@ void Tests::TestHB15RecursiveOrderingPrototype() {
     HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
 
     const std::vector<Pair> nonhierarchical_selected_pair = nonhierarchical_tree.recursive_selected_leaf_pairs(nonhierarchical_bodies, criteria);
-    const std::vector<Pair> nonhierarchical_full_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+    const std::vector<Pair> nonhierarchical_full_order = nonhierarchical_tree.recursive_hernandez_pair_order(nonhierarchical_bodies, criteria);
 
     if (!nonhierarchical_selected_pair.empty()) {
-        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: non-hierarchical triangle should have no recursive selected pairs.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingPrototype failed: non-hierarchical triangle should have no recursive selected pairs.");
     }
     if (nonhierarchical_full_order.size() != 3) {
-        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: non-hierarchical triangle full order should contain three pairs.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingPrototype failed: non-hierarchical triangle full order should contain three pairs.");
     }
 
-    require_unique_pairs(nonhierarchical_full_order, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical full order contains duplicate pairs.");
-    require_pair(nonhierarchical_full_order[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should start canonical.");
-    require_pair(nonhierarchical_full_order[1], 0, 2, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
-    require_pair(nonhierarchical_full_order[2], 1, 2, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
+    require_unique_pairs(nonhierarchical_full_order, "TestHernandezRecursiveOrderingPrototype failed: non-hierarchical full order contains duplicate pairs.");
+    require_pair(nonhierarchical_full_order[0], 0, 1, "TestHernandezRecursiveOrderingPrototype failed: non-hierarchical order should start canonical.");
+    require_pair(nonhierarchical_full_order[1], 0, 2, "TestHernandezRecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
+    require_pair(nonhierarchical_full_order[2], 1, 2, "TestHernandezRecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
 
-    std::cout << "HB15 recursive ordering prototype validation passed.\n";
+    std::cout << "Hernandez recursive ordering prototype validation passed.\n";
 }
 
-void Tests::TestHB15RecursiveOrderingValidation() {
-    std::cout << "\n=== HB15 Recursive Ordering Validation Test ===\n";
+void Tests::TestHernandezRecursiveOrderingValidation() {
+    std::cout << "\n=== Hernandez Recursive Ordering Validation Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
@@ -1104,13 +1104,13 @@ void Tests::TestHB15RecursiveOrderingValidation() {
 
         const std::vector<Body> initial = test_bodies;
 
-        HB15 hb15(pair_order);
+        Hernandez hernandez(pair_order);
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step(test_bodies, dt, G);
+            hernandez.step(test_bodies, dt, G);
         }
         for (int step = 0; step < steps; ++step) {
-            hb15.step(test_bodies, -dt, G);
+            hernandez.step(test_bodies, -dt, G);
         }
 
         double max_position_error = 0.0;
@@ -1149,7 +1149,7 @@ void Tests::TestHB15RecursiveOrderingValidation() {
     HierarchyTree hierarchical_tree(hierarchical_bodies);
 
     const std::vector<Pair> canonical_pairs = canonicalize_pairs(make_all_physical_pairs(hierarchical_bodies));
-    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hernandez_pair_order(hierarchical_bodies, criteria);
 
     std::cout << "Canonical pair count: " << canonical_pairs.size() << "\n";
     std::cout << "Recursive pair count: " << recursive_order.size() << "\n";
@@ -1158,23 +1158,23 @@ void Tests::TestHB15RecursiveOrderingValidation() {
             std::cout << "Pair (" << pair.i << ", " << pair.j << ")\n";
         } 
     
-    require_unique_pairs(recursive_order, "TestHB15RecursiveOrderingValidation failed: recursive order contains duplicate pairs.");
-    require_same_pair_set(canonical_pairs, recursive_order, "TestHB15RecursiveOrderingValidation failed: recursive order does not contain the same pair set as canonical order.");
+    require_unique_pairs(recursive_order, "TestHernandezRecursiveOrderingValidation failed: recursive order contains duplicate pairs.");
+    require_same_pair_set(canonical_pairs, recursive_order, "TestHernandezRecursiveOrderingValidation failed: recursive order does not contain the same pair set as canonical order.");
 
     if (recursive_order.size() != 6) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: four-body recursive order should contain six pairs.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: four-body recursive order should contain six pairs.");
     }
     if (recursive_order[0].i != 0 || recursive_order[0].j != 1) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order should begin with pair (0, 1).");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: recursive order should begin with pair (0, 1).");
     }
     if (recursive_order[1].i != 2 || recursive_order[1].j != 3) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order should place pair (2, 3) second.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: recursive order should place pair (2, 3) second.");
     }
 
     const double hierarchical_error = max_forward_backward_error(hierarchical_bodies, recursive_order, 0.001, 1000);
 
     if (hierarchical_error > 1.0e-8) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order reversiblity error is too large.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: recursive order reversiblity error is too large.");
     }
 
     std::vector<Body> nonhierarchical_bodies;
@@ -1186,22 +1186,22 @@ void Tests::TestHB15RecursiveOrderingValidation() {
     HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
 
     const std::vector<Pair> nonhierarchical_canonical_pairs = canonicalize_pairs(make_all_physical_pairs(nonhierarchical_bodies));
-    const std::vector<Pair> nonhierarchical_recursive_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+    const std::vector<Pair> nonhierarchical_recursive_order = nonhierarchical_tree.recursive_hernandez_pair_order(nonhierarchical_bodies, criteria);
 
     if (!same_pair_order(nonhierarchical_recursive_order, nonhierarchical_canonical_pairs)) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: non-hierarchical recursive order should equal canonical order.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: non-hierarchical recursive order should equal canonical order.");
     }
 
     const double nonhierarchical_error = max_forward_backward_error(nonhierarchical_bodies, nonhierarchical_recursive_order, 0.001, 1000);
 
     if (nonhierarchical_error > 1.0e-8) {
-        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: non-hierarchical fallback reversibility error is too large.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: non-hierarchical fallback reversibility error is too large.");
     }
 
-    std::cout << "HB15 recursive ordering validation passed.\n";
+    std::cout << "Hernandez recursive ordering validation passed.\n";
 }
 
-void Tests::TestHB15PairLevelScheduler() {
+void Tests::TestHernandezPairLevelScheduler() {
     std::cout << "\n=== HB16 Pair-Level Scheduler Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
@@ -1219,9 +1219,9 @@ void Tests::TestHB15PairLevelScheduler() {
         }
         return false;
     };
-    auto count_pair_occurrences = [&](const HB15PairLevelSchedule& schedule, const Pair& target) {
+    auto count_pair_occurrences = [&](const HernandezPairLevelSchedule& schedule, const Pair& target) {
         int count = 0;
-        for (const HB15PairLevelGroup& group : schedule.levels) {
+        for (const HernandezPairLevelGroup& group : schedule.levels) {
             for (const Pair& pair : group.pairs) {
                 if (same_pair(pair, target)) {
                     ++count;
@@ -1230,8 +1230,8 @@ void Tests::TestHB15PairLevelScheduler() {
         }
         return count;
     };
-    auto find_pair_level = [&](const HB15PairLevelSchedule& schedule, const Pair& target) {
-        for (const HB15PairLevelGroup& group : schedule.levels) {
+    auto find_pair_level = [&](const HernandezPairLevelSchedule& schedule, const Pair& target) {
+        for (const HernandezPairLevelGroup& group : schedule.levels) {
             for (const Pair& pair : group.pairs) {
                 if (same_pair(pair, target)) {
                     return group.level;
@@ -1259,40 +1259,40 @@ void Tests::TestHB15PairLevelScheduler() {
     update_all_momenta(hierarchical_bodies);
     HierarchyTree hierarchical_tree(hierarchical_bodies);
 
-    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hernandez_pair_order(hierarchical_bodies, criteria);
     const double base_dt = 0.25;
     const double eta = 0.05;
     const int max_level = 4;
     const TimestepPlan plan = build_timestep_plan(hierarchical_bodies, recursive_order, base_dt, G, max_level, eta);
-    const HB15PairLevelSchedule schedule = build_hb15_pair_level_schedule(plan);
+    const HernandezPairLevelSchedule schedule = build_hernandez_pair_level_schedule(plan);
 
-    print_hb15_pair_level_schedule(schedule);
+    print_hernandez_pair_level_schedule(schedule);
 
     if (plan.pair_info.size() != recursive_order.size()) {
         throw std::runtime_error(
-            "TestHB15PairLevelScheduler failed: planner did not preserve the full recursive pair count."
+            "TestHernandezPairLevelScheduler failed: planner did not preserve the full recursive pair count."
         );
     }
     if (schedule.levels.size() != static_cast<std::size_t>(max_level + 1)) {
-        throw std::runtime_error("TestHB15PairLevelScheduler failed: schedule has the wrong number of levels.");
+        throw std::runtime_error("TestHernandezPairLevelScheduler failed: schedule has the wrong number of levels.");
     }
     for (std::size_t index = 0; index < recursive_order.size(); ++index) {
         if (!same_pair(plan.pair_info[index].pair, recursive_order[index])) {
-            throw std::runtime_error("TestHB15PairLevelScheduler failed: planner did not preserve recursive pair order.");
+            throw std::runtime_error("TestHernandezPairLevelScheduler failed: planner did not preserve recursive pair order.");
         }
     }
 
     int scheduled_pair_count = 0;
 
-    for (const HB15PairLevelGroup& group : schedule.levels) {
+    for (const HernandezPairLevelGroup& group : schedule.levels) {
         scheduled_pair_count += static_cast<int>(group.pairs.size());
     }
     if (scheduled_pair_count != static_cast<int>(recursive_order.size())) {
-        throw std::runtime_error("TestHB15PairLevelScheduler failed: schedule lost or added pairs.");
+        throw std::runtime_error("TestHernandezPairLevelScheduler failed: schedule lost or added pairs.");
     }
     for (const Pair& pair : recursive_order) {
         if (count_pair_occurrences(schedule, pair) != 1) {
-            throw std::runtime_error("TestHB15PairLevelScheduler failed: pair appears wrong number of times in schedule.");
+            throw std::runtime_error("TestHernandezPairLevelScheduler failed: pair appears wrong number of times in schedule.");
         }
     }
 
@@ -1305,11 +1305,11 @@ void Tests::TestHB15PairLevelScheduler() {
     std::cout << "Pair (2, 3) level: " << binary_b_level << "\n";
 
     if (binary_a_level <= 0) {
-        throw std::runtime_error("TestHB15PairLevelScheduler failed: tight binary (0, 1) should be assigned to a refined level.");
+        throw std::runtime_error("TestHernandezPairLevelScheduler failed: tight binary (0, 1) should be assigned to a refined level.");
     }
 
     if (binary_b_level <= 0) {
-        throw std::runtime_error("TestHB15PairLevelScheduler failed: tight binary (2, 3) should be assigned to a refined level.");
+        throw std::runtime_error("TestHernandezPairLevelScheduler failed: tight binary (2, 3) should be assigned to a refined level.");
     }
 
     std::vector<Body> nonhierarchical_bodies;
@@ -1321,21 +1321,21 @@ void Tests::TestHB15PairLevelScheduler() {
     update_all_momenta(nonhierarchical_bodies);
     HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
 
-    const std::vector<Pair> nonhierarchical_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+    const std::vector<Pair> nonhierarchical_order = nonhierarchical_tree.recursive_hernandez_pair_order(nonhierarchical_bodies, criteria);
     const TimestepPlan nonhierarchical_plan = build_timestep_plan(nonhierarchical_bodies, nonhierarchical_order, base_dt, G, max_level, eta);
-    const HB15PairLevelSchedule nonhierarchical_schedule = build_hb15_pair_level_schedule(nonhierarchical_plan);
+    const HernandezPairLevelSchedule nonhierarchical_schedule = build_hernandez_pair_level_schedule(nonhierarchical_plan);
 
     for (const Pair& pair : nonhierarchical_order) {
         if (!contains_pair(nonhierarchical_schedule.levels[0].pairs, pair)) {
-            throw std::runtime_error("TestHB15PairLevelScheduler failed: non-hierarchical fallback should keep all pairs at level 0.");
+            throw std::runtime_error("TestHernandezPairLevelScheduler failed: non-hierarchical fallback should keep all pairs at level 0.");
         }
     }
 
-    std::cout << "HB15 pair-level scheduler validation passed.\n";    
+    std::cout << "Hernandez pair-level scheduler validation passed.\n";    
 }
 
-void Tests::TestHB15BlockTimestepSequenceDesign() {
-    std::cout << "\n=== HB15 Block-Timestep Sequence Design Test ===\n";
+void Tests::TestHernandezBlockTimestepSequenceDesign() {
+    std::cout << "\n=== Hernandez Block-Timestep Sequence Design Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     struct TraceStep {
@@ -1381,12 +1381,12 @@ void Tests::TestHB15BlockTimestepSequenceDesign() {
     }
 
     if (trace.size() != 12) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: expected 12 trace operations for levels 0, 1, and 2.");
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: expected 12 trace operations for levels 0, 1, and 2.");
     }
     for (std::size_t i = 0; i < trace.size(); ++i) {
         const std::size_t j = trace.size() - 1 - i;
         if (trace[i].kind != trace[j].kind || trace[i].level != trace[j].level || std::fabs(trace[i].dt - trace[j].dt) > tolerance) {
-            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: sequence is not palindromic.");
+            throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: sequence is not palindromic.");
         }
     }
 
@@ -1405,36 +1405,36 @@ void Tests::TestHB15BlockTimestepSequenceDesign() {
             level_total_dt[step.level] += step.dt;
         }
         else {
-            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: invalid trace step level.");
+            throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: invalid trace step level.");
         }
     }
     if (correction_count != 2) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: correction wrapper should appear twice.");
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: correction wrapper should appear twice.");
     }
     if (std::fabs(correction_total_dt - base_dt) > tolerance) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: correction wrapper does not sum to one base step." );
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: correction wrapper does not sum to one base step." );
     }
     if (level_counts[0] != 2) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 0 should appear twice as two half steps.");
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: level 0 should appear twice as two half steps.");
     }
     if (level_counts[1] != 4) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 1 should appear four times.");
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: level 1 should appear four times.");
     }
     if (level_counts[2] != 4) {
-        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 2 should appear four times.");
+        throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: level 2 should appear four times.");
     }
     for (int level = 0; level <= max_level; ++level) {
         std::cout << "Level " << level << " total dt = " << level_total_dt[level] << ", count = " << level_counts[level] << "\n";
         if (std::fabs(level_total_dt[level] - base_dt) > tolerance) {
-            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: one level does not sum to one base step.");
+            throw std::runtime_error("TestHernandezBlockTimestepSequenceDesign failed: one level does not sum to one base step.");
         }
     }
     std::cout << "Correction total dt = " << correction_total_dt << "\n";
-    std::cout << "HB15 block-timestep sequence design validation passed.\n";
+    std::cout << "Hernandez block-timestep sequence design validation passed.\n";
 }
 
-void Tests::TestHB15AdaptiveBlockValidation() {
-    std::cout << "\n=== HB15 Adaptive Block Validation Test ===\n";
+void Tests::TestHernandezAdaptiveBlockValidation() {
+    std::cout << "\n=== Hernandez Adaptive Block Validation Test ===\n";
     std::cout << std::scientific << std::setprecision(17);
 
     SolverParams params = readParams("data/param.txt");
@@ -1487,21 +1487,21 @@ void Tests::TestHB15AdaptiveBlockValidation() {
     std::vector<Body> initial_bodies = make_hierarchical_block_test();
     HierarchyTree tree(initial_bodies);
 
-    const std::vector<Pair> recursive_order = tree.recursive_hb15_pair_order(initial_bodies, criteria);
+    const std::vector<Pair> recursive_order = tree.recursive_hernandez_pair_order(initial_bodies, criteria);
     const double base_dt = 0.25;
     const int max_level = 4;
     const double eta = 0.05;
     const TimestepPlan plan = build_timestep_plan(initial_bodies, recursive_order, base_dt, G, max_level, eta);
-    const HB15PairLevelSchedule schedule = build_hb15_pair_level_schedule(plan);
+    const HernandezPairLevelSchedule schedule = build_hernandez_pair_level_schedule(plan);
 
-    HB15 hb15(recursive_order);
+    Hernandez hernandez(recursive_order);
 
     {
         std::vector<Body> filtered_bodies = initial_bodies;
         const std::vector<Body> before = filtered_bodies;
         const std::vector<Pair> active_pairs = {{0, 1}};
 
-        hb15.apply_pair_group(filtered_bodies, active_pairs, 0.01, G);
+        hernandez.apply_pair_group(filtered_bodies, active_pairs, 0.01, G);
 
         const double untouched_body_2_error = single_body_error(filtered_bodies[2], before[2]);
 
@@ -1511,22 +1511,22 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         std::cout << "Filtered group untouched body 3 error: " << untouched_body_3_error << "\n";
 
         if (untouched_body_2_error > 1.0e-14 || untouched_body_3_error > 1.0e-14) {
-            throw std::runtime_error( "TestHB15AdaptiveBlockValidation failed: filtered pair group changed inactive bodies.");
+            throw std::runtime_error( "TestHernandezAdaptiveBlockValidation failed: filtered pair group changed inactive bodies.");
         }
 
-        hb15.apply_pair_group(filtered_bodies, active_pairs, -0.01, G);
+        hernandez.apply_pair_group(filtered_bodies, active_pairs, -0.01, G);
 
         const double filtered_reversibility_error = max_state_error(filtered_bodies, before);
 
         std::cout << "Filtered pair-group forward-backward error: " << filtered_reversibility_error << "\n";
 
         if (filtered_reversibility_error > 1.0e-10) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: filtered pair group is not reversible enough.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: filtered pair group is not reversible enough.");
         }
     }
 
     {
-        HB15PairLevelSchedule level_zero_schedule;
+        HernandezPairLevelSchedule level_zero_schedule;
         level_zero_schedule.base_dt = base_dt;
         level_zero_schedule.max_level = 0;
         level_zero_schedule.levels.push_back({0, base_dt, recursive_order});
@@ -1534,15 +1534,15 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         std::vector<Body> fixed_bodies = initial_bodies;
         std::vector<Body> block_bodies = initial_bodies;
 
-        hb15.step(fixed_bodies, base_dt, G);
-        hb15.step_block(block_bodies, level_zero_schedule, base_dt, G);
+        hernandez.step(fixed_bodies, base_dt, G);
+        hernandez.step_block(block_bodies, level_zero_schedule, base_dt, G);
 
         const double fixed_vs_block_error = max_state_error(fixed_bodies, block_bodies);
 
-        std::cout << "Fixed HB15 vs level-0 block HB15 error: " << fixed_vs_block_error << "\n";
+        std::cout << "Fixed Hernandez vs level-0 block Hernandez error: " << fixed_vs_block_error << "\n";
 
         if (fixed_vs_block_error > 1.0e-13) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: level-0 block mode does not recover fixed HB15.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: level-0 block mode does not recover fixed Hernandez.");
         }
     }
 
@@ -1552,10 +1552,10 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         const int steps = 20;
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step_block(block_bodies, schedule, base_dt, G);
+            hernandez.step_block(block_bodies, schedule, base_dt, G);
         }
         for (int step = 0; step < steps; ++step) {
-            hb15.step_block(block_bodies, schedule, -base_dt, G);
+            hernandez.step_block(block_bodies, schedule, -base_dt, G);
         }
 
         const double block_reversibility_error = max_state_error(block_bodies, before);
@@ -1563,7 +1563,7 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         std::cout << "Scheduled block-mode forward-backward error: " << block_reversibility_error << "\n";
 
         if (block_reversibility_error > 1.0e-8) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: scheduled block mode reversibility error is too large.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: scheduled block mode reversibility error is too large.");
         }
     }
 
@@ -1573,27 +1573,27 @@ void Tests::TestHB15AdaptiveBlockValidation() {
 
         update_adaptive_level_state(state, 2, decrease_delay, true);
         if (state.active_level != 2) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: first adaptive refresh did not initialize active level.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: first adaptive refresh did not initialize active level.");
         }
 
         update_adaptive_level_state(state, 4, decrease_delay, false);
         if (state.active_level != 4 || state.pending_lower_level != -1) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: deeper level was not accepted immediately.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: deeper level was not accepted immediately.");
         }
 
         update_adaptive_level_state(state, 1, decrease_delay, false);
         if (state.active_level != 4 || state.pending_lower_level != 1 || state.pending_lower_level_count != 1) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: first lower-level request was not delayed.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: first lower-level request was not delayed.");
         }
 
         update_adaptive_level_state(state, 1, decrease_delay, false);
         if (state.active_level != 4 || state.pending_lower_level_count != 2) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: second lower-level request was not delayed.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: second lower-level request was not delayed.");
         }
 
         update_adaptive_level_state(state, 1, decrease_delay, false);
         if (state.active_level != 3 || state.pending_lower_level != -1 || state.pending_lower_level_count != 0) {
-            throw std::runtime_error( "TestHB15AdaptiveBlockValidation failed: delayed lower-level transition did not decrease by one level.");
+            throw std::runtime_error( "TestHernandezAdaptiveBlockValidation failed: delayed lower-level transition did not decrease by one level.");
         }
 
         std::cout << "Adaptive level safety-rule validation passed.\n";
@@ -1609,11 +1609,11 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         double max_com_drift = 0.0;
 
         for (int step = 0; step < steps; ++step) {
-            hb15.step_block(block_bodies, schedule, base_dt, G);
+            hernandez.step_block(block_bodies, schedule, base_dt, G);
             const Diagnostics current = compute_diagnostics(block_bodies, G, base_dt);
 
             if (!std::isfinite(current.total_energy) || !std::isfinite(current.linear_momentum) || !std::isfinite(current.com_drift)) {
-                throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: diagnostics became non-finite.");
+                throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: diagnostics became non-finite.");
             }
 
             const double energy_scale = std::max(1.0e-30, std::abs(initial.total_energy));
@@ -1629,8 +1629,8 @@ void Tests::TestHB15AdaptiveBlockValidation() {
         std::cout << "Block-mode max COM drift: " << max_com_drift << "\n";
 
         if (max_linear_momentum > 1.0e-8) {
-            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: linear momentum drift is too large.");
+            throw std::runtime_error("TestHernandezAdaptiveBlockValidation failed: linear momentum drift is too large.");
         }
     }
-    std::cout << "HB15 adaptive block validation passed.\n";
+    std::cout << "Hernandez adaptive block validation passed.\n";
 }

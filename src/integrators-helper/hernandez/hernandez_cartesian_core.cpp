@@ -1,13 +1,13 @@
 #include <stdexcept>
 #include <algorithm>
 
-#include "integrators/hb15.h"
-#include "integrators-helper/hb15/pair_map.h"
+#include "integrators/hernandez.h"
+#include "integrators-helper/hernandez/pair_map.h"
 #include "dynamics/pairing.h"
 #include "dynamics/timestep_planner.h"
 
 namespace {
-    struct HB15HamiltonianBookKeeping {
+    struct HernandezHamiltonianBookKeeping {
         int body_count = 0;
         int pair_count = 0;
 
@@ -20,7 +20,7 @@ namespace {
             H_correction = -(N - 2) T
         
         where T is the total Cartesian kinetic energy.
-        The second-order symmetric HB15 step applies pair maps in two half sweeps:
+        The second-order symmetric Hernandez step applies pair maps in two half sweeps:
 
             correction half drift
             forward pair half maps
@@ -36,16 +36,16 @@ namespace {
        double correction_half_dt = 0.0;
     };
 
-    int deepest_nonempty_level(const HB15PairLevelSchedule& schedule) {
+    int deepest_nonempty_level(const HernandezPairLevelSchedule& schedule) {
         int deepest_level = 0;
-        for (const HB15PairLevelGroup& group : schedule.levels) {
+        for (const HernandezPairLevelGroup& group : schedule.levels) {
             if (!group.pairs.empty()) {
                 deepest_level = std::max(deepest_level, group.level);
             }
         }
         return deepest_level;
     }
-    void apply_block_level(const HB15& hb15, std::vector<Body>& bodies, const HB15PairLevelSchedule& schedule, int level, int max_level, double dt, double G) {
+    void apply_block_level(const HernandezCartesianCore& hernandez, std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, int level, int max_level, double dt, double G) {
         if (level > max_level || level >= static_cast<int>(schedule.levels.size())) {
             return;
         }
@@ -53,26 +53,26 @@ namespace {
         const std::vector<Pair>& active_pairs = schedule.levels[static_cast<std::size_t>(level)].pairs;
 
         if (level == max_level) {
-            hb15.apply_pair_group(bodies, active_pairs, dt, G);
+            hernandez.apply_pair_group(bodies, active_pairs, dt, G);
             return;
         }
 
-        hb15.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
+        hernandez.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
 
-        apply_block_level(hb15, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
-        apply_block_level(hb15, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
+        apply_block_level(hernandez, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
+        apply_block_level(hernandez, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
 
-        hb15.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
+        hernandez.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
     }
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
-        HB15PairMapResult result = apply_hb15_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+        HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
         if (!result.converged) {
-            throw std::runtime_error("HB15 pair Kepler map failed to converge.");
+            throw std::runtime_error("Hernandez pair Kepler map failed to converge.");
         }
     }
     /*
-        Flow of the HB15 kinetic remainder Hamiltonian.
-        In the all-pairs HB15 split, the sum of pair Kepler Hamiltonians counts each body's kinetic energy N - 1 times.
+        Flow of the Hernandez kinetic remainder Hamiltonian.
+        In the all-pairs Hernandez split, the sum of pair Kepler Hamiltonians counts each body's kinetic energy N - 1 times.
         The true Newtonian Hamiltonian needs one copy, so the remainder/correction term is:
 
             H_remainder = -(N - 2) * T
@@ -88,15 +88,15 @@ namespace {
         
         The coefficient -(N - 2) is already included in remainder_dt
     */
-    void apply_hb15_remainder_flow(std::vector<Body>& bodies, double remainder_dt) {
+    void apply_hernandez_remainder_flow(std::vector<Body>& bodies, double remainder_dt) {
         for (Body& body : bodies) {
             body.position += remainder_dt * body.velocity;
             body.updateMomentumFromVelocity();
         }
     }
 
-    HB15HamiltonianBookKeeping make_hb15_bookkeeping(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt) {
-        HB15HamiltonianBookKeeping bookkeeping;
+    HernandezHamiltonianBookKeeping make_hernandez_bookkeeping(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double dt) {
+        HernandezHamiltonianBookKeeping bookkeeping;
 
         bookkeeping.body_count = static_cast<int>(bodies.size());
         bookkeeping.pair_count = static_cast<int>(pairs.size());
@@ -116,9 +116,9 @@ namespace {
     }
 }
 
-HB15::HB15(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
+HernandezCartesianCore::HernandezCartesianCore(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
 
-void HB15::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
+void HernandezCartesianCore::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
     const std::vector<Pair> ordered_pairs = canonicalize_pairs_preserve_order(active_pairs);
     const double pair_half_dt = 0.5 * dt;
 
@@ -130,19 +130,19 @@ void HB15::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& 
     }
 }
 
-void HB15::step(std::vector<Body>& bodies, double dt, double G) {
-    const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);
+void HernandezCartesianCore::step(std::vector<Body>& bodies, double dt, double G) {
+    const HernandezHamiltonianBookKeeping bookkeeping = make_hernandez_bookkeeping(bodies, pairs_, dt);
     if (bookkeeping.body_count <= 1 || bookkeeping.pair_count == 0) {
         return;
     }
 
-    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
     apply_pair_group(bodies, pairs_, dt, G);
-    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
-void HB15::step_block(std::vector<Body>& bodies, const HB15PairLevelSchedule& schedule, double dt, double G) const {
-    const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);
+void HernandezCartesianCore::step_block(std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, double dt, double G) const {
+    const HernandezHamiltonianBookKeeping bookkeeping = make_hernandez_bookkeeping(bodies, pairs_, dt);
     const int max_level = deepest_nonempty_level(schedule);
 
     if (bookkeeping.body_count <= 1 || bookkeeping.pair_count == 0) {
@@ -152,11 +152,11 @@ void HB15::step_block(std::vector<Body>& bodies, const HB15PairLevelSchedule& sc
         return;
     }
 
-    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
     apply_block_level(*this, bodies, schedule, 0, max_level, dt, G);
-    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
-const std::vector<Pair>& HB15::pairs() const {
+const std::vector<Pair>& HernandezCartesianCore::pairs() const {
     return pairs_;
 }

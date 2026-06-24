@@ -29,7 +29,7 @@ int main() {
     //sim.run();
 
     // Run Optional Tests for Validation (example: sim.tests.[]())
-    sim.tests.TestHB15AdaptiveBlockValidation();
+    sim.tests.TestHernandezAdaptiveBlockValidation();
 
     // Close output file
     output.close();

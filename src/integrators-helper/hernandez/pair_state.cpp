@@ -1,30 +1,30 @@
 #include <stdexcept>
 
-#include "integrators-helper/hb15/pair_state.h"
+#include "integrators-helper/hernandez/pair_state.h"
 
 namespace {
     void validate_pair_indices(const std::vector<Body>& bodies, int i, int j) {
         const int N = static_cast<int>(bodies.size());
 
         if (i < 0 || j < 0) {
-            throw std::runtime_error("HB15PairState received a negative body index.");
+            throw std::runtime_error("HernandezPairState received a negative body index.");
         }
         if (i >= N || j >= N) {
-            throw std::runtime_error("HB15PairState body index is out of range.");
+            throw std::runtime_error("HernandezPairState body index is out of range.");
         }
         if (i == j) {
-            throw std::runtime_error("HB15PairState requires two distinct bodies.");
+            throw std::runtime_error("HernandezPairState requires two distinct bodies.");
         }
         if (bodies[i].mass <= 0.0 || bodies[j].mass <= 0.0) {
-            throw std::runtime_error("HB15PairState requires positive body masses.");
+            throw std::runtime_error("HernandezPairState requires positive body masses.");
         }
     }
 }
 
-HB15PairState HB15PairState::from_bodies(const std::vector<Body>& bodies, int i, int j) {
+HernandezPairState HernandezPairState::from_bodies(const std::vector<Body>& bodies, int i, int j) {
     validate_pair_indices(bodies, i, j);
 
-    HB15PairState pair;
+    HernandezPairState pair;
 
     pair.i = i;
     pair.j = j;
@@ -40,7 +40,7 @@ HB15PairState HB15PairState::from_bodies(const std::vector<Body>& bodies, int i,
     return pair;
 }
 
-void HB15PairState::write_to_bodies(std::vector<Body>& bodies) const {
+void HernandezPairState::write_to_bodies(std::vector<Body>& bodies) const {
     validate_pair_indices(bodies, i, j);
 
     const double coeff_i = mass_j / total_mass;
@@ -55,14 +55,14 @@ void HB15PairState::write_to_bodies(std::vector<Body>& bodies) const {
     bodies[j].updateMomentumFromVelocity();
 }
 
-double HB15PairState::gravitational_parameter(double G) const {
+double HernandezPairState::gravitational_parameter(double G) const {
     return G * total_mass;
 }
-double HB15PairState::two_body_energy(double G) const {
+double HernandezPairState::two_body_energy(double G) const {
     const double r = relative_position.norm();
 
     if (r <= 0.0) {
-        throw std::runtime_error("HB15PairState two-body energy has zero separation.");
+        throw std::runtime_error("HernandezPairState two-body energy has zero separation.");
     }
 
     const double kinetic = 0.5 * reduced_mass * relative_velocity.norm2();
@@ -71,9 +71,9 @@ double HB15PairState::two_body_energy(double G) const {
     return kinetic + potential;
 }
 
-Vec3 HB15PairState::two_body_angular_momentum() const {
+Vec3 HernandezPairState::two_body_angular_momentum() const {
     return reduced_mass * cross(relative_position, relative_velocity);
 }
-Vec3 HB15PairState::total_momentum() const {
+Vec3 HernandezPairState::total_momentum() const {
     return total_mass * com_velocity;
 }

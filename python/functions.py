@@ -655,7 +655,7 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 
     runtime = float(params.get("runtime", 1.0))
     output_frequency = int(params.get("output_frequency", 10))
-    integrator = params.get("integrator", "hb15")
+    integrator = params.get("integrator", "hernandez")
     coordinate_mode = params.get("coordinate_mode", "cartesian")
     G = float(params.get("gravitational_constant", 0.000296014912))
 
@@ -731,9 +731,9 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = True,) -> None:
     if modes is None:
         modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi", "pair_order": "canonical"},
-                 {"name": "hb15_canonical", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "canonical"},
-                 {"name": "hb15_strength", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "strength"},
-                 {"name": "hb15_auto", "integrator": "hb15", "coordinate_mode": "cartesian", "pair_order": "auto"},
+                 {"name": "hernandez_canonical", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "canonical"},
+                 {"name": "hernandez_strength", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "strength"},
+                 {"name": "hernandez_auto", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "auto"},
                  {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian", "pair_order": "canonical"}]
     
     config = PlotConfig()

@@ -4,7 +4,7 @@
 
 #include "analysis/diagnostics.h"
 #include "math/vec3.h"
-#include "integrators-helper/hb15/pair_state.h"
+#include "integrators-helper/hernandez/pair_state.h"
 
 
 
@@ -97,7 +97,7 @@ PairDiagnostics compute_pair_diagnostics(const std::vector<Body>& bodies, int i,
         throw std::runtime_error("compute_pair_diagnostics pair index is out of range.");
     }
 
-    const HB15PairState pair = HB15PairState::from_bodies(bodies, i, j);
+    const HernandezPairState pair = HernandezPairState::from_bodies(bodies, i, j);
     PairDiagnostics diagnostics;
 
     diagnostics.i = i;

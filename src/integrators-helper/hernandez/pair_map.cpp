@@ -1,7 +1,7 @@
 #include <stdexcept>
 
-#include "integrators-helper/hb15/pair_map.h"
-#include "integrators-helper/hb15/pair_state.h"
+#include "integrators-helper/hernandez/pair_map.h"
+#include "integrators-helper/hernandez/pair_state.h"
 #include "numerics/propagator.h"
 
 /* ====================================================================================
@@ -32,11 +32,11 @@
 
    ==================================================================================== */
 
-HB15PairMapResult apply_hb15_pair_kepler_map(std::vector<Body>& bodies, int i, int j, double dt, double G) {
-    HB15PairState pair = HB15PairState::from_bodies(bodies, i, j);
+HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies, int i, int j, double dt, double G) {
+    HernandezPairState pair = HernandezPairState::from_bodies(bodies, i, j);
 
     if (pair.relative_position.norm() <= 1e-14) {
-        throw std::runtime_error("HB15 pair Kepler map received a pair with near-zero separation.");
+        throw std::runtime_error("Hernandez pair Kepler map received a pair with near-zero separation.");
     }
 
     const Vec3 relative_momentum = pair.reduced_mass * pair.relative_velocity;

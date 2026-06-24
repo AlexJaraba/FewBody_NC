@@ -13,22 +13,22 @@ public:
     void TestHierarchyTreeModel();
     void TestHierarchySelectionCriteria();
 
-    void TestHB15StateRoundTrip();
-    void TestHB15PairStateRoundTrip();
-    void TestHB15PairDiagnostics();
-    void TestHB15PairKeplerSuite();
-    void TestHB15PairOrdering();
+    void TestHernandezStateRoundTrip();
+    void TestHernandezPairStateRoundTrip();
+    void TestHernandezPairDiagnostics();
+    void TestHernandezPairKeplerSuite();
+    void TestHernandezPairOrdering();
     
-    void TestHB15HierarchyDiagnostics();
-    void TestHB15SymmetricOrdering();
-    void TestHB15RemainderOperator();
-    void TestHB15FixedStepValidation();
-    void TestHB15Reversibility();
-    void TestHB15RecursiveOrderingPrototype();
-    void TestHB15RecursiveOrderingValidation();
-    void TestHB15PairLevelScheduler();
-    void TestHB15BlockTimestepSequenceDesign();
-    void TestHB15AdaptiveBlockValidation();
+    void TestHernandezHierarchyDiagnostics();
+    void TestHernandezSymmetricOrdering();
+    void TestHernandezRemainderOperator();
+    void TestHernandezFixedStepValidation();
+    void TestHernandezReversibility();
+    void TestHernandezRecursiveOrderingPrototype();
+    void TestHernandezRecursiveOrderingValidation();
+    void TestHernandezPairLevelScheduler();
+    void TestHernandezBlockTimestepSequenceDesign();
+    void TestHernandezAdaptiveBlockValidation();
 
 private:
     Solver& solver_;

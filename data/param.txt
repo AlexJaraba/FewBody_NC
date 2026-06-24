@@ -2,7 +2,7 @@ output_frequency 20
 runtime 365
 timestep 0.025
 coordinate_mode cartesian
-integrator hb15
+integrator hernandez
 gravitational_constant 0.000296014912
 pair_order auto
 

@@ -235,13 +235,13 @@ std::vector<Pair> HierarchyTree::recursive_selected_leaf_pairs(const std::vector
     return canonicalize_pairs_preserve_order(ordered_pairs);
 }
 
-// Recursive HB15 Pair Order
-std::vector<Pair> HierarchyTree::recursive_hb15_pair_order(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const {
+// Recursive Hernandez Pair Order
+std::vector<Pair> HierarchyTree::recursive_hernandez_pair_order(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const {
     if (!root) {
         return {};
     }
     if (static_cast<int>(bodies.size()) != leaf_count()) {
-        throw std::runtime_error("HierarchyTree::recursive_hb15_order received a body count that does not match the tree.");
+        throw std::runtime_error("HierarchyTree::recursive_hernandez_order received a body count that does not match the tree.");
     }
 
     std::vector<Pair> ordered_pairs = recursive_selected_leaf_pairs(bodies, criteria);

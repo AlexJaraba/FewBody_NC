@@ -147,15 +147,15 @@ TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
     return schedule;
 }
 
-HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan) {
-    HB15PairLevelSchedule schedule;
+HernandezPairLevelSchedule build_hernandez_pair_level_schedule(const TimestepPlan& plan) {
+    HernandezPairLevelSchedule schedule;
 
     schedule.base_dt = plan.base_dt;
     schedule.max_level = std::max(plan.max_level, 0);
     schedule.levels.reserve(static_cast<std::size_t>(schedule.max_level + 1));
 
     for (int level = 0; level <= schedule.max_level; ++level) {
-        HB15PairLevelGroup group;
+        HernandezPairLevelGroup group;
         group.level = level;
         group.dt = timestep_for_level(plan.base_dt, level);
         schedule.levels.push_back(group);
@@ -168,15 +168,15 @@ HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan) {
     return schedule;
 }
 
-HB15PairLevelSchedule restrict_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule, int active_level) {
-    HB15PairLevelSchedule restricted;
+HernandezPairLevelSchedule restrict_hernandez_pair_level_schedule(const HernandezPairLevelSchedule& schedule, int active_level) {
+    HernandezPairLevelSchedule restricted;
 
     restricted.base_dt = schedule.base_dt;
     restricted.max_level = std::max(0, active_level);
     restricted.levels.reserve(static_cast<std::size_t>(restricted.max_level + 1));
 
     for (int level = 0; level <= restricted.max_level; ++level) {
-        HB15PairLevelGroup group;
+        HernandezPairLevelGroup group;
 
         group.level = level;
         group.dt = schedule.base_dt;
@@ -193,10 +193,10 @@ HB15PairLevelSchedule restrict_hb15_pair_level_schedule(const HB15PairLevelSched
     return restricted;
 }
 
-int deepest_nonempty_hb15_level(const HB15PairLevelSchedule& schedule) {
+int deepest_nonempty_hernandez_level(const HernandezPairLevelSchedule& schedule) {
     int deepest_level = 0;
 
-    for (const HB15PairLevelGroup& group : schedule.levels) {
+    for (const HernandezPairLevelGroup& group : schedule.levels) {
         if (!group.pairs.empty()) {
             deepest_level = std::max(deepest_level, group.level);
         }
@@ -309,12 +309,12 @@ void print_timestep_schedule_summary(const TimestepSchedule& schedule) {
     std::cout << "=================================================\n\n";
 }
 
-void print_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule) {
-    std::cout << "HB15 pair-level schedule:\n";
+void print_hernandez_pair_level_schedule(const HernandezPairLevelSchedule& schedule) {
+    std::cout << "Hernandez pair-level schedule:\n";
     std::cout << "Base dt: " << schedule.base_dt << "\n";
     std::cout << "Max level: " << schedule.max_level << "\n";
 
-    for (const HB15PairLevelGroup& group : schedule.levels) {
+    for (const HernandezPairLevelGroup& group : schedule.levels) {
         std::cout << "Level " << group.level << ", dt = " << group.dt << ", pairs = " << group.pairs.size() << "\n";
         for (const Pair& pair : group.pairs) {
             std::cout << " Pair (" << pair.i << ", " << pair.j << ")\n";

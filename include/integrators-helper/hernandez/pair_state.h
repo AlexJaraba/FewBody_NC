@@ -7,7 +7,7 @@
 
 /* ==========================================================
 
-    HB15PairState stores the physical two-body variables for one Cartesian pair.
+    HernandezPairState stores the physical two-body variables for one Cartesian pair.
 
     It converts the physical bodies into:
         center-of-mass position and velocity
@@ -19,7 +19,7 @@
 
    ==========================================================*/
 
-struct HB15PairState {
+struct HernandezPairState {
     int i = -1;
     int j = -1;
     
@@ -33,7 +33,7 @@ struct HB15PairState {
     Vec3 relative_position;
     Vec3 relative_velocity;
 
-    static HB15PairState from_bodies(const std::vector<Body>& bodies, int i, int j);
+    static HernandezPairState from_bodies(const std::vector<Body>& bodies, int i, int j);
 
     void write_to_bodies(std::vector<Body>& bodies) const;
 
