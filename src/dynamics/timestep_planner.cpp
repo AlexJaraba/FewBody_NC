@@ -118,6 +118,27 @@ TimestepPlan build_timestep_plan(const std::vector<Body>& bodies, const std::vec
     return plan;
 }
 
+HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan) {
+    HB15PairLevelSchedule schedule;
+
+    schedule.base_dt = plan.base_dt;
+    schedule.max_level = std::max(plan.max_level, 0);
+    schedule.levels.reserve(static_cast<std::size_t>(schedule.max_level + 1));
+
+    for (int level = 0; level <= schedule.max_level; ++level) {
+        HB15PairLevelGroup group;
+        group.level = level;
+        group.dt = timestep_for_level(plan.base_dt, level);
+        schedule.levels.push_back(group);
+    }
+
+    for (const PairTimestepInfo& info : plan.pair_info) {
+        const int safe_level = std::max(0, std::min(info.level, schedule.max_level));
+        schedule.levels[static_cast<std::size_t>(safe_level)].pairs.push_back(info.pair);
+    }
+    return schedule;
+}
+
 TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
     TimestepSchedule schedule;
     schedule.enabled = plan.enabled;
@@ -214,4 +235,17 @@ void print_timestep_schedule_summary(const TimestepSchedule& schedule) {
         std::cout << "\n";
     }
     std::cout << "=================================================\n\n";
+}
+
+void print_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule) {
+    std::cout << "HB15 pair-level schedule:\n";
+    std::cout << "Base dt: " << schedule.base_dt << "\n";
+    std::cout << "Max level: " << schedule.max_level << "\n";
+
+    for (const HB15PairLevelGroup& group : schedule.levels) {
+        std::cout << "Level " << group.level << ", dt = " << group.dt << ", pairs = " << group.pairs.size() << "\n";
+        for (const Pair& pair : group.pairs) {
+            std::cout << " Pair (" << pair.i << ", " << pair.j << ")\n";
+        }
+    }
 }

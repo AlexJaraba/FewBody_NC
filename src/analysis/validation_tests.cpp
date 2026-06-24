@@ -15,6 +15,7 @@
 #include "dynamics/pairing.h"
 #include "dynamics/hierarchy_node.h"
 #include "dynamics/hierarchy_tree.h"
+#include "dynamics/timestep_planner.h"
 #include "integrators/hb15.h"
 #include "integrators-helper/hb15/pair_map.h"
 #include "integrators-helper/hb15/pair_state.h"
@@ -1198,4 +1199,137 @@ void Tests::TestHB15RecursiveOrderingValidation() {
     }
 
     std::cout << "HB15 recursive ordering validation passed.\n";
+}
+
+void Tests::TestHB15PairLevelScheduler() {
+    std::cout << "\n=== HB16 Pair-Level Scheduler Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto same_pair = [](const Pair& a, const Pair& b) {
+        return a.i == b.i && a.j == b.j;
+    };
+    auto contains_pair = [&](const std::vector<Pair>& pairs, const Pair& target) {
+        for (const Pair& pair : pairs) {
+            if (same_pair(pair, target)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    auto count_pair_occurrences = [&](const HB15PairLevelSchedule& schedule, const Pair& target) {
+        int count = 0;
+        for (const HB15PairLevelGroup& group : schedule.levels) {
+            for (const Pair& pair : group.pairs) {
+                if (same_pair(pair, target)) {
+                    ++count;
+                }
+            }
+        }
+        return count;
+    };
+    auto find_pair_level = [&](const HB15PairLevelSchedule& schedule, const Pair& target) {
+        for (const HB15PairLevelGroup& group : schedule.levels) {
+            for (const Pair& pair : group.pairs) {
+                if (same_pair(pair, target)) {
+                    return group.level;
+                }
+            }
+        }
+        return -1;
+    };
+
+    HierarchySelectionCriteria criteria;
+    criteria.min_separation_ratio = 5.0;
+    criteria.min_strength_ratio = 10.0;
+
+    std::vector<Body> hierarchical_bodies;
+
+    const double binary_a_separation = 0.1;
+    const double binary_b_separation = 0.1;
+    const double binary_a_relative_speed = std::sqrt((G * 2.0) / binary_a_separation);
+    const double binary_b_relative_speed = std::sqrt((G * 1.0) / binary_b_separation);
+    hierarchical_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0,  -0.5 * binary_a_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(1.0, Vec3( 0.05, 0.0, 0.0),  Vec3(0.0,  0.5 * binary_a_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3( 9.95, 0.0, 0.0),  Vec3(0.0, -0.5 * binary_b_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0,   0.5 * binary_b_relative_speed, 0.0));
+
+    update_all_momenta(hierarchical_bodies);
+    HierarchyTree hierarchical_tree(hierarchical_bodies);
+
+    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+    const double base_dt = 0.25;
+    const double eta = 0.05;
+    const int max_level = 4;
+    const TimestepPlan plan = build_timestep_plan(hierarchical_bodies, recursive_order, base_dt, G, max_level, eta);
+    const HB15PairLevelSchedule schedule = build_hb15_pair_level_schedule(plan);
+
+    print_hb15_pair_level_schedule(schedule);
+
+    if (plan.pair_info.size() != recursive_order.size()) {
+        throw std::runtime_error(
+            "TestHB15PairLevelScheduler failed: planner did not preserve the full recursive pair count."
+        );
+    }
+    if (schedule.levels.size() != static_cast<std::size_t>(max_level + 1)) {
+        throw std::runtime_error("TestHB15PairLevelScheduler failed: schedule has the wrong number of levels.");
+    }
+    for (std::size_t index = 0; index < recursive_order.size(); ++index) {
+        if (!same_pair(plan.pair_info[index].pair, recursive_order[index])) {
+            throw std::runtime_error("TestHB15PairLevelScheduler failed: planner did not preserve recursive pair order.");
+        }
+    }
+
+    int scheduled_pair_count = 0;
+
+    for (const HB15PairLevelGroup& group : schedule.levels) {
+        scheduled_pair_count += static_cast<int>(group.pairs.size());
+    }
+    if (scheduled_pair_count != static_cast<int>(recursive_order.size())) {
+        throw std::runtime_error("TestHB15PairLevelScheduler failed: schedule lost or added pairs.");
+    }
+    for (const Pair& pair : recursive_order) {
+        if (count_pair_occurrences(schedule, pair) != 1) {
+            throw std::runtime_error("TestHB15PairLevelScheduler failed: pair appears wrong number of times in schedule.");
+        }
+    }
+
+    const Pair binary_a{0, 1};
+    const Pair binary_b{2, 3};
+    const int binary_a_level = find_pair_level(schedule, binary_a);
+    const int binary_b_level = find_pair_level(schedule, binary_b);
+
+    std::cout << "Pair (0, 1) level: " << binary_a_level << "\n";
+    std::cout << "Pair (2, 3) level: " << binary_b_level << "\n";
+
+    if (binary_a_level <= 0) {
+        throw std::runtime_error("TestHB15PairLevelScheduler failed: tight binary (0, 1) should be assigned to a refined level.");
+    }
+
+    if (binary_b_level <= 0) {
+        throw std::runtime_error("TestHB15PairLevelScheduler failed: tight binary (2, 3) should be assigned to a refined level.");
+    }
+
+    std::vector<Body> nonhierarchical_bodies;
+
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.5, 0.8660254037844386, 0.0), Vec3(0.0, 0.0, 0.0));
+
+    update_all_momenta(nonhierarchical_bodies);
+    HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
+
+    const std::vector<Pair> nonhierarchical_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+    const TimestepPlan nonhierarchical_plan = build_timestep_plan(nonhierarchical_bodies, nonhierarchical_order, base_dt, G, max_level, eta);
+    const HB15PairLevelSchedule nonhierarchical_schedule = build_hb15_pair_level_schedule(nonhierarchical_plan);
+
+    for (const Pair& pair : nonhierarchical_order) {
+        if (!contains_pair(nonhierarchical_schedule.levels[0].pairs, pair)) {
+            throw std::runtime_error("TestHB15PairLevelScheduler failed: non-hierarchical fallback should keep all pairs at level 0.");
+        }
+    }
+
+    std::cout << "HB15 pair-level scheduler validation passed.\n";    
 }

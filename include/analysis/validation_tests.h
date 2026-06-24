@@ -26,6 +26,7 @@ public:
     void TestHB15Reversibility();
     void TestHB15RecursiveOrderingPrototype();
     void TestHB15RecursiveOrderingValidation();
+    void TestHB15PairLevelScheduler();
 
 private:
     Solver& solver_;
