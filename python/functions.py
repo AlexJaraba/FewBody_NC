@@ -58,7 +58,7 @@ class PlotConfig:
 
 BENCHMARK_TESTS = [
     {
-        "name": "test1_binary",
+        "name": "Test1_Binary",
         "dt": 0.1,
         "runtime": 100000,
         "output_frequency": 1000,
@@ -68,7 +68,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test2_circumbinary_triple",
+        "name": "Test2_CircumbinaryTriple",
         "dt": 0.02,
         "runtime": 100000,
         "output_frequency": 1000,
@@ -79,7 +79,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test3_stronger_perturbed_triple",
+        "name": "Test3_StrongerPerturbedTriple",
         "dt": 0.01,
         "runtime": 50000,
         "output_frequency": 500,
@@ -90,7 +90,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test4_scattering_escape",
+        "name": "Test4_ScatteringEscape",
         "dt": 0.02,
         "runtime": 100000,
         "output_frequency": 1000,
@@ -101,7 +101,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test5_figure8",
+        "name": "Test5_Figure8",
         "dt": 0.001,
         "runtime": 1000,
         "output_frequency": 10,
@@ -112,7 +112,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test6_close_encounter",
+        "name": "Test6_CloseEncounter",
         "dt": 0.002,
         "runtime": 10000,
         "output_frequency": 100,
@@ -123,7 +123,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test7_solar_system",
+        "name": "Test7_SolarSystem",
         "dt": 1.0,
         "runtime": 36525,
         "output_frequency": 100,
@@ -140,7 +140,7 @@ BENCHMARK_TESTS = [
         ],
     },
     {
-        "name": "test8_inner_planets",
+        "name": "Test8_SolarSystemInnerPlanets",
         "dt": 0.1,
         "runtime": 36525,
         "output_frequency": 10,
@@ -151,6 +151,122 @@ BENCHMARK_TESTS = [
             (3.0035e-6, -0.6427876097,   0.7660444431,  0.0, -0.0131798787, -0.0110592314,  0.0),
             (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
         ],
+    },
+]
+
+# ============================================================
+# Benchmark Modes
+# ============================================================
+# These are the current supported integrator/mode combinations.
+# The benchmark suite runs every BENCHMARK_TESTS entry through every mode below.
+#
+# Cartesian:
+#   - leapfrog fixed global timestep
+#   - Hernandez fixed timestep with canonical/strength/auto pair order
+#   - Hernandez adaptive block mode with canonical/strength/auto pair order
+#
+# Jacobi:
+#   - leapfrog fixed/adaptive full-integrator subcycling
+#   - Hernandez fixed/adaptive full-integrator subcycling
+#   - Yoshida4 fixed/adaptive full-integrator subcycling
+
+DEFAULT_BENCHMARK_MODES = [
+    {
+        "name": "cartesian_leapfrog_fixed",
+        "integrator": "leapfrog",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_canonical_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_strength_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "strength",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_auto_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "auto",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_canonical_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "cartesian_hernandez_strength_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "strength",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "cartesian_hernandez_auto_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "auto",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "jacobi_leapfrog_fixed",
+        "integrator": "leapfrog",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "jacobi_leapfrog_adaptive",
+        "integrator": "leapfrog",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "jacobi_hernandez_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "jacobi_hernandez_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
     },
 ]
 
@@ -486,6 +602,7 @@ def plot_verification_suite(output_df: pd.DataFrame,
     fig.suptitle(title, fontsize=16)
     
     if save_path is not None:
+        save_path = Path(save_path)
         save_path.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(save_path, dpi=200, bbox_inches="tight")
     if show:
@@ -519,8 +636,13 @@ def rewrite_param(dt: float,
                   coordinate_mode: str, 
                   G: float = 0.000296014912,
                   pair_order: str = "canonical", 
+                  adaptive_timesteps: bool | None = None,
+                  timestep_levels: int | None = None,
+                  timestep_eta: float | None = None,
+                  timestep_refresh_interval: int | None = None,
+                  timestep_level_decrease_delay: int | None = None,
                   param_path: Path = DEFAULT_PARAM_PATH) -> None:
-
+    
     if not param_path.exists():
         raise FileNotFoundError(f"Could not find param file: {param_path}")
 
@@ -531,6 +653,17 @@ def rewrite_param(dt: float,
                     "coordinate_mode": f"coordinate_mode {coordinate_mode}", 
                     "gravitational_constant": f"gravitational_constant {G}",
                     "pair_order": f"pair_order {pair_order}"}
+    
+    if adaptive_timesteps is not None:
+        replacements["adaptive_timesteps"] = f"adaptive_timesteps {'true' if adaptive_timesteps else 'false'}"
+    if timestep_levels is not None:
+        replacements["timestep_levels"] = f"timestep_levels {timestep_levels}"
+    if timestep_eta is not None:
+        replacements["timestep_eta"] = f"timestep_eta {timestep_eta}"
+    if timestep_refresh_interval is not None:
+        replacements["timestep_refresh_interval"] = f"timestep_refresh_interval {timestep_refresh_interval}"
+    if timestep_level_decrease_delay is not None:
+        replacements["timestep_level_decrease_delay"] = f"timestep_level_decrease_delay {timestep_level_decrease_delay}"
 
     lines = param_path.read_text().splitlines()
     updated = []
@@ -616,8 +749,7 @@ def rewrite_adaptive_settings(adaptive_timesteps: bool, timestep_levels: int | N
 #   mass x y z vx vy vz
 # No header row is written
 
-def rewrite_initial_conditions(rows: list[tuple[float, float, float, float, float, float, float]],
-                             output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
+def rewrite_initial_conditions(rows: list[tuple[float, float, float, float, float, float, float]], output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w") as f:
@@ -647,10 +779,7 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
 # Only the timestep is changed during the sweep.
 # The original param.txt is restored afterward.
 
-def run_timestep_scaling_study(dt_ref: float = 0.00025, 
-                               dts: tuple = (0.01, 0.005, 0.0025, 0.00125), 
-                               param_path: Path = DEFAULT_PARAM_PATH) -> None:
-    
+def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.005, 0.0025, 0.00125),  param_path: Path = DEFAULT_PARAM_PATH) -> None:
     params = read_param(param_path)
 
     runtime = float(params.get("runtime", 1.0))
@@ -730,11 +859,7 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
 
 def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = True,) -> None:
     if modes is None:
-        modes = [{"name": "hernandez_jacobi", "integrator": "hernandez", "coordinate_mode": "jacobi", "pair_order": "canonical"},
-                 {"name": "hernandez_canonical", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "canonical"},
-                 {"name": "hernandez_strength", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "strength"},
-                 {"name": "hernandez_auto", "integrator": "hernandez", "coordinate_mode": "cartesian", "pair_order": "auto"},
-                 {"name": "leapfrog", "integrator": "leapfrog", "coordinate_mode": "cartesian", "pair_order": "canonical"}]
+        modes = DEFAULT_BENCHMARK_MODES
     
     config = PlotConfig()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -774,7 +899,12 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                             integrator = mode["integrator"], 
                             coordinate_mode = mode["coordinate_mode"],
                             G = config.G,
-                            pair_order = mode.get("pair_order", "canonical"))
+                            pair_order = mode.get("pair_order", "canonical"),
+                            adaptive_timesteps = mode.get("adaptive_timesteps", False),
+                            timestep_levels = mode.get("timestep_levels"),
+                            timestep_eta = mode.get("timestep_eta"),
+                            timestep_refresh_interval = mode.get("timestep_refresh_interval"),
+                            timestep_level_decrease_delay = mode.get("timestep_level_decrease_delay"))
                 
                 if DEFAULT_OUTPUT_PATH.exists():
                     DEFAULT_OUTPUT_PATH.unlink()
@@ -791,6 +921,11 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                         "integrator": mode["integrator"],
                         "coordinate_mode": mode["coordinate_mode"],
                         "pair_order": mode.get("pair_order", "canonical"),
+                        "adaptive_timesteps": mode.get("adaptive_timesteps", False),
+                        "timestep_levels": mode.get("timestep_levels", np.nan),
+                        "timestep_eta": mode.get("timestep_eta", np.nan),
+                        "timestep_refresh_interval": mode.get("timestep_refresh_interval", np.nan),
+                        "timestep_level_decrease_delay": mode.get("timestep_level_decrease_delay", np.nan),
                         "test": test["name"],
                         "dt": test["dt"],
                         "runtime": test["runtime"],
@@ -847,6 +982,11 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                     "integrator": mode["integrator"],
                     "coordinate_mode": mode["coordinate_mode"],
                     "pair_order": mode.get("pair_order", "canonical"),
+                    "adaptive_timesteps": mode.get("adaptive_timesteps", False),
+                    "timestep_levels": mode.get("timestep_levels", np.nan),
+                    "timestep_eta": mode.get("timestep_eta", np.nan),
+                    "timestep_refresh_interval": mode.get("timestep_refresh_interval", np.nan),
+                    "timestep_level_decrease_delay": mode.get("timestep_level_decrease_delay", np.nan),
                     "test": test["name"],
                     "dt": test["dt"],
                     "runtime": test["runtime"],
@@ -893,6 +1033,11 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
             "integrator",
             "coordinate_mode",
             "pair_order",
+            "adaptive_timesteps",
+            "timestep_levels",
+            "timestep_eta",
+            "timestep_refresh_interval",
+            "timestep_level_decrease_delay",
             "dt",
             "runtime",
             "status",
@@ -921,7 +1066,7 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         print("=" * 90)
 
         best_rows = (successful_summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
-        best_columns = ["test", "mode", "pair_order", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
+        best_columns = ["test", "mode", "pair_order", "adaptive_timesteps", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
 
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(best_rows[best_columns].to_string(index=False))
