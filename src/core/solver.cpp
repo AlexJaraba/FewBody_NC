@@ -461,30 +461,66 @@ void Solver::run_cartesian(const SolverParams& params) {
     const double dt = params.timestep;
     const double G = params.gravitational_constant;
     const int steps = static_cast<int>(runtime / dt);
-
-    if (params.adaptive_timesteps) {
-        std::cout << "Adaptive timestep planning currently applies only to Jacobi mode.\n";
-        std::cout << "Cartesian mode will continue using fixed global dt.\n";
-    }
-
     const bool use_leapfrog = (params.integrator == "leapfrog");
     const bool use_hb15 = (params.integrator == "hb15");
 
     if (!use_leapfrog && !use_hb15) {
         throw std::runtime_error("Cartesian mode currently supports integrator 'leapfrog' or 'hb15'.");
     }
+    if (params.adaptive_timesteps && !use_hb15) {
+        std::cout << "Adaptive timestep planning currently applies only to Cartesian HB15 mode.\n";
+        std::cout << "Cartesian leapfrog will continue using fixed global dt.\n";
+    }
 
     std::cout << "Cartesian integrator: " << params.integrator << "\n";
 
     if (use_hb15) {
         std::cout << "HB15 Pair Order Requested: " << params.pair_order << "\n";
-        std::cout << "Hb15 Effective Pair ORder: " << effective_pair_order << "\n";
+        std::cout << "Hb15 Effective Pair Order: " << effective_pair_order << "\n";
     }
 
     HB15 hb15_integrator(fixed_pairs);
+    AdaptiveLevelState hb15_adaptive_state;
+    HB15PairLevelSchedule hb15_active_schedule;
+    int hb15_planner_deepest_level = 0;
+
+    const int timestep_refresh_interval = std::max(1, params.timestep_refresh_interval);
+    const int timestep_level_decrease_delay = std::max(1, params.timestep_level_decrease_delay);
+
+    auto refresh_hb15_block_schedule = [&](int base_step_index, bool print_full_summary) {
+        const TimestepPlan plan = build_timestep_plan(bodies, fixed_pairs, dt, G, params.timestep_levels, params.timestep_eta);
+        const HB15PairLevelSchedule raw_schedule = build_hb15_pair_level_schedule(plan);
+
+        hb15_planner_deepest_level = deepest_nonempty_hb15_level(raw_schedule);
+        update_adaptive_level_state(hb15_adaptive_state, hb15_planner_deepest_level, timestep_level_decrease_delay, base_step_index == 0);
+        hb15_active_schedule = restrict_hb15_pair_level_schedule(raw_schedule, hb15_adaptive_state.active_level);
+
+        if (print_full_summary) {
+            print_timestep_plan_summary(plan);
+            print_hb15_pair_level_schedule(hb15_active_schedule);
+
+            std::cout << "HB15 adaptive block mode is active.\n";
+            std::cout << "Base dt: " << dt << "\n";
+            std::cout << "Planner deepest level: " << hb15_planner_deepest_level << "\n";
+            std::cout << "Active adaptive level: " << hb15_adaptive_state.active_level << "\n";
+            std::cout << "Refresh interval: every " << timestep_refresh_interval << " base step(s)\n";
+            std::cout << "Level decrease delay: " << timestep_level_decrease_delay << " refresh(es)\n";
+            std::cout << "Note: deeper levels are accepted immediately; shallower levels are delayed.\n\n";
+        }
+        else {
+            std::cout << "[HB15 adaptive refresh] base step " << base_step_index << ": planner_level = " << hb15_planner_deepest_level << ", active_level = " << hb15_adaptive_state.active_level;
+
+            if (hb15_adaptive_state.pending_lower_level >= 0) {
+                std::cout << ", pending_lower_level = " << hb15_adaptive_state.pending_lower_level << ", pending_count = " << hb15_adaptive_state.pending_lower_level_count << "/" << timestep_level_decrease_delay;
+            }
+            std::cout << "\n";
+        }};
+
+    if (use_hb15 && params.adaptive_timesteps) {
+        refresh_hb15_block_schedule(0, true);
+    }
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
-
     {
         Diagnostics diag = compute_diagnostics(bodies, G, dt);
         // std::cout << "Step: 0, Time: 0" 
@@ -500,7 +536,17 @@ void Solver::run_cartesian(const SolverParams& params) {
 
     for (int step = 1; step <= steps; ++step) {
         if (use_hb15) {
-            hb15_integrator.step(bodies, dt, G);
+            if (params.adaptive_timesteps) {
+                const int current_base_step = step - 1;
+                if (current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
+                    refresh_hb15_block_schedule(current_base_step, false);
+                }
+
+                hb15_integrator.step_block(bodies, hb15_active_schedule, dt, G);
+            }
+            else {
+                hb15_integrator.step(bodies, dt, G);
+            }
         }
         else {
             cartesian_step(dt, G);

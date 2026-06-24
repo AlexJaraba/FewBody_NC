@@ -39,11 +39,20 @@ struct HB15PairLevelSchedule {
     int max_level = 0;
     std::vector<HB15PairLevelGroup> levels;
 };
+struct AdaptiveLevelState {
+    int active_level = 0;
+    int pending_lower_level = -1;
+    int pending_lower_level_count = 0;
+};
 
 TimestepPlan build_timestep_plan(const std::vector<Body>& bodies, const std::vector<Pair>& pairs, double base_dt, double G, int max_level, double eta);
 TimestepSchedule build_timestep_schedule(const TimestepPlan& plan);
 HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan);
+HB15PairLevelSchedule restrict_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule, int active_level);
 
+int deepest_nonempty_hb15_level(const HB15PairLevelSchedule& schedule);
+
+void update_adaptive_level_state(AdaptiveLevelState& state, int planner_level, int decrease_delay, bool first_refresh);
 void print_timestep_plan_summary(const TimestepPlan& plan);
 void print_timestep_schedule_summary(const TimestepSchedule& schedule);
 void print_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule);

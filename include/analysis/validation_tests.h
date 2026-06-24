@@ -27,6 +27,8 @@ public:
     void TestHB15RecursiveOrderingPrototype();
     void TestHB15RecursiveOrderingValidation();
     void TestHB15PairLevelScheduler();
+    void TestHB15BlockTimestepSequenceDesign();
+    void TestHB15AdaptiveBlockValidation();
 
 private:
     Solver& solver_;

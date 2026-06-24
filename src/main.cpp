@@ -26,9 +26,10 @@ int main() {
     // Create solver and run simulation
     Solver sim(bodies, output);
 
-    sim.run();
+    //sim.run();
 
     // Run Optional Tests for Validation (example: sim.tests.[]())
+    sim.tests.TestHB15AdaptiveBlockValidation();
 
     // Close output file
     output.close();

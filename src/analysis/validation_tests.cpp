@@ -1333,3 +1333,304 @@ void Tests::TestHB15PairLevelScheduler() {
 
     std::cout << "HB15 pair-level scheduler validation passed.\n";    
 }
+
+void Tests::TestHB15BlockTimestepSequenceDesign() {
+    std::cout << "\n=== HB15 Block-Timestep Sequence Design Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    struct TraceStep {
+        char kind;   // 'C' = correction/remainder wrapper, 'K' = pair-map group
+        int level;   // -1 for correction, otherwise timestep level
+        double dt;
+    };
+
+    const double base_dt = 1.0;
+    const int max_level = 2;
+    const double tolerance = 1.0e-14;
+
+    std::vector<TraceStep> trace;
+
+    auto append_block_step =
+        [&](auto&& self, int level, double dt) -> void {
+            if (level == max_level) {
+                trace.push_back({'K', level, dt});
+                return;
+            }
+
+            trace.push_back({'K', level, 0.5 * dt});
+
+            self(self, level + 1, 0.5 * dt);
+            self(self, level + 1, 0.5 * dt);
+
+            trace.push_back({'K', level, 0.5 * dt});
+        };
+
+    trace.push_back({'C', -1, 0.5 * base_dt});
+    append_block_step(append_block_step, 0, base_dt);
+    trace.push_back({'C', -1, 0.5 * base_dt});
+
+    std::cout << "Designed sequence:\n";
+
+    for (const TraceStep& step : trace) {
+        if (step.kind == 'C') {
+            std::cout << "C(" << step.dt << ")\n";
+        }
+        else {
+            std::cout << "K_" << step.level << "(" << step.dt << ")\n";
+        }
+    }
+
+    if (trace.size() != 12) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: expected 12 trace operations for levels 0, 1, and 2.");
+    }
+    for (std::size_t i = 0; i < trace.size(); ++i) {
+        const std::size_t j = trace.size() - 1 - i;
+        if (trace[i].kind != trace[j].kind || trace[i].level != trace[j].level || std::fabs(trace[i].dt - trace[j].dt) > tolerance) {
+            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: sequence is not palindromic.");
+        }
+    }
+
+    int correction_count = 0;
+    int level_counts[3] = {0, 0, 0};
+    double correction_total_dt = 0.0;
+    double level_total_dt[3] = {0.0, 0.0, 0.0};
+
+    for (const TraceStep& step : trace) {
+        if (step.kind == 'C') {
+            ++correction_count;
+            correction_total_dt += step.dt;
+        }
+        else if (step.level >= 0 && step.level <= max_level) {
+            ++level_counts[step.level];
+            level_total_dt[step.level] += step.dt;
+        }
+        else {
+            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: invalid trace step level.");
+        }
+    }
+    if (correction_count != 2) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: correction wrapper should appear twice.");
+    }
+    if (std::fabs(correction_total_dt - base_dt) > tolerance) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: correction wrapper does not sum to one base step." );
+    }
+    if (level_counts[0] != 2) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 0 should appear twice as two half steps.");
+    }
+    if (level_counts[1] != 4) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 1 should appear four times.");
+    }
+    if (level_counts[2] != 4) {
+        throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: level 2 should appear four times.");
+    }
+    for (int level = 0; level <= max_level; ++level) {
+        std::cout << "Level " << level << " total dt = " << level_total_dt[level] << ", count = " << level_counts[level] << "\n";
+        if (std::fabs(level_total_dt[level] - base_dt) > tolerance) {
+            throw std::runtime_error("TestHB15BlockTimestepSequenceDesign failed: one level does not sum to one base step.");
+        }
+    }
+    std::cout << "Correction total dt = " << correction_total_dt << "\n";
+    std::cout << "HB15 block-timestep sequence design validation passed.\n";
+}
+
+void Tests::TestHB15AdaptiveBlockValidation() {
+    std::cout << "\n=== HB15 Adaptive Block Validation Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto max_state_error = [](const std::vector<Body>& a, const std::vector<Body>& b) {
+        double max_error = 0.0;
+
+        for (std::size_t i = 0; i < a.size(); ++i) {
+            max_error = std::max(max_error, (a[i].position - b[i].position).norm());
+            max_error = std::max(max_error, (a[i].velocity - b[i].velocity).norm());
+            max_error = std::max(max_error, (a[i].momentum - b[i].momentum).norm());
+        }
+        return max_error;
+    };
+
+    auto single_body_error = [](const Body& a, const Body& b) {
+        double max_error = 0.0;
+
+        max_error = std::max(max_error, (a.position - b.position).norm());
+        max_error = std::max(max_error, (a.velocity - b.velocity).norm());
+        max_error = std::max(max_error, (a.momentum - b.momentum).norm());
+
+        return max_error;
+    };
+
+    auto make_hierarchical_block_test = [&]() {
+        std::vector<Body> hierarchical_bodies;
+
+        const double binary_a_separation = 0.1;
+        const double binary_b_separation = 0.1;
+        const double binary_a_relative_speed = std::sqrt((G * 2.0) / binary_a_separation);
+        const double binary_b_relative_speed = std::sqrt((G * 1.0) / binary_b_separation);
+
+        hierarchical_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0, -0.5 * binary_a_relative_speed, 0.0));
+        hierarchical_bodies.emplace_back(1.0, Vec3(0.05, 0.0, 0.0), Vec3(0.0, 0.5 * binary_a_relative_speed, 0.0));
+        hierarchical_bodies.emplace_back(0.5, Vec3(9.95, 0.0, 0.0), Vec3(0.0, -0.5 * binary_b_relative_speed, 0.0));
+        hierarchical_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0, 0.5 * binary_b_relative_speed, 0.0));
+
+        recenter_system(hierarchical_bodies);
+        update_all_momenta(hierarchical_bodies);
+
+        return hierarchical_bodies;
+    };
+
+    HierarchySelectionCriteria criteria;
+    criteria.min_separation_ratio = 5.0;
+    criteria.min_strength_ratio = 10.0;
+
+    std::vector<Body> initial_bodies = make_hierarchical_block_test();
+    HierarchyTree tree(initial_bodies);
+
+    const std::vector<Pair> recursive_order = tree.recursive_hb15_pair_order(initial_bodies, criteria);
+    const double base_dt = 0.25;
+    const int max_level = 4;
+    const double eta = 0.05;
+    const TimestepPlan plan = build_timestep_plan(initial_bodies, recursive_order, base_dt, G, max_level, eta);
+    const HB15PairLevelSchedule schedule = build_hb15_pair_level_schedule(plan);
+
+    HB15 hb15(recursive_order);
+
+    {
+        std::vector<Body> filtered_bodies = initial_bodies;
+        const std::vector<Body> before = filtered_bodies;
+        const std::vector<Pair> active_pairs = {{0, 1}};
+
+        hb15.apply_pair_group(filtered_bodies, active_pairs, 0.01, G);
+
+        const double untouched_body_2_error = single_body_error(filtered_bodies[2], before[2]);
+
+        const double untouched_body_3_error = single_body_error(filtered_bodies[3], before[3]);
+
+        std::cout << "Filtered group untouched body 2 error: " << untouched_body_2_error << "\n";
+        std::cout << "Filtered group untouched body 3 error: " << untouched_body_3_error << "\n";
+
+        if (untouched_body_2_error > 1.0e-14 || untouched_body_3_error > 1.0e-14) {
+            throw std::runtime_error( "TestHB15AdaptiveBlockValidation failed: filtered pair group changed inactive bodies.");
+        }
+
+        hb15.apply_pair_group(filtered_bodies, active_pairs, -0.01, G);
+
+        const double filtered_reversibility_error = max_state_error(filtered_bodies, before);
+
+        std::cout << "Filtered pair-group forward-backward error: " << filtered_reversibility_error << "\n";
+
+        if (filtered_reversibility_error > 1.0e-10) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: filtered pair group is not reversible enough.");
+        }
+    }
+
+    {
+        HB15PairLevelSchedule level_zero_schedule;
+        level_zero_schedule.base_dt = base_dt;
+        level_zero_schedule.max_level = 0;
+        level_zero_schedule.levels.push_back({0, base_dt, recursive_order});
+
+        std::vector<Body> fixed_bodies = initial_bodies;
+        std::vector<Body> block_bodies = initial_bodies;
+
+        hb15.step(fixed_bodies, base_dt, G);
+        hb15.step_block(block_bodies, level_zero_schedule, base_dt, G);
+
+        const double fixed_vs_block_error = max_state_error(fixed_bodies, block_bodies);
+
+        std::cout << "Fixed HB15 vs level-0 block HB15 error: " << fixed_vs_block_error << "\n";
+
+        if (fixed_vs_block_error > 1.0e-13) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: level-0 block mode does not recover fixed HB15.");
+        }
+    }
+
+    {
+        std::vector<Body> block_bodies = initial_bodies;
+        const std::vector<Body> before = block_bodies;
+        const int steps = 20;
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step_block(block_bodies, schedule, base_dt, G);
+        }
+        for (int step = 0; step < steps; ++step) {
+            hb15.step_block(block_bodies, schedule, -base_dt, G);
+        }
+
+        const double block_reversibility_error = max_state_error(block_bodies, before);
+
+        std::cout << "Scheduled block-mode forward-backward error: " << block_reversibility_error << "\n";
+
+        if (block_reversibility_error > 1.0e-8) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: scheduled block mode reversibility error is too large.");
+        }
+    }
+
+    {
+        AdaptiveLevelState state;
+        const int decrease_delay = 3;
+
+        update_adaptive_level_state(state, 2, decrease_delay, true);
+        if (state.active_level != 2) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: first adaptive refresh did not initialize active level.");
+        }
+
+        update_adaptive_level_state(state, 4, decrease_delay, false);
+        if (state.active_level != 4 || state.pending_lower_level != -1) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: deeper level was not accepted immediately.");
+        }
+
+        update_adaptive_level_state(state, 1, decrease_delay, false);
+        if (state.active_level != 4 || state.pending_lower_level != 1 || state.pending_lower_level_count != 1) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: first lower-level request was not delayed.");
+        }
+
+        update_adaptive_level_state(state, 1, decrease_delay, false);
+        if (state.active_level != 4 || state.pending_lower_level_count != 2) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: second lower-level request was not delayed.");
+        }
+
+        update_adaptive_level_state(state, 1, decrease_delay, false);
+        if (state.active_level != 3 || state.pending_lower_level != -1 || state.pending_lower_level_count != 0) {
+            throw std::runtime_error( "TestHB15AdaptiveBlockValidation failed: delayed lower-level transition did not decrease by one level.");
+        }
+
+        std::cout << "Adaptive level safety-rule validation passed.\n";
+    }
+
+    {
+        std::vector<Body> block_bodies = initial_bodies;
+        const Diagnostics initial = compute_diagnostics(block_bodies, G, base_dt);
+        const int steps = 20;
+
+        double max_relative_energy_error = 0.0;
+        double max_linear_momentum = 0.0;
+        double max_com_drift = 0.0;
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step_block(block_bodies, schedule, base_dt, G);
+            const Diagnostics current = compute_diagnostics(block_bodies, G, base_dt);
+
+            if (!std::isfinite(current.total_energy) || !std::isfinite(current.linear_momentum) || !std::isfinite(current.com_drift)) {
+                throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: diagnostics became non-finite.");
+            }
+
+            const double energy_scale = std::max(1.0e-30, std::abs(initial.total_energy));
+            const double relative_energy_error = std::abs(current.total_energy - initial.total_energy) / energy_scale;
+
+            max_relative_energy_error = std::max(max_relative_energy_error, relative_energy_error);
+            max_linear_momentum = std::max(max_linear_momentum, current.linear_momentum);
+            max_com_drift = std::max(max_com_drift, current.com_drift);
+        }
+
+        std::cout << "Block-mode max relative energy error: " << max_relative_energy_error << "\n";
+        std::cout << "Block-mode max linear momentum: " << max_linear_momentum << "\n";
+        std::cout << "Block-mode max COM drift: " << max_com_drift << "\n";
+
+        if (max_linear_momentum > 1.0e-8) {
+            throw std::runtime_error("TestHB15AdaptiveBlockValidation failed: linear momentum drift is too large.");
+        }
+    }
+    std::cout << "HB15 adaptive block validation passed.\n";
+}

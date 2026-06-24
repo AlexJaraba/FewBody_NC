@@ -118,27 +118,6 @@ TimestepPlan build_timestep_plan(const std::vector<Body>& bodies, const std::vec
     return plan;
 }
 
-HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan) {
-    HB15PairLevelSchedule schedule;
-
-    schedule.base_dt = plan.base_dt;
-    schedule.max_level = std::max(plan.max_level, 0);
-    schedule.levels.reserve(static_cast<std::size_t>(schedule.max_level + 1));
-
-    for (int level = 0; level <= schedule.max_level; ++level) {
-        HB15PairLevelGroup group;
-        group.level = level;
-        group.dt = timestep_for_level(plan.base_dt, level);
-        schedule.levels.push_back(group);
-    }
-
-    for (const PairTimestepInfo& info : plan.pair_info) {
-        const int safe_level = std::max(0, std::min(info.level, schedule.max_level));
-        schedule.levels[static_cast<std::size_t>(safe_level)].pairs.push_back(info.pair);
-    }
-    return schedule;
-}
-
 TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
     TimestepSchedule schedule;
     schedule.enabled = plan.enabled;
@@ -166,6 +145,99 @@ TimestepSchedule build_timestep_schedule(const TimestepPlan& plan) {
         schedule.levels[level].pairs.push_back(info.pair);
     }
     return schedule;
+}
+
+HB15PairLevelSchedule build_hb15_pair_level_schedule(const TimestepPlan& plan) {
+    HB15PairLevelSchedule schedule;
+
+    schedule.base_dt = plan.base_dt;
+    schedule.max_level = std::max(plan.max_level, 0);
+    schedule.levels.reserve(static_cast<std::size_t>(schedule.max_level + 1));
+
+    for (int level = 0; level <= schedule.max_level; ++level) {
+        HB15PairLevelGroup group;
+        group.level = level;
+        group.dt = timestep_for_level(plan.base_dt, level);
+        schedule.levels.push_back(group);
+    }
+
+    for (const PairTimestepInfo& info : plan.pair_info) {
+        const int safe_level = std::max(0, std::min(info.level, schedule.max_level));
+        schedule.levels[static_cast<std::size_t>(safe_level)].pairs.push_back(info.pair);
+    }
+    return schedule;
+}
+
+HB15PairLevelSchedule restrict_hb15_pair_level_schedule(const HB15PairLevelSchedule& schedule, int active_level) {
+    HB15PairLevelSchedule restricted;
+
+    restricted.base_dt = schedule.base_dt;
+    restricted.max_level = std::max(0, active_level);
+    restricted.levels.reserve(static_cast<std::size_t>(restricted.max_level + 1));
+
+    for (int level = 0; level <= restricted.max_level; ++level) {
+        HB15PairLevelGroup group;
+
+        group.level = level;
+        group.dt = schedule.base_dt;
+
+        for (int k = 0; k < level; ++k) {
+            group.dt *= 0.5;
+        }
+        if (level < static_cast<int>(schedule.levels.size())) {
+            group.pairs = schedule.levels[static_cast<std::size_t>(level)].pairs;
+        }
+        restricted.levels.push_back(group);
+    }
+
+    return restricted;
+}
+
+int deepest_nonempty_hb15_level(const HB15PairLevelSchedule& schedule) {
+    int deepest_level = 0;
+
+    for (const HB15PairLevelGroup& group : schedule.levels) {
+        if (!group.pairs.empty()) {
+            deepest_level = std::max(deepest_level, group.level);
+        }
+    }
+
+    return deepest_level;
+}
+
+void update_adaptive_level_state(AdaptiveLevelState& state, int planner_level, int decrease_delay, bool first_refresh) {
+    planner_level = std::max(0, planner_level);
+    decrease_delay = std::max(1, decrease_delay);
+
+    if (first_refresh) {
+        state.active_level = planner_level;
+        state.pending_lower_level = -1;
+        state.pending_lower_level_count = 0;
+        return;
+    }
+    if (planner_level > state.active_level) {
+        state.active_level = planner_level;
+        state.pending_lower_level = -1;
+        state.pending_lower_level_count = 0;
+        return;
+    }
+    if (planner_level < state.active_level) {
+        if (state.pending_lower_level == planner_level) {
+            ++state.pending_lower_level_count;
+        }
+        else {
+            state.pending_lower_level = planner_level;
+            state.pending_lower_level_count = 1;
+        }
+        if (state.pending_lower_level_count >= decrease_delay) {
+            state.active_level = std::max(planner_level, state.active_level - 1);
+            state.pending_lower_level = -1;
+            state.pending_lower_level_count = 0;
+        }
+        return;
+    }
+    state.pending_lower_level = -1;
+    state.pending_lower_level_count = 0;
 }
 
 void print_timestep_plan_summary(const TimestepPlan& plan) {

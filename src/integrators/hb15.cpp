@@ -1,8 +1,10 @@
 #include <stdexcept>
+#include <algorithm>
 
 #include "integrators/hb15.h"
 #include "integrators-helper/hb15/pair_map.h"
 #include "dynamics/pairing.h"
+#include "dynamics/timestep_planner.h"
 
 namespace {
     struct HB15HamiltonianBookKeeping {
@@ -34,7 +36,34 @@ namespace {
        double correction_half_dt = 0.0;
     };
 
+    int deepest_nonempty_level(const HB15PairLevelSchedule& schedule) {
+        int deepest_level = 0;
+        for (const HB15PairLevelGroup& group : schedule.levels) {
+            if (!group.pairs.empty()) {
+                deepest_level = std::max(deepest_level, group.level);
+            }
+        }
+        return deepest_level;
+    }
+    void apply_block_level(const HB15& hb15, std::vector<Body>& bodies, const HB15PairLevelSchedule& schedule, int level, int max_level, double dt, double G) {
+        if (level > max_level || level >= static_cast<int>(schedule.levels.size())) {
+            return;
+        }
 
+        const std::vector<Pair>& active_pairs = schedule.levels[static_cast<std::size_t>(level)].pairs;
+
+        if (level == max_level) {
+            hb15.apply_pair_group(bodies, active_pairs, dt, G);
+            return;
+        }
+
+        hb15.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
+
+        apply_block_level(hb15, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
+        apply_block_level(hb15, bodies, schedule, level+ 1, max_level, 0.5 * dt, G);
+
+        hb15.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
+    }
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
         HB15PairMapResult result = apply_hb15_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
         if (!result.converged) {
@@ -89,6 +118,18 @@ namespace {
 
 HB15::HB15(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
 
+void HB15::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
+    const std::vector<Pair> ordered_pairs = canonicalize_pairs_preserve_order(active_pairs);
+    const double pair_half_dt = 0.5 * dt;
+
+    for (const Pair& pair : ordered_pairs) {
+        apply_checked_pair_map(bodies, pair, pair_half_dt, G);
+    }
+    for (auto it = ordered_pairs.rbegin(); it != ordered_pairs.rend(); ++it) {
+        apply_checked_pair_map(bodies, *it, pair_half_dt, G);
+    }
+}
+
 void HB15::step(std::vector<Body>& bodies, double dt, double G) {
     const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);
     if (bookkeeping.body_count <= 1 || bookkeeping.pair_count == 0) {
@@ -96,14 +137,23 @@ void HB15::step(std::vector<Body>& bodies, double dt, double G) {
     }
 
     apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_pair_group(bodies, pairs_, dt, G);
+    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+}
 
-    for (const Pair& pair : pairs_) {
-        apply_checked_pair_map(bodies, pair, bookkeeping.pair_half_dt, G);
+void HB15::step_block(std::vector<Body>& bodies, const HB15PairLevelSchedule& schedule, double dt, double G) const {
+    const HB15HamiltonianBookKeeping bookkeeping = make_hb15_bookkeeping(bodies, pairs_, dt);
+    const int max_level = deepest_nonempty_level(schedule);
+
+    if (bookkeeping.body_count <= 1 || bookkeeping.pair_count == 0) {
+        return;
     }
-    for (auto it = pairs_.rbegin(); it != pairs_.rend(); ++it) {
-        apply_checked_pair_map(bodies, *it, bookkeeping.pair_half_dt, G);
+    if (schedule.levels.empty()) {
+        return;
     }
 
+    apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
+    apply_block_level(*this, bodies, schedule, 0, max_level, dt, G);
     apply_hb15_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
