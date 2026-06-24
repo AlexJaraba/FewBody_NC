@@ -1051,3 +1051,151 @@ void Tests::TestHB15RecursiveOrderingPrototype() {
 
     std::cout << "HB15 recursive ordering prototype validation passed.\n";
 }
+
+void Tests::TestHB15RecursiveOrderingValidation() {
+    std::cout << "\n=== HB15 Recursive Ordering Validation Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    SolverParams params = readParams("data/param.txt");
+    const double G = params.gravitational_constant;
+
+    auto contains_pairs = [](const std::vector<Pair>& pairs, const Pair& target) {
+        for (const Pair& pair : pairs) {
+            if (pair.i == target.i && pair.j == target.j) {
+                return true;
+            }
+        }
+        return false;
+    };
+    auto require_unique_pairs = [](const std::vector<Pair>& pairs, const std::string& message) {
+        for (std::size_t a = 0; a < pairs.size(); ++a) {
+            for (std::size_t b = a + 1; b < pairs.size(); ++b) {
+                if (pairs[a].i == pairs[b].i && pairs[a].j == pairs[b].j) {
+                    throw std::runtime_error(message);
+                }
+            }
+        }
+    };
+    auto require_same_pair_set = [&](const std::vector<Pair>& expected, const std::vector<Pair>& actual, const std::string& message) {
+        if (expected.size() != actual.size()) {
+            throw std::runtime_error(message);
+        }
+        for (const Pair& pair : expected) {
+            if (!contains_pairs(actual, pair)) {
+                throw std::runtime_error(message);
+            }
+        }
+    };
+    auto same_pair_order = [](const std::vector<Pair>& a, const std::vector<Pair>& b) {
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (std::size_t index = 0; index < a.size(); ++index) {
+            if (a[index].i != b[index].i || a[index].j != b[index].j) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto max_forward_backward_error = [&](std::vector<Body> test_bodies, const std::vector<Pair>& pair_order, double dt, int steps) {
+        recenter_system(test_bodies);
+        update_all_momenta(test_bodies);
+
+        const std::vector<Body> initial = test_bodies;
+
+        HB15 hb15(pair_order);
+
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(test_bodies, dt, G);
+        }
+        for (int step = 0; step < steps; ++step) {
+            hb15.step(test_bodies, -dt, G);
+        }
+
+        double max_position_error = 0.0;
+        double max_velocity_error = 0.0;
+        double max_momentum_error = 0.0;
+
+        for (std::size_t i = 0; i < test_bodies.size(); ++i) {
+            max_position_error = std::max(max_position_error, (test_bodies[i].position - initial[i].position).norm());
+            max_velocity_error = std::max(max_velocity_error, (test_bodies[i].velocity - initial[i].velocity).norm());
+            max_momentum_error = std::max(max_momentum_error, (test_bodies[i].momentum - initial[i].momentum).norm());
+        }
+
+        std::cout << "Max forward-backward position error: " << max_position_error << "\n";
+        std::cout << "Max forward-backward velocity error: " << max_velocity_error << "\n";
+        std::cout << "Max forward-backward momentum error: " << max_momentum_error << "\n";
+
+        return std::max(max_position_error, std::max(max_velocity_error, max_momentum_error));
+    };
+
+    HierarchySelectionCriteria criteria;
+    criteria.min_separation_ratio = 5.0;
+    criteria.min_strength_ratio = 10.0;
+
+    std::vector<Body> hierarchical_bodies;
+
+    const double binary_a_separation = 0.1;
+    const double binary_b_separation = 0.1;
+    const double binary_a_relative_speed = std::sqrt((G * 2.0) / binary_a_separation);
+    const double binary_b_relative_speed = std::sqrt((G * 1.0) / binary_b_separation);
+    hierarchical_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0,  -0.5 * binary_a_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(1.0, Vec3( 0.05, 0.0, 0.0),  Vec3(0.0,  0.5 * binary_a_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3( 9.95, 0.0, 0.0),  Vec3(0.0, -0.5 * binary_b_relative_speed, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0,   0.5 * binary_b_relative_speed, 0.0));
+
+    update_all_momenta(hierarchical_bodies);
+    HierarchyTree hierarchical_tree(hierarchical_bodies);
+
+    const std::vector<Pair> canonical_pairs = canonicalize_pairs(make_all_physical_pairs(hierarchical_bodies));
+    const std::vector<Pair> recursive_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+
+    std::cout << "Canonical pair count: " << canonical_pairs.size() << "\n";
+    std::cout << "Recursive pair count: " << recursive_order.size() << "\n";
+    std::cout << "Recursive pair order:\n";
+        for (const Pair& pair : recursive_order) {
+            std::cout << "Pair (" << pair.i << ", " << pair.j << ")\n";
+        } 
+    
+    require_unique_pairs(recursive_order, "TestHB15RecursiveOrderingValidation failed: recursive order contains duplicate pairs.");
+    require_same_pair_set(canonical_pairs, recursive_order, "TestHB15RecursiveOrderingValidation failed: recursive order does not contain the same pair set as canonical order.");
+
+    if (recursive_order.size() != 6) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: four-body recursive order should contain six pairs.");
+    }
+    if (recursive_order[0].i != 0 || recursive_order[0].j != 1) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order should begin with pair (0, 1).");
+    }
+    if (recursive_order[1].i != 2 || recursive_order[1].j != 3) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order should place pair (2, 3) second.");
+    }
+
+    const double hierarchical_error = max_forward_backward_error(hierarchical_bodies, recursive_order, 0.001, 1000);
+
+    if (hierarchical_error > 1.0e-8) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: recursive order reversiblity error is too large.");
+    }
+
+    std::vector<Body> nonhierarchical_bodies;
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.5, 0.8660254037844386, 0.0), Vec3(0.0, 0.0, 0.0));
+
+    update_all_momenta(nonhierarchical_bodies);
+    HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
+
+    const std::vector<Pair> nonhierarchical_canonical_pairs = canonicalize_pairs(make_all_physical_pairs(nonhierarchical_bodies));
+    const std::vector<Pair> nonhierarchical_recursive_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+
+    if (!same_pair_order(nonhierarchical_recursive_order, nonhierarchical_canonical_pairs)) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: non-hierarchical recursive order should equal canonical order.");
+    }
+
+    const double nonhierarchical_error = max_forward_backward_error(nonhierarchical_bodies, nonhierarchical_recursive_order, 0.001, 1000);
+
+    if (nonhierarchical_error > 1.0e-8) {
+        throw std::runtime_error("TestHB15RecursiveOrderingValidation failed: non-hierarchical fallback reversibility error is too large.");
+    }
+
+    std::cout << "HB15 recursive ordering validation passed.\n";
+}
