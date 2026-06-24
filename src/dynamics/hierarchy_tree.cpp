@@ -10,6 +10,47 @@
 namespace {
     constexpr double HIERARCHY_DISTANCE_FLOOR = 1.0e-300;
     constexpr double HIERARCHY_VALIDATE_TOL = 1.0e-12;
+    
+    Pair normalized_pair(int i, int j) {
+        if (i < j) {
+            return Pair{i, j};
+        }
+        return Pair{j, i};
+    }
+    bool same_pair(const Pair& a, const Pair& b) {
+        return a.i == b.i && a.j == b.j;
+    }
+    bool contains_pair(const std::vector<Pair>& pairs, const Pair& target) {
+        for (const Pair& pair : pairs) {
+            if (same_pair(pair, target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+    std::vector<Pair> make_all_pairs_from_body_count(int body_count) {
+        std::vector<Pair> pairs;
+        for (int i = 0; i < body_count; ++i) {
+            for (int j = i + 1; j < body_count; ++j) {
+                pairs.push_back(Pair{i, j});
+            }
+        }
+        return pairs;
+    }
+    void append_recursive_selected_lear_pairs_from_node(const std::shared_ptr<HierarchyNode>& node, const std::vector<Pair>& selected_pairs, std::vector<Pair>& ordered_pairs) {
+        if (!node || node->is_leaf()) {
+            return;
+        }
+        append_recursive_selected_lear_pairs_from_node(node->left, selected_pairs, ordered_pairs);
+        append_recursive_selected_lear_pairs_from_node(node->right, selected_pairs, ordered_pairs);
+
+        if (node->is_binary() && node->left->is_leaf() && node->right->is_leaf()) {
+            const Pair pair = normalized_pair(node->left->body_index, node->right->body_index);
+            if (contains_pair(selected_pairs, pair) && !contains_pair(ordered_pairs, pair)) {
+                ordered_pairs.push_back(pair);
+            }
+        }
+    }
 }
 
 HierarchyTree::HierarchyTree(const std::vector<Body>& bodies) {
@@ -175,6 +216,44 @@ std::vector<Pair> HierarchyTree::selected_leaf_pairs(const std::vector<Body>& bo
         }
     }
     return canonicalize_pairs_preserve_order(selected_pairs);
+}
+
+// Recursive Selected Leaf Pairs
+std::vector<Pair> HierarchyTree::recursive_selected_leaf_pairs(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const {
+    if (!root) {
+        return {};
+    }
+    if (static_cast<int>(bodies.size()) != leaf_count()) {
+        throw std::runtime_error("HierarchyTree::resursive_selected_leaf_pairs received a body count rhar does not match the tree.");
+    }
+    
+    const std::vector<Pair> selected_pairs = selected_leaf_pairs(bodies, criteria);
+    std::vector<Pair> ordered_pairs;
+
+    append_recursive_selected_lear_pairs_from_node(root, selected_pairs, ordered_pairs);
+
+    return canonicalize_pairs_preserve_order(ordered_pairs);
+}
+
+// Recursive HB15 Pair Order
+std::vector<Pair> HierarchyTree::recursive_hb15_pair_order(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const {
+    if (!root) {
+        return {};
+    }
+    if (static_cast<int>(bodies.size()) != leaf_count()) {
+        throw std::runtime_error("HierarchyTree::recursive_hb15_order received a body count that does not match the tree.");
+    }
+
+    std::vector<Pair> ordered_pairs = recursive_selected_leaf_pairs(bodies, criteria);
+    const std::vector<Pair> all_pairs = make_all_pairs_from_body_count(static_cast<int>(bodies.size()));
+
+    for (const Pair& pair : all_pairs) {
+        if (!contains_pair(ordered_pairs, pair)) {
+            ordered_pairs.push_back(pair);
+        }
+    }
+
+    return canonicalize_pairs_preserve_order(ordered_pairs);
 }
 
 // Validate

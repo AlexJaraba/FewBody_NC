@@ -44,6 +44,8 @@ public:
     std::vector<int> leaf_body_indices() const;
     std::vector<HierarchyBinaryCandidate> leaf_binary_candidates(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
     std::vector<Pair> selected_leaf_pairs(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
+    std::vector<Pair> recursive_selected_leaf_pairs(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
+    std::vector<Pair> recursive_hb15_pair_order(const std::vector<Body>& bodies, const HierarchySelectionCriteria& criteria) const;
 
     void validate(int expected_leaf_count) const;
 private:

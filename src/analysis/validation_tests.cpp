@@ -966,3 +966,88 @@ void Tests::TestHierarchySelectionCriteria() {
     }
     std::cout << "Hierarchy selection criteria validation passed.\n";
 }
+
+void Tests::TestHB15RecursiveOrderingPrototype() {
+    std::cout << "\n=== HB15 Recursive Ordering Prototype Test ===\n";
+    std::cout << std::scientific << std::setprecision(17);
+
+    auto require_pair = [](const Pair& pair, int expected_i, int expected_j, const std::string& message) {
+        if (pair.i != expected_i || pair.j != expected_j) {
+            throw std::runtime_error(message);
+        }
+    };
+    auto require_unique_pairs = [](const std::vector<Pair>& pairs, const std::string& message) {
+        for (std::size_t a = 0; a < pairs.size(); ++a) {
+            for (std::size_t b = a + 1; b < pairs.size(); ++b) {
+                if (pairs[a].i == pairs[b].i && pairs[a].j == pairs[b].j) {
+                    throw std::runtime_error(message);
+                }
+            }
+        }
+    };
+    auto print_pairs = [](const std::string& label, const std::vector<Pair>& pairs) {
+        std::cout << label << "\n";
+        for (const Pair& pair : pairs) {
+            std::cout << "Pair (" << pair.i << ", " << pair.j << ")\n";
+        }
+    };
+
+    HierarchySelectionCriteria criteria;
+    criteria.min_separation_ratio = 5.0;
+    criteria.min_strength_ratio = 10.0;
+
+    std::vector<Body> hierarchical_bodies;
+    hierarchical_bodies.emplace_back(1.0, Vec3(-0.05, 0.0, 0.0), Vec3(0.0, -0.01, 0.0));
+    hierarchical_bodies.emplace_back(1.0, Vec3(0.05, 0.0, 0.0),  Vec3(0.0, 0.01, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(9.95, 0.0, 0.0),  Vec3(0.0, -0.005, 0.0));
+    hierarchical_bodies.emplace_back(0.5, Vec3(10.05, 0.0, 0.0), Vec3(0.0, 0.005, 0.0));
+
+    update_all_momenta(hierarchical_bodies);
+    HierarchyTree hierarchical_tree(hierarchical_bodies);
+
+    const std::vector<Pair> recursive_selected_pairs = hierarchical_tree.recursive_selected_leaf_pairs(hierarchical_bodies, criteria);
+    const std::vector<Pair> recursive_full_order = hierarchical_tree.recursive_hb15_pair_order(hierarchical_bodies, criteria);
+
+    print_pairs("Recursive selected hierarchy pairs:", recursive_selected_pairs);
+    print_pairs("Recursive full HB15 pair order:", recursive_full_order);
+
+    if (recursive_selected_pairs.size() != 2) {
+        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: expected two recursive selected pairs.");
+    }
+
+    require_pair(recursive_selected_pairs[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: first recursive selected pair should be (0, 1).");
+    require_pair(recursive_selected_pairs[1], 2, 3, "TestHB15RecursiveOrderingPrototype failed: second recursive selected pair should be (2, 3).");
+
+    if (recursive_full_order.size() != 6) {
+        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: full four-body order should contain six pairs.");
+    }
+
+    require_unique_pairs(recursive_full_order, "TestHB15RecursiveOrderingPrototype failed: recursive full order contains duplicate pairs.");
+    require_pair(recursive_full_order[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: full order should start with pair (0, 1).");
+    require_pair(recursive_full_order[1], 2, 3, "TestHB15RecursiveOrderingPrototype failed: full order should place (2, 3) second.");
+
+    std::vector<Body> nonhierarchical_bodies;
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(1.0, 0.0, 0.0), Vec3(0.0, 0.0, 0.0));
+    nonhierarchical_bodies.emplace_back(1.0, Vec3(0.5, 0.8660254037844386, 0.0), Vec3(0.0, 0.0, 0.0));
+
+    update_all_momenta(nonhierarchical_bodies);
+    HierarchyTree nonhierarchical_tree(nonhierarchical_bodies);
+
+    const std::vector<Pair> nonhierarchical_selected_pair = nonhierarchical_tree.recursive_selected_leaf_pairs(nonhierarchical_bodies, criteria);
+    const std::vector<Pair> nonhierarchical_full_order = nonhierarchical_tree.recursive_hb15_pair_order(nonhierarchical_bodies, criteria);
+
+    if (!nonhierarchical_selected_pair.empty()) {
+        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: non-hierarchical triangle should have no recursive selected pairs.");
+    }
+    if (nonhierarchical_full_order.size() != 3) {
+        throw std::runtime_error("TestHB15RecursiveOrderingPrototype failed: non-hierarchical triangle full order should contain three pairs.");
+    }
+
+    require_unique_pairs(nonhierarchical_full_order, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical full order contains duplicate pairs.");
+    require_pair(nonhierarchical_full_order[0], 0, 1, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should start canonical.");
+    require_pair(nonhierarchical_full_order[1], 0, 2, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
+    require_pair(nonhierarchical_full_order[2], 1, 2, "TestHB15RecursiveOrderingPrototype failed: non-hierarchical order should remain canonical.");
+
+    std::cout << "HB15 recursive ordering prototype validation passed.\n";
+}

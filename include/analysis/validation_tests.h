@@ -24,6 +24,7 @@ public:
     void TestHB15RemainderOperator();
     void TestHB15FixedStepValidation();
     void TestHB15Reversibility();
+    void TestHB15RecursiveOrderingPrototype();
 
 private:
     Solver& solver_;
