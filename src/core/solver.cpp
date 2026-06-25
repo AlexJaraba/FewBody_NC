@@ -61,6 +61,7 @@ double tangent_norm(const VariationalState& v) {
 
 namespace {
     constexpr double AUTO_HIERARCHY_RATIO_THRESHOLD = 100.0;
+    constexpr bool AUTO_MAY_SELECT_STRENGTH = false;
     std::vector<Pair> make_all_physical_pairs(const std::vector<Body>& test_bodies) {
         std::vector<Pair> pairs;
         const int N = static_cast<int>(test_bodies.size());
@@ -97,7 +98,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
             effective_pair_order = "strength";
         }
         else if (params.pair_order == "auto") {
-            if (hierarchy_ratio >= AUTO_HIERARCHY_RATIO_THRESHOLD) {
+            if (AUTO_MAY_SELECT_STRENGTH && hierarchy_ratio >= AUTO_HIERARCHY_RATIO_THRESHOLD) {
                 fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
                 effective_pair_order = "strength";
             }

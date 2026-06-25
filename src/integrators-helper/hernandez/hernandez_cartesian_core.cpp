@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
+#include <string>
+#include <vector>
 
 #include "integrators/hernandez.h"
 #include "integrators-helper/hernandez/pair_map.h"
@@ -37,7 +39,7 @@ namespace {
        double pair_half_dt = 0.0;
        double correction_half_dt = 0.0;
     };
-
+    constexpr int PAIR_MAP_MAX_RETRY_DEPTH = 8;
     int deepest_nonempty_level(const HernandezPairLevelSchedule& schedule) {
         int deepest_level = 0;
         for (const HernandezPairLevelGroup& group : schedule.levels) {
@@ -72,20 +74,70 @@ namespace {
         const double distance = dr.norm();
         const double relative_speed = dv.norm();
 
-        HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+        int last_iterations = 0;
+        std::string last_error = "unknown pair-map failure";
 
-        if (!result.converged) {
-            std::ostringstream msg;
-            msg << std::setprecision(17);
-            msg << "Hernandez pair Kepler map failed to converge."
-                << "pair = (" << pair.i << ", " << pair.j << ")"
-                << "dt = " << dt << ", "
-                << "G = " << G << ", "
-                << "distance before = " << distance << ", "
-                << "relative spped before = " << relative_speed << ", "
-                << "iterations = " << result.iterations;
-            throw std::runtime_error(msg.str());
+        try {
+            const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+            last_iterations = result.iterations;
+
+            if (result.converged) {
+                return;
+            }
+
+            last_error = "universal-variable solve did not converge";
         }
+
+        catch (const std::exception& exc) {
+            last_error = exc.what();
+        }
+
+        const std::vector<Body> original_bodies = bodies;
+        int substeps = 2;
+
+        for (int retry_depth = 1; retry_depth <= PAIR_MAP_MAX_RETRY_DEPTH; ++retry_depth) {
+            std::vector<Body> trial_bodies = original_bodies;
+            const double sub_dt = dt / static_cast<double>(substeps);
+            bool all_substeps_converged = true;
+            int total_iterations = 0;
+            for (int substep = 0; substep < substeps; ++substep) {
+                try {
+                    const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(trial_bodies, pair.i, pair.j, sub_dt, G);
+                    total_iterations += result.iterations;
+                    if (!result.converged) {
+                        all_substeps_converged = false;
+                        last_iterations = result.iterations;
+                        last_error = "universal-variable solve did not converge during retry";
+                        break;
+                    }
+                }
+                catch (const std::exception& exc) {
+                    all_substeps_converged = false;
+                    last_error = exc.what();
+                    break;
+                }
+            }
+
+            if (all_substeps_converged) {
+                bodies = trial_bodies;
+                return;
+            }
+            last_iterations = total_iterations;
+            substeps *= 2;
+        }
+        std::ostringstream msg;
+        msg << std::setprecision(17);
+        msg << "Hernandez pair Kepler map failed to converge after retry."
+            << "pair = (" << pair.i << ", " << pair.j << "), "
+            << "dt = " << dt << ", "
+            << "G = " << G << ", "
+            << "distance_before = " << distance << ", "
+            << "relative_speed_before = " << relative_speed << ", "
+            << "last_iterations = " << last_iterations << ", "
+            << "max_retry_depth = " << PAIR_MAP_MAX_RETRY_DEPTH << ", "
+            << "max_substeps = " << (1 << PAIR_MAP_MAX_RETRY_DEPTH) << ", "
+            << "last_error = " << last_error;
+        throw std::runtime_error(msg.str());
     }
     /*
         Flow of the Hernandez kinetic remainder Hamiltonian.
