@@ -4,7 +4,7 @@ timestep 0.025
 coordinate_mode cartesian
 integrator hernandez
 gravitational_constant 0.000296014912
-pair_order auto
+pair_order canonical
 
 adaptive_timesteps false
 timestep_levels 2
