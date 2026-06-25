@@ -1,5 +1,7 @@
 #include <stdexcept>
 #include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 #include "integrators/hernandez.h"
 #include "integrators-helper/hernandez/pair_map.h"
@@ -65,9 +67,24 @@ namespace {
         hernandez.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
     }
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        const Vec3 dr = bodies[pair.j].position - bodies[pair.i].position;
+        const Vec3 dv = bodies[pair.j].velocity - bodies[pair.i].velocity;
+        const double distance = dr.norm();
+        const double relative_speed = dv.norm();
+
         HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+
         if (!result.converged) {
-            throw std::runtime_error("Hernandez pair Kepler map failed to converge.");
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Hernandez pair Kepler map failed to converge."
+                << "pair = (" << pair.i << ", " << pair.j << ")"
+                << "dt = " << dt << ", "
+                << "G = " << G << ", "
+                << "distance before = " << distance << ", "
+                << "relative spped before = " << relative_speed << ", "
+                << "iterations = " << result.iterations;
+            throw std::runtime_error(msg.str());
         }
     }
     /*

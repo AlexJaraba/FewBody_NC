@@ -51,7 +51,7 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 6.67430e-11, "canonical",false, 0, 0.03, 1, 3};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 0.000296014912, "canonical",false, 0, 0.03, 1, 3};  // Default values
 
 
     while (std::getline(infile, line)) {

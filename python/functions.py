@@ -50,6 +50,13 @@ class PlotConfig:
     orbit_marker_size: float = 4.0
     start_marker_size: float = 60.0
 
+class SimulationRunError(RuntimeError):
+    def __init__(self, message: str, stdout: str, stderr: str, returncode: int):
+        super().__init__(message)
+        self.stdout = stdout
+        self.stderr = stderr
+        self.returncode = returncode
+
 # ============================================================
 # Benchmark Tests:
 #   Benchmark systems used to demonstrate both the strengths and limits of the current integrators.
@@ -226,24 +233,6 @@ DEFAULT_BENCHMARK_MODES = [
         "integrator": "hernandez",
         "coordinate_mode": "cartesian",
         "pair_order": "auto",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
-    },
-    {
-        "name": "jacobi_leapfrog_fixed",
-        "integrator": "leapfrog",
-        "coordinate_mode": "jacobi",
-        "pair_order": "canonical",
-        "adaptive_timesteps": False,
-    },
-    {
-        "name": "jacobi_leapfrog_adaptive",
-        "integrator": "leapfrog",
-        "coordinate_mode": "jacobi",
-        "pair_order": "canonical",
         "adaptive_timesteps": True,
         "timestep_levels": 4,
         "timestep_eta": 0.05,
@@ -769,9 +758,7 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
     result = subprocess.run([str(executable_path)], cwd=str(PROJECT_ROOT), capture_output=True, text=True)
 
     if result.returncode != 0:
-        print(result.stdout)
-        print(result.stderr)
-        raise RuntimeError("Simulation failed.")
+        raise SimulationRunError("Simulation failed.", stdout=result.stdout, stderr=result.stderr, returncode=result.returncode)
 
     print("Simulation finished successfully")
 
@@ -914,6 +901,9 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                 try:
                     run_executable()
                 except RuntimeError as exc:
+                    stdout_tail = exc.stdout[-4000:] if isinstance(exc, SimulationRunError) else ""
+                    stderr_tail = exc.stderr[-4000:] if isinstance(exc, SimulationRunError) else ""
+                    returncode = exc.returncode if isinstance(exc, SimulationRunError) else np.nan
                     print(f"Benchmark run failed: {exc}")
                     benchmark_rows.append({
                         "run_number": run_number,
@@ -949,6 +939,9 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                         "final_com_drift": np.nan,
                         "max_dRcm": np.nan,
                         "final_dRcm": np.nan,
+                        "returncode": returncode,
+                        "stdout_tail": stdout_tail,
+                        "stderr_tail": stderr_tail
                     })
                     continue
 
@@ -993,6 +986,12 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                     "output_frequency": test["output_frequency"],
                     "status": "success",
                     "error": "",
+                    "failure_type": "",
+                    "failure_message": "",
+                    "returncode": 0,
+                    "stdout_tail": "",
+                    "stderr_tail": "",
+                    "plot_path": str(plot_path),
                     "final_time": time[-1] if len(time) else np.nan,
                     "initial_energy": energy[0] if len(energy) else np.nan,
                     "final_energy": energy[-1] if len(energy) else np.nan,
@@ -1021,6 +1020,23 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         summary = pd.DataFrame(benchmark_rows)
         summary_path = output_dir / "benchmark_summary.csv"
         summary.to_csv(summary_path, index=False)
+        status_counts = summary["status"].value_counts(dropna=False)
+        print("\n" + "=" * 90)
+        print("BENCHMARK STATUS SUMMARY")
+        print("=" * 90)
+        print(f"Total runs: {len(summary)}")
+        print(f"Successful runs: {int(status_counts.get('success', 0))}")
+        print(f"Failed runs: {int(status_counts.get('failed', 0))}")
+        print(f"Skipped runs: {int(status_counts.get('skipped', 0))}")
+        print(f"Warning runs: {int(status_counts.get('warning', 0))}")
+        print(f"Saved summary CSV to {summary_path}")
+
+        failed_summary = summary[summary["status"] == "failed"].copy()
+        if not failed_summary.empty:
+            failures_path = output_dir / "benchmark_failures.csv"
+            failed_summary.to_csv(failures_path, index=False)
+            print(f"Saved failure CSV to {failures_path}")
+
         successful_summary = summary[summary["status"] == "success"].copy()
 
         if successful_summary.empty:
@@ -1041,7 +1057,9 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
             "dt",
             "runtime",
             "status",
-            "error",
+            "failure_type",
+            "failure_message",
+            "returncode",
             "max_dE_over_E0",
             "final_dE_over_E0",
             "max_dL_over_L0",
@@ -1051,33 +1069,57 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
             "max_dRcm",
             "final_dRcm",
             "final_com_drift",
+            "plot_path",
         ]
 
+        # Comparison Table
         print("\n" + "=" * 90)
         print("BENCHMARK COMPARISON TABLE")
         print("=" * 90)
         print(f"Saved summary CSV to {summary_path}")
-
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 220, "display.float_format", "{:.6e}".format):
             print(summary[comparison_columns].to_string(index=False))
 
+        # Best Runs
         print("\n" + "=" * 90)
         print("BEST MODE PER TEST BY MAX |dE/E0|")
         print("=" * 90)
-
         best_rows = (successful_summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
         best_columns = ["test", "mode", "pair_order", "adaptive_timesteps", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
-
+        best_path = output_dir / "best_by_energy.csv"
+        best_rows.to_csv(best_path, index=False)
+        print(f"Saved best-by-energy CSV to {best_path}")
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(best_rows[best_columns].to_string(index=False))
         
+        # Worst Runs
         print("\n" + "=" * 90)
         print("WORST 10 RUNS BY MAX |dE/E0|")
-
         worst_rows = successful_summary.sort_values("max_dE_over_E0", ascending=False).head(10)
-        
+        worst_path = output_dir / "worst_by_energy.csv"
+        worst_rows.to_csv(worst_path, index=False)
+        print(f"Saved worst-by-energy CSV to {worst_path}")
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(worst_rows[best_columns].to_string(index=False))
+
+        # Ranking by median max
+        print("\n" + "=" * 90)
+        print("MODE RANKINGS BY MEDIAN MAX |dE/E0|")
+        print("=" * 90)
+        mode_rankings = (successful_summary.groupby("mode", as_index=False).agg(
+            median_max_dE_over_E0=("max_dE_over_E0", "median"),
+            mean_max_dE_over_E0=("max_dE_over_E0", "mean"),
+            worst_max_dE_over_E0=("max_dE_over_E0", "max"),
+            median_max_dL_over_L0=("max_dL_over_L0", "median"),
+            median_max_dP=("max_dP", "median"),
+            median_max_dRcm=("max_dRcm", "median"),
+            successful_runs=("status", "count")).sort_values("median_max_dE_over_E0")
+        )
+        mode_rankings_path = output_dir / "mode_rankings.csv"
+        mode_rankings.to_csv(mode_rankings_path, index=False)
+        print(f"Saved mode rankings CSV to {mode_rankings_path}")
+        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
+            print(mode_rankings.to_string(index=False))
 
     finally:
         if original_param_text is not None:
