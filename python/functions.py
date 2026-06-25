@@ -286,6 +286,28 @@ def read_param(param_path: Path = DEFAULT_PARAM_PATH) -> dict:
     
     return params
 
+def read_initial_conditions(path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> list[tuple[float, float, float, float, float, float, float]]:
+    if not path.exists():
+        raise FileNotFoundError(f"Could not find initial-condition file: {path}")
+    
+    rows = []
+
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        parts = stripped.split()
+
+        if len(parts) != 7:
+            raise ValueError(f"Initial-conditions line {line_number} must have 7 values: mass x y z vx vy vz")
+        
+        rows.append(tuple(float(value) for value in parts))
+
+    if not rows:
+        raise ValueError(f"No bodies were found in {path}")
+    return rows
+
 def read_output(path: Path = DEFAULT_OUTPUT_PATH) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"Output file not found: {path}")
@@ -376,6 +398,307 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
     })
     return diagnostics
 
+# ============================================================
+# REBOUND comparison helpers
+# ============================================================
+
+def rebound_require():
+    try:
+        import rebound
+    except ImportError as exc:
+        raise RuntimeError("REBOUND is not installed. Install it with: pip install rebound") from exc
+    return rebound
+
+def rebound_run_simulation(initial_conditions: list[tuple[float, float, float, float, float, float, float]], 
+                            dt: float, runtime: float, 
+                            output_frequency: int, 
+                            G: float = 0.000296014912,
+                            rebound_integrator: str = "whfast",
+                            move_to_com: bool = False,
+                            config: PlotConfig | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Run the same physical Cartesian initial conditions wiht REBOUND.
+    The returned output DataFrame uses the same columns as FewBodyNC output.csv:
+        time, id, x, y, z, vx, vy, vz, mass
+    Diagnostics are recomputed with this file's diagnostics routine.
+    The benchmark table compares REBOUND and FewBodyNC using the same metric code.
+    """
+
+    rebound = rebound_require()
+
+    if config is None:
+        config = PlotConfig(G=G)
+    else: config = PlotConfig(G=G, epsilon=config.epsilon, figure_size=config.figure_size, orbit_marker_size=config.orbit_marker_size, start_marker_size=config.start_marker_size)
+    
+    sim = rebound.Simulation()
+    sim.G = G
+    sim.integrator = rebound_integrator
+    sim.dt = dt
+    
+    for row in initial_conditions:
+        mass, x, y, z, vx, vy, vz = row
+        sim.add(m=mass, x=x, y=y, z=z, vx=vx, vy=vy, vz=vz)
+
+    if move_to_com:
+        sim.move_to_com()
+
+    times = benchmark_output_times(dt=dt, runtime=runtime, output_frequency=output_frequency)
+    output_rows = []
+    
+    for time_value in times:
+        if abs(float(time_value) - sim.t) > 1e-15:
+            try:
+                sim.integrate(float(time_value), exact_finish_time=1)
+            except:
+                sim.integrate(float(time_value))
+        for body_id, particle in enumerate(sim.particles):
+            output_rows.append({"time": float(time_value),
+                                "id": body_id,
+                                "x": particle.x,
+                                "y": particle.y,
+                                "z": particle.z,
+                                "vx": particle.vx,
+                                "vy": particle.vy,
+                                "vz": particle.vz,
+                                "mass": particle.m,})
+    
+    output = pd.DataFrame(output_rows)
+    output = output.sort_values(by=["time", "id"]).reset_index(drop=True)
+    diagnostics = compute_diagnostics_from_output(output, config)
+
+    return output, diagnostics
+
+# ============================================================
+# Helper Functions
+# ============================================================
+
+def benchmark_output_times(dt: float, runtime: float, output_frequency: int) -> np.ndarray:
+    if dt <= 0.0:
+        raise ValueError("dt must be positive for REBOUND comparison")
+    if runtime < 0.0:
+        raise ValueError("runtime must be non-negative for REBOUND comparison")
+    
+    output_frequency = max(int(output_frequency), 1)
+    total_steps = int(round(runtime / dt))
+    step_numbers = list(range(0, total_steps + 1, output_frequency))
+
+    if not step_numbers or step_numbers[-1] != total_steps:
+        step_numbers.append(total_steps)
+    
+    return np.array(step_numbers, dtype=float) * float(dt)
+
+def append_benchmark_row(benchmark_rows: list[dict],
+                         run_number: int,
+                         mode: dict,
+                         test: dict,
+                         status: str,
+                         error: str = "",
+                         returncode: float = 0,
+                         stdout_tail: str = "",
+                         stderr_tail: str = "",
+                         plot_path: Path | None = None,
+                         diagnostics: pd.DataFrame | None = None,
+                         engine: str = "fewbodync",
+                         failure_type: str = "",
+                         failure_message: str = "",
+                         rebound_comparison: dict | None = None) -> None:
+    row = {"run_number": run_number,
+           "engine": engine,
+           "mode": mode["name"],
+           "integrator": mode["integrator"],
+           "coordinate_mode": mode["coordinate_mode"],
+           "pair_order": mode.get("pair_order", "canonical"),
+           "adaptive_timesteps": mode.get("adaptive_timesteps", False),
+           "timestep_levels": mode.get("timestep_levels", np.nan),
+           "timestep_eta": mode.get("timestep_eta", np.nan),
+           "timestep_refresh_interval": mode.get("timestep_refresh_interval", np.nan),
+           "timestep_level_decrease_delay": mode.get("timestep_level_decrease_delay", np.nan),
+           "test": test["name"],
+           "dt": test["dt"],
+           "runtime": test["runtime"],
+           "output_frequency": test["output_frequency"],
+           "status": status,
+           "error": error,
+           "failure_type": failure_type,
+           "failure_message": failure_message,
+           "returncode": returncode,
+           "stdout_tail": stdout_tail,
+           "stderr_tail": stderr_tail,
+           "plot_path": str(plot_path) if plot_path is not None else "",
+           "final_time": np.nan,
+           "initial_energy": np.nan,
+           "final_energy": np.nan,
+           "max_dE_over_E0": np.nan,
+           "final_dE_over_E0": np.nan,
+           "initial_angular_momentum": np.nan,
+           "final_angular_momentum": np.nan,
+           "max_dL_over_L0": np.nan,
+           "final_dL_over_L0": np.nan,
+           "initial_linear_momentum": np.nan,
+           "final_linear_momentum": np.nan,
+           "max_dP": np.nan,
+           "final_dP": np.nan,
+           "initial_com_drift": np.nan,
+           "final_com_drift": np.nan,
+           "max_dRcm": np.nan,
+           "final_dRcm": np.nan,
+           "rebound_compare": False,
+           "rebound_integrator": "",
+           "rebound_status": "not_requested",
+           "rebound_error": ""}
+    
+    if diagnostics is not None and not diagnostics.empty:
+        config = PlotConfig()
+        energy = diagnostics["total_energy"].to_numpy()
+        angular = diagnostics["angular_momentum"].to_numpy()
+        linear = diagnostics["linear_momentum"].to_numpy()
+        com = diagnostics["com_drift"].to_numpy()
+        time = diagnostics["time"].to_numpy()
+        dE = error_relative(energy, config.epsilon)
+        dL = error_relative(angular, config.epsilon)
+        dP = error_absolute(linear)
+        dRcm = error_absolute(com)
+
+        row.update({"final_time": time[-1] if len(time) else np.nan,
+                    "initial_energy": energy[0] if len(energy) else np.nan,
+                    "final_energy": energy[-1] if len(energy) else np.nan,
+                    "max_dE_over_E0": compute_finite_max(dE),
+                    "final_dE_over_E0": float(dE[-1]) if len(dE) else np.nan,
+                    "initial_angular_momentum": angular[0] if len(angular) else np.nan,
+                    "final_angular_momentum": angular[-1] if len(angular) else np.nan,
+                    "max_dL_over_L0": compute_finite_max(dL),
+                    "final_dL_over_L0": float(dL[-1]) if len(dL) else np.nan,
+                    "initial_linear_momentum": linear[0] if len(linear) else np.nan,
+                    "final_linear_momentum": linear[-1] if len(linear) else np.nan,
+                    "max_dP": compute_finite_max(dP),
+                    "final_dP": float(dP[-1]) if len(dP) else np.nan,
+                    "initial_com_drift": com[0] if len(com) else np.nan,
+                    "final_com_drift": com[-1] if len(com) else np.nan,
+                    "max_dRcm": compute_finite_max(dRcm),
+                    "final_dRcm": float(dRcm[-1]) if len(dRcm) else np.nan,})
+    if rebound_comparison is not None:
+        row.update(rebound_comparison)
+    
+    benchmark_rows.append(row)
+
+def _safe_ratio(numerator: float, denominator: float, epsilon:float = 1e-300) -> float:
+    if not np.isfinite(numerator) or not np.isfinite(denominator):
+        return float("nan")
+    if abs(denominator) <= epsilon:
+        return float("nan")
+    return float(numerator / denominator)
+
+def compare_diagnostics_to_rebound(fewbody_diagnostics: pd.DataFrame, rebound_diagnostics: pd.DataFrame, config: PlotConfig, rebound_integrator: str) -> dict:
+    comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "success", "rebound_error": ""}
+
+    few = fewbody_diagnostics.copy()
+    ref = rebound_diagnostics.copy()
+    few["time_key"] = np.round(few["time"].to_numpy(dtype=float), 12)
+    ref["time_key"] = np.round(ref["time"].to_numpy(dtype=float), 12)
+    merged = few.merge(ref, on="time_key", suffixes=("_fewbody", "_rebound"))
+
+    comparison["rebound_matched_diagnostic_rows"] = int(len(merged))
+
+    if merged.empty:
+        comparison["rebound_status"] = "warning"
+        comparison["rebound_error"] = "No matching diagnostic output times"
+        return comparison
+    
+    def add_series_comparison(metric:str, label:str) -> None:
+        few_values = merged[f"{metric}_fewbody"].to_numpy(dtype=float)
+        ref_values = merged[f"{metric}_rebound"].to_numpy(dtype=float)
+        diff = few_values - ref_values
+        abs_diff = np.abs(diff)
+        rel_diff = abs_diff / np.maximum(np.abs(ref_values), config.epsilon)
+
+        comparison[f"rms_{label}_difference_vs_rebound"] = float(np.sqrt(np.nanmean(diff * diff)))
+        comparison[f"max_abs_{label}_difference_vs_rebound"] = compute_finite_max(abs_diff)
+        comparison[f"max_rel_{label}_difference_vs_rebound"] = compute_finite_max(rel_diff)
+        comparison[f"final_{label}_difference_vs_rebound"] = float(diff[-1])
+        comparison[f"final_abs_{label}_difference_vs_rebound"] = float(abs_diff[-1])
+        comparison[f"final_rel_{label}_difference_vs_rebound"] = float(rel_diff[-1])
+    
+    add_series_comparison("total_energy", "energy")
+    add_series_comparison("angular_momentum", "angular_momentum")
+    add_series_comparison("linear_momentum", "linear_momentum")
+    add_series_comparison("com_drift", "com_drift")
+
+    rebound_summary = error_diagnostic_metric_summary(rebound_diagnostics, config)
+    few_summary = error_diagnostic_metric_summary(fewbody_diagnostics, config)
+
+    for key, value in rebound_summary.items():
+        comparison[f"rebound_{key}"] = value
+    for key, few_value in few_summary.items():
+        rebound_value = rebound_summary.get(key, np.nan)
+        comparison[f"difference_{key}_vs_rebound"] = (float(few_value - rebound_value)
+                                                      if np.isfinite(few_value) and np.isfinite(rebound_value) else float("nan"))
+        comparison[f"ratio_{key}_to_rebound"] = _safe_ratio(few_value, rebound_value, config.epsilon)
+
+    return comparison
+
+def compare_output_to_rebound(fewbody_output: pd.DataFrame, rebound_output: pd.DataFrame, comparison: dict) -> dict:
+    few = fewbody_output.copy()
+    ref = rebound_output.copy()
+    few["time_key"] = np.round(few["time"].to_numpy(dtype=float), 12)
+    ref["time_key"] = np.round(ref["time"].to_numpy(dtype=float), 12)
+    merged = few.merge(ref, on=["time_key", "id"], suffixes=("_fewbody", "_rebound"))
+    comparison["rebound_matched_diagnostic_rows"] = int(len(merged))
+
+    if merged.empty:
+        comparison["rebound_status"] = "warning"
+        comparison["rebound_error"] = "No matching output rows for position/velocity comparison"
+        return comparison
+    
+    dx = merged["x_fewbody"].to_numpy(dtype=float) - merged["x_rebound"].to_numpy(dtype=float)
+    dy = merged["y_fewbody"].to_numpy(dtype=float) - merged["y_rebound"].to_numpy(dtype=float)
+    dz = merged["z_fewbody"].to_numpy(dtype=float) - merged["z_rebound"].to_numpy(dtype=float)
+    dvx = merged["vx_fewbody"].to_numpy(dtype=float) - merged["vx_rebound"].to_numpy(dtype=float)
+    dvy = merged["vy_fewbody"].to_numpy(dtype=float) - merged["vy_rebound"].to_numpy(dtype=float)
+    dvz = merged["vz_fewbody"].to_numpy(dtype=float) - merged["vz_rebound"].to_numpy(dtype=float)
+    
+    position_error = np.sqrt(dx * dx + dy * dy + dz * dz)
+    velocity_error = np.sqrt(dvx * dvx + dvy * dvy + dvz * dvz)
+
+    comparison["rms_position_error_vs_rebound_all_outputs"] = float(np.sqrt(np.nanmean(position_error * position_error)))
+    comparison["max_position_error_vs_rebound_all_outputs"] = compute_finite_max(position_error)
+    comparison["rms_velocity_error_vs_rebound_all_outputs"] = float(np.sqrt(np.nanmean(velocity_error * velocity_error)))
+    comparison["max_velocity_error_vs_rebound_all_outputs"] = compute_finite_max(velocity_error)
+
+    final_time_key = merged["time_key"].max()
+    final_rows = merged[merged["time_key"] == final_time_key]
+
+    fdx = final_rows["x_fewbody"].to_numpy(dtype=float) - final_rows["x_rebound"].to_numpy(dtype=float)
+    fdy = final_rows["y_fewbody"].to_numpy(dtype=float) - final_rows["y_rebound"].to_numpy(dtype=float)
+    fdz = final_rows["z_fewbody"].to_numpy(dtype=float) - final_rows["z_rebound"].to_numpy(dtype=float)
+    fdvx = final_rows["vx_fewbody"].to_numpy(dtype=float) - final_rows["vx_rebound"].to_numpy(dtype=float)
+    fdvy = final_rows["vy_fewbody"].to_numpy(dtype=float) - final_rows["vy_rebound"].to_numpy(dtype=float)
+    fdvz = final_rows["vz_fewbody"].to_numpy(dtype=float) - final_rows["vz_rebound"].to_numpy(dtype=float)
+
+    final_position_error = np.sqrt(fdx * fdx + fdy * fdy + fdz * fdz)
+    final_velocity_error = np.sqrt(fdvx * fdvx + fdvy * fdvy + fdvz * fdvz)
+
+    comparison["final_rms_position_error_vs_rebound"] = float(np.sqrt(np.nanmean(final_position_error * final_position_error)))
+    comparison["final_max_position_error_vs_rebound"] = compute_finite_max(final_position_error)
+    comparison["final_rms_velocity_error_vs_rebound"] = float(np.sqrt(np.nanmean(final_velocity_error * final_velocity_error)))
+    comparison["final_max_velocity_error_vs_rebound"] = compute_finite_max(final_velocity_error)
+
+
+    return comparison
+
+def compare_fewbody_to_rebound(fewbody_output: pd.DataFrame, 
+                               fewbody_diagnostics: pd.DataFrame, 
+                               rebound_output: pd.DataFrame, 
+                               rebound_diagnostics: pd.DataFrame, 
+                               config: PlotConfig, 
+                               rebound_integrator: str) -> dict:
+    comparison = compare_diagnostics_to_rebound(fewbody_diagnostics=fewbody_diagnostics, rebound_diagnostics=rebound_diagnostics, config=config, rebound_integrator=rebound_integrator)
+    comparison = compare_output_to_rebound(fewbody_output=fewbody_output, rebound_output=rebound_output, comparison=comparison)
+    return comparison
+
+# ============================================================
+# Compute Functions
+# ============================================================
+
 def compute_final_positions(df: pd.DataFrame) -> dict[int, np.ndarray]:
     final_time = df["time"].max()
     final_step = df[df["time"] == final_time]
@@ -395,6 +718,7 @@ def compute_finite_max(values: np.ndarray) -> float:
         return float("nan")
     
     return float(np.max(finite))
+
 # ============================================================
 # Error calculations
 # ============================================================
@@ -699,8 +1023,7 @@ def rewrite_adaptive_settings(adaptive_timesteps: bool, timestep_levels: int | N
     if not param_path.exists():
         raise FileNotFoundError(f"Could not find param file: {param_path}")
     
-    replacements = {"adaptive_timesteps": f"adaptive_timesteps {'true' if adaptive_timesteps else 'false'}"
-    }
+    replacements = {"adaptive_timesteps": f"adaptive_timesteps {'true' if adaptive_timesteps else 'false'}"}
 
     if timestep_levels is not None:
         replacements["timestep_levels"] = f"timestep_levels {timestep_levels}"
@@ -766,7 +1089,12 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
 # Only the timestep is changed during the sweep.
 # The original param.txt is restored afterward.
 
-def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.005, 0.0025, 0.00125),  param_path: Path = DEFAULT_PARAM_PATH) -> None:
+def run_timestep_scaling_study(dt_ref: float = 0.00025,  
+                               dts: tuple = (0.01, 0.005, 0.0025, 0.00125),  
+                               param_path: Path = DEFAULT_PARAM_PATH,
+                               rebound_compare: bool = False,
+                               rebound_integrator: str = "whfast",
+                               rebound_move_to_com: bool = False) -> None:
     params = read_param(param_path)
 
     runtime = float(params.get("runtime", 1.0))
@@ -781,6 +1109,12 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.0
     print(f"integrator           = {integrator}")
     print(f"coordinate_mode      = {coordinate_mode}")
     print(f"gravitational_constant = {G}")
+
+    if rebound_compare:
+        print(f"REBOUND comparison   = true ({rebound_integrator})")
+        initial_conditions = read_initial_conditions(DEFAULT_INITIAL_CONDITIONS_PATH)
+    else:
+        initial_conditions = []
 
     original_text = param_path.read_text()
 
@@ -800,6 +1134,7 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.0
         reference = compute_final_positions(df_ref)
 
         errors = []
+        rebound_errors = []
 
         for dt in dts:
             print(f"\nRunning dt = {dt}")
@@ -813,17 +1148,39 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.0
             run_executable()
 
             df = read_output(DEFAULT_OUTPUT_PATH)
+            final_positions = compute_final_positions(df)
             err = error_rms_position(compute_final_positions(df), reference)
 
             errors.append(err)
 
-            print(f"RMS position error: {err}")
+            print(f"RMS position error vs FewBodyNC dt_ref: {err}")
+
+            if rebound_compare:
+                rebound_output, _ = rebound_run_simulation(initial_conditions=initial_conditions,
+                                                           dt=dt,
+                                                           runtime=runtime,
+                                                           output_frequency=output_frequency,
+                                                           G=G,
+                                                           rebound_integrator=rebound_integrator,
+                                                           move_to_com=rebound_move_to_com)
+                
+                rebound_final_positions = compute_final_positions(rebound_output)
+                rebound_error = error_rms_position(final_positions, rebound_final_positions)
+                rebound_errors.append(rebound_error)
+
+                print(f"RMS final-position difference vs REBOUND {rebound_integrator}: {rebound_error}")
         
         dts_array = np.array(dts)
         errors_array = np.array(errors)
 
         plt.figure(figsize=(7, 5), constrained_layout=True)
         plt.loglog(dts_array, errors_array, marker="o")
+
+        if rebound_compare:
+            rebound_errors_array = np.array(rebound_errors)
+            plt.loglog(dts_array, rebound_errors_array, marker='s', label=f"FewBodyNC vs REBOUND {rebound_integrator}")
+            plt.legend()
+
         plt.gca().invert_xaxis()
         plt.xlabel("Timestep dt")
         plt.ylabel("RMS final-position error")
@@ -835,6 +1192,13 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.0
         for i in range(len(errors_array) - 1):
             ratio = errors_array[i] / errors_array[i + 1]
             print(f"{dts_array[i]} -> {dts_array[i + 1]} : ratio = {ratio}")
+        if rebound_compare:
+            comparison = pd.DataFrame({"dt": dts_array, "rms_vs_fewbody_dt_ref": errors_array, f"rms_vs_rebound_{rebound_integrator}": np.array(rebound_errors)})
+            comparison_path = PROJECT_ROOT / "rebound_convergence_comparison.csv"
+            comparison.to_csv(comparison_path, index=False)
+            print("\nREBOUND convergence comparison:")
+            print(comparison.to_string(index=False))
+            print(f"Saved REBOUND convergence comparison to {comparison_path}")
     
     finally:
         param_path.write_text(original_text)
@@ -844,7 +1208,13 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,  dts: tuple = (0.01, 0.0
 # This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
 # The original files should be restored at the end of the run.
 
-def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, use_diagnostics_csv: bool = True,) -> None:
+def run_benchmark_suite(modes: list[dict] | None = None, 
+                        output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, 
+                        use_diagnostics_csv: bool = True,
+                        rebound_compare: bool = False,
+                        rebound_integrator: str = "whfast",
+                        rebound_move_to_com: bool = False,
+                        save_rebound_reference_plots: bool = False) -> None:
     if modes is None:
         modes = DEFAULT_BENCHMARK_MODES
     
@@ -858,6 +1228,51 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         original_param_text = DEFAULT_PARAM_PATH.read_text()
     if DEFAULT_INITIAL_CONDITIONS_PATH.exists():
         original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text()
+    
+    rebound_cache: dict[str, dict] = {}
+    rebound_reference_rows = []
+    def get_rebound_reference(test: dict) -> dict:
+        if test["name"] in rebound_cache:
+            return rebound_cache[test["name"]]
+        print("\n" + "-" * 70)
+        print(f"Computing REBOUND reference for {test['name']} using {rebound_integrator}")
+        print("-" * 70)
+
+        output, diagnostics = rebound_run_simulation(initial_conditions=test["initial_conditions"], 
+                                                     dt=test["dt"], 
+                                                     runtime=test["runtime"],
+                                                     output_frequency=test["output_frequency"],
+                                                     G=config.G,
+                                                     rebound_integrator=rebound_integrator,
+                                                     move_to_com=rebound_move_to_com,
+                                                     config=config)
+        reference = {"output": output, "diagnostics": diagnostics}
+        rebound_cache[test["name"]] = reference
+        summary = error_diagnostic_metric_summary(diagnostics, config)
+        reference_row = {"test": test["name"],
+                         "rebound_integrator": rebound_integrator,
+                         "dt": test["dt"],
+                         "runtime": test["runtime"],
+                         "output_frequency": test["output_frequency"],
+                         "initial_energy": diagnostics["total_energy"].iloc[0] if not diagnostics.empty else np.nan,
+                         "final_energy": diagnostics["total_energy"].iloc[-1] if not diagnostics.empty else np.nan,
+                         "initial_angular_momentum": diagnostics["angular_momentum"].iloc[0] if not diagnostics.empty else np.nan,
+                         "final_angular_momentum": diagnostics["angular_momentum"].iloc[-1] if not diagnostics.empty else np.nan,
+                         "initial_linear_momentum": diagnostics["linear_momentum"].iloc[0] if not diagnostics.empty else np.nan,
+                         "final_linear_momentum": diagnostics["linear_momentum"].iloc[-1] if not diagnostics.empty else np.nan,
+                         "initial_com_drift": diagnostics["com_drift"].iloc[0] if not diagnostics.empty else np.nan,
+                         "final_com_drift": diagnostics["com_drift"].iloc[-1] if not diagnostics.empty else np.nan}
+        reference_row.update({f"rebound_{key}": value for key, value in summary.items()})
+        rebound_reference_rows.append(reference_row)
+
+        if save_rebound_reference_plots:
+            rebound_dir = output_dir / f"rebound_reference_{rebound_integrator}"
+            rebound_dir.mkdir(parents=True, exist_ok=True)
+            plot_path = rebound_dir / f"{test['name']}.png"
+            plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False)
+            print(f"Saved REBOUND reference plot to {plot_path}")
+
+        return reference
 
     try:
         print("\nRunning benchmark suite...")
@@ -878,6 +1293,15 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                 print(f"Mode: {mode['name']}")
                 print(f"Test: {test['name']}")
                 print("=" * 70)
+
+                rebound_reference = None
+                rebound_comparison = None
+                if rebound_compare:
+                    try:
+                        rebound_reference = get_rebound_reference(test)
+                    except Exception as exc:
+                        print(f"REBOUND reference failed for {test['name']}: {exc}")
+                        rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
 
                 rewrite_initial_conditions(test["initial_conditions"])
                 rewrite_param(dt = test["dt"], 
@@ -905,44 +1329,19 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                     stderr_tail = exc.stderr[-4000:] if isinstance(exc, SimulationRunError) else ""
                     returncode = exc.returncode if isinstance(exc, SimulationRunError) else np.nan
                     print(f"Benchmark run failed: {exc}")
-                    benchmark_rows.append({
-                        "run_number": run_number,
-                        "mode": mode["name"],
-                        "integrator": mode["integrator"],
-                        "coordinate_mode": mode["coordinate_mode"],
-                        "pair_order": mode.get("pair_order", "canonical"),
-                        "adaptive_timesteps": mode.get("adaptive_timesteps", False),
-                        "timestep_levels": mode.get("timestep_levels", np.nan),
-                        "timestep_eta": mode.get("timestep_eta", np.nan),
-                        "timestep_refresh_interval": mode.get("timestep_refresh_interval", np.nan),
-                        "timestep_level_decrease_delay": mode.get("timestep_level_decrease_delay", np.nan),
-                        "test": test["name"],
-                        "dt": test["dt"],
-                        "runtime": test["runtime"],
-                        "output_frequency": test["output_frequency"],
-                        "status": "failed",
-                        "error": str(exc),
-                        "final_time": np.nan,
-                        "initial_energy": np.nan,
-                        "final_energy": np.nan,
-                        "max_dE_over_E0": np.nan,
-                        "final_dE_over_E0": np.nan,
-                        "initial_angular_momentum": np.nan,
-                        "final_angular_momentum": np.nan,
-                        "max_dL_over_L0": np.nan,
-                        "final_dL_over_L0": np.nan,
-                        "initial_linear_momentum": np.nan,
-                        "final_linear_momentum": np.nan,
-                        "max_dP": np.nan,
-                        "final_dP": np.nan,
-                        "initial_com_drift": np.nan,
-                        "final_com_drift": np.nan,
-                        "max_dRcm": np.nan,
-                        "final_dRcm": np.nan,
-                        "returncode": returncode,
-                        "stdout_tail": stdout_tail,
-                        "stderr_tail": stderr_tail
-                    })
+                    append_benchmark_row(benchmark_rows=benchmark_rows,
+                                         run_number=run_number,
+                                         mode=mode,
+                                         test=test,
+                                         status="failed",
+                                         error=str(exc),
+                                         returncode=returncode,
+                                         stdout_tail=stdout_tail,
+                                         stderr_tail=stderr_tail,
+                                         engine="fewbodync",
+                                         failure_type=type(exc).__name__,
+                                         failure_message=str(exc),
+                                         rebound_comparison=rebound_comparison)
                     continue
 
                 output = read_output(DEFAULT_OUTPUT_PATH)
@@ -954,61 +1353,32 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
                         diagnostics = compute_diagnostics_from_output(output, config)
                 else:
                     diagnostics = compute_diagnostics_from_output(output, config)
+                if rebound_compare and rebound_reference is not None:
+                    try:
+                        rebound_comparison = compare_fewbody_to_rebound(
+                            fewbody_output=output,
+                            fewbody_diagnostics=diagnostics,
+                            rebound_output=rebound_reference["output"],
+                            rebound_diagnostics=rebound_reference["diagnostics"],
+                            config=config,
+                            rebound_integrator=rebound_integrator)
+                    except Exception as exc:
+                        print(f"Comparison to REBOUND failed: {exc}")
+                        rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
                 
                 plot_path = mode_dir / f"{test['name']}.png"
                 plot_verification_suite(output_df = output, diagnostics = diagnostics, config = config, save_path = plot_path, show=False,)
                 print(f"Saved plot to {plot_path}")
 
-                energy = diagnostics["total_energy"].to_numpy()
-                angular = diagnostics["angular_momentum"].to_numpy()
-                linear = diagnostics["linear_momentum"].to_numpy()
-                com = diagnostics["com_drift"].to_numpy()
-                time = diagnostics["time"].to_numpy()
-                dE = error_relative(energy, config.epsilon)
-                dL = error_relative(angular, config.epsilon)
-                dP = error_absolute(linear)
-                dRcm = error_absolute(com)
-
-                benchmark_rows.append({
-                    "run_number": run_number,
-                    "mode": mode["name"],
-                    "integrator": mode["integrator"],
-                    "coordinate_mode": mode["coordinate_mode"],
-                    "pair_order": mode.get("pair_order", "canonical"),
-                    "adaptive_timesteps": mode.get("adaptive_timesteps", False),
-                    "timestep_levels": mode.get("timestep_levels", np.nan),
-                    "timestep_eta": mode.get("timestep_eta", np.nan),
-                    "timestep_refresh_interval": mode.get("timestep_refresh_interval", np.nan),
-                    "timestep_level_decrease_delay": mode.get("timestep_level_decrease_delay", np.nan),
-                    "test": test["name"],
-                    "dt": test["dt"],
-                    "runtime": test["runtime"],
-                    "output_frequency": test["output_frequency"],
-                    "status": "success",
-                    "error": "",
-                    "failure_type": "",
-                    "failure_message": "",
-                    "returncode": 0,
-                    "stdout_tail": "",
-                    "stderr_tail": "",
-                    "plot_path": str(plot_path),
-                    "final_time": time[-1] if len(time) else np.nan,
-                    "initial_energy": energy[0] if len(energy) else np.nan,
-                    "final_energy": energy[-1] if len(energy) else np.nan,
-                    "max_dE_over_E0": np.max(dE) if len(dE) else np.nan,
-                    "final_dE_over_E0": dE[-1] if len(dE) else np.nan,
-                    "initial_angular_momentum": angular[0] if len(angular) else np.nan,
-                    "final_angular_momentum": angular[-1] if len(angular) else np.nan,
-                    "max_dL_over_L0": np.max(dL) if len(dL) else np.nan,
-                    "final_dL_over_L0": dL[-1] if len(dL) else np.nan,
-                    "initial_linear_momentum": linear[0] if len(linear) else np.nan,
-                    "final_linear_momentum": linear[-1] if len(linear) else np.nan,
-                    "max_dP": np.max(dP) if len(dP) else np.nan,
-                    "final_dP": dP[-1] if len(dP) else np.nan,
-                    "initial_com_drift": com[0] if len(com) else np.nan,
-                    "final_com_drift": com[-1] if len(com) else np.nan,
-                    "max_dRcm": np.max(dRcm) if len(dRcm) else np.nan,
-                    "final_dRcm": dRcm[-1] if len(dRcm) else np.nan,})
+                append_benchmark_row(benchmark_rows=benchmark_rows,
+                                     run_number=run_number,
+                                     mode=mode,
+                                     test=test,
+                                     status="success",
+                                     plot_path=plot_path,
+                                     diagnostics=diagnostics,
+                                     engine="fewbodync",
+                                     rebound_comparison=rebound_comparison)
         
         print("\nBenchmark suite complete.")
         print(f"Plots saved to {output_dir}")
@@ -1020,6 +1390,11 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         summary = pd.DataFrame(benchmark_rows)
         summary_path = output_dir / "benchmark_summary.csv"
         summary.to_csv(summary_path, index=False)
+        if rebound_reference_rows:
+            rebound_reference_summary = pd.DataFrame(rebound_reference_rows)
+            rebound_reference_path = output_dir / f"rebound_reference_{rebound_integrator}_summary.csv"
+            rebound_reference_summary.to_csv(rebound_reference_path, index=False)
+            print(f"Saved REBOUND reference summary CSV to {rebound_reference_path}")
         status_counts = summary["status"].value_counts(dropna=False)
         print("\n" + "=" * 90)
         print("BENCHMARK STATUS SUMMARY")
@@ -1043,7 +1418,7 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
             print("No successful benchmark runs were collected.")
             return
 
-        comparison_columns = [
+        base_comparison_columns = [
             "test",
             "mode",
             "integrator",
@@ -1071,6 +1446,35 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
             "final_com_drift",
             "plot_path",
         ]
+        rebound_comparison_columns = [
+            "rebound_compare",
+            "rebound_integrator",
+            "rebound_status",
+            "rebound_error",
+            "final_rms_position_error_vs_rebound",
+            "final_max_position_error_vs_rebound",
+            "final_rms_velocity_error_vs_rebound",
+            "final_max_velocity_error_vs_rebound",
+            "rms_position_error_vs_rebound_all_outputs",
+            "max_position_error_vs_rebound_all_outputs",
+            "rms_velocity_error_vs_rebound_all_outputs",
+            "max_velocity_error_vs_rebound_all_outputs",
+            "final_abs_energy_difference_vs_rebound",
+            "final_rel_energy_difference_vs_rebound",
+            "max_abs_energy_difference_vs_rebound",
+            "max_rel_energy_difference_vs_rebound",
+            "rebound_max_dE_over_E0",
+            "ratio_max_dE_over_E0_to_rebound",
+            "rebound_final_dE_over_E0",
+            "ratio_final_dE_over_E0_to_rebound",
+            "rebound_max_dL_over_L0",
+            "ratio_max_dL_over_L0_to_rebound",
+            "rebound_max_dP",
+            "ratio_max_dP_to_rebound",
+            "rebound_max_dRcm",
+            "ratio_max_dRcm_to_rebound",
+        ]
+        comparison_columns = [column for column in base_comparison_columns + rebound_comparison_columns if column in summary.columns]
 
         # Comparison Table
         print("\n" + "=" * 90)
@@ -1101,6 +1505,38 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         print(f"Saved worst-by-energy CSV to {worst_path}")
         with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
             print(worst_rows[best_columns].to_string(index=False))
+        
+        if rebound_compare and "final_rms_position_error_vs_rebound" in successful_summary.columns:
+            print("\n" + "=" * 90)
+            print("BEST MODE PER TEST VS REBOUND BY FINAL RMS POSITION ERROR")
+            print("=" * 90)
+            valid_vs_rebound = successful_summary[np.isfinite(successful_summary["final_rms_position_error_vs_rebound"])].copy()
+            if not valid_vs_rebound.empty:
+                best_vs_rebound = (valid_vs_rebound.sort_values([
+                        "test",
+                        "final_rms_position_error_vs_rebound",
+                        "final_rms_velocity_error_vs_rebound",
+                        "max_rel_energy_difference_vs_rebound",
+                    ]).groupby("test", as_index=False).first())
+
+                best_vs_rebound_path = output_dir / f"best_vs_rebound_{rebound_integrator}.csv"
+                best_vs_rebound.to_csv(best_vs_rebound_path, index=False)
+                print(f"Saved best-vs-REBOUND CSV to {best_vs_rebound_path}")
+                best_rebound_columns = [column
+                    for column in [
+                        "test",
+                        "mode",
+                        "pair_order",
+                        "adaptive_timesteps",
+                        "final_rms_position_error_vs_rebound",
+                        "final_rms_velocity_error_vs_rebound",
+                        "final_rel_energy_difference_vs_rebound",
+                        "ratio_max_dE_over_E0_to_rebound",]
+                    if column in best_vs_rebound.columns]
+                with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 220, "display.float_format", "{:.6e}".format,):
+                    print(best_vs_rebound[best_rebound_columns].to_string(index=False))
+            else:
+                print("No finite REBOUND comparison rows were available.")
 
         # Ranking by median max
         print("\n" + "=" * 90)
@@ -1233,6 +1669,17 @@ def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_e
     finally:
         param_path.write_text(original_param_text)
         print("\nRestored original param.txt settings.")
+
+# ============================================================
+# Test Convergence and Benchmark
+# ============================================================
+
+def TestBenchmark(reboundcompare: bool = False, rebound_integrator: str = "whfast", rebound_move_to_com: bool = False, **kwargs) -> None:
+    run_benchmark_suite(rebound_compare=reboundcompare, rebound_integrator=rebound_integrator, rebound_move_to_com=rebound_move_to_com, **kwargs)
+
+def TestConvergence(reboundcompare: bool = False, rebound_integrator: str = "whfast", rebound_move_to_com: bool = False, **kwargs) -> None:
+    run_timestep_scaling_study(rebound_compare=reboundcompare, rebound_integrator=rebound_integrator, rebound_move_to_com=rebound_move_to_com, **kwargs)
+
 
 # ============================================================
 # Clear .csv files

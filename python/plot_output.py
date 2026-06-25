@@ -46,6 +46,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adaptive-compare", action="store_true", help="Run Step 10.4 adaptive-on vs adaptive-off comparison.",)
     parser.add_argument("--adaptive-levels", type=int, default=None, help="Timestep levels to use for adaptive comparison.",)
     parser.add_argument("--adaptive-eta", type=float, default=None, help="Eta value to use for adaptive comparison.",)
+    parser.add_argument("--rebound-compare", action="store_true", help="Compare FewBodyNC benchmark/convergence results against a REBOUND reference run.")
+    parser.add_argument("--rebound-integrator", type=str, default="whfast", help="REBOUND integrator to use for comparison, such as whfast or leapfrog.")
+    parser.add_argument("--rebound-move-to-com", action="store_true", help="Call sim.move_to_com() before running REBOUND comparisons.")
+    parser.add_argument("--save-rebound-reference-plots", action="store_true", help="Save standalone REBOUND reference plots during benchmark comparison.")
 
     return parser.parse_args()
 
@@ -61,13 +65,21 @@ def main() -> None:
     config = functions.PlotConfig(G=args.G)
 
     if args.benchmark:
-        functions.run_benchmark_suite()
+        functions.run_benchmark_suite(
+            use_diagnostics_csv=args.use_diagnostics_csv,
+            rebound_compare=args.rebound_compare,
+            rebound_integrator=args.rebound_integrator,
+            rebound_move_to_com=args.rebound_move_to_com,
+            save_rebound_reference_plots=args.save_rebound_reference_plots)
         return
     if args.shadow:
         functions.plot_shadow_hamiltonian(args.diagnostics)
         return
     if args.convergence:
-        functions.run_timestep_scaling_study()
+        functions.run_timestep_scaling_study(
+            rebound_compare=args.rebound_compare,
+            rebound_integrator=args.rebound_integrator,
+            rebound_move_to_com=args.rebound_move_to_com)
         return
     if args.adaptive_compare:
         functions.run_adaptive_comparison_study(timestep_levels=args.adaptive_levels, timestep_eta=args.adaptive_eta)
