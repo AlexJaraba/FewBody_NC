@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 
 import subprocess
+import re
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -501,7 +502,15 @@ def append_benchmark_row(benchmark_rows: list[dict],
                          engine: str = "fewbodync",
                          failure_type: str = "",
                          failure_message: str = "",
-                         rebound_comparison: dict | None = None) -> None:
+                         rebound_comparison: dict | None = None,
+                         config: PlotConfig | None = None,
+                         param_snapshot: str = "",
+                         initial_conditions_snapshot: str = "",
+                         failure_details: dict | None = None) -> None:
+    
+    if config is None:
+        config = PlotConfig()
+    body_count = len(test.get("initial_conditions", []))
     row = {"run_number": run_number,
            "engine": engine,
            "mode": mode["name"],
@@ -517,10 +526,23 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "dt": test["dt"],
            "runtime": test["runtime"],
            "output_frequency": test["output_frequency"],
+           "G": config.G,
+           "body_count": body_count,
+           "param_snapshot": param_snapshot,
+           "initial_conditions_snapshot": initial_conditions_snapshot,
            "status": status,
            "error": error,
            "failure_type": failure_type,
            "failure_message": failure_message,
+           "failed_time": np.nan,
+           "failed_dt": np.nan,
+           "failed_pair_i": np.nan,
+           "failed_pair_j": np.nan,
+           "failed_distance": np.nan,
+           "failed_relative_speed": np.nan,
+           "failed_iterations": np.nan,
+           "failed_mode": mode["name"],
+           "failed_test": test["name"],
            "returncode": returncode,
            "stdout_tail": stdout_tail,
            "stderr_tail": stderr_tail,
@@ -547,8 +569,13 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "rebound_status": "not_requested",
            "rebound_error": ""}
     
+    if failure_details is not None:
+        row.update(failure_details)
+        if not row["failure_message"]:
+            row["failure_message"] = failure_message
+        if not row["error"]:
+            row["error"] = row["failure_message"]
     if diagnostics is not None and not diagnostics.empty:
-        config = PlotConfig()
         energy = diagnostics["total_energy"].to_numpy()
         angular = diagnostics["angular_momentum"].to_numpy()
         linear = diagnostics["linear_momentum"].to_numpy()
@@ -694,6 +721,108 @@ def compare_fewbody_to_rebound(fewbody_output: pd.DataFrame,
     comparison = compare_diagnostics_to_rebound(fewbody_diagnostics=fewbody_diagnostics, rebound_diagnostics=rebound_diagnostics, config=config, rebound_integrator=rebound_integrator)
     comparison = compare_output_to_rebound(fewbody_output=fewbody_output, rebound_output=rebound_output, comparison=comparison)
     return comparison
+
+def tail_text(text: str | None, max_chars: int = 4000) -> str:
+    if text is None:
+        return ""
+    return str(text)[-max_chars:]
+
+def safe_filename(name: str) -> str:
+    safe = []
+    for char in str(name):
+        if char.isalnum() or char in ("-", "_", "."):
+            safe.append(char)
+        else:
+            safe.append("_")
+    result = "".join(safe).strip("._")
+    return result if result else "unnamed"
+
+def parse_benchmark_failure_details(stdout_tail: str, stderr_tail: str, mode_name: str, test_name: str) -> dict:
+    text = f"{stdout_tail}\n{stderr_tail}"
+    details = {"failed_time": np.nan,
+               "failed_dt": np.nan,
+               "failed_pair_i": np.nan,
+               "failed_pair_j": np.nan,
+               "failed_distance": np.nan,
+               "failed_relative_speed": np.nan,
+               "failed_iterations": np.nan,
+               "failed_mode": mode_name,
+               "failed_test": test_name,
+               "failure_message": ""}
+    what_match = re.search(r"what\(\):\s*(.*)", text, flags=re.DOTALL)
+
+    if what_match:
+        details["failure_message"] = " ".join(what_match.group(1).strip().split())
+    else:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for line in reversed(lines):
+            lowered = line.lower()
+            if "failed" in lowered or "error" in lowered or "exception" in lowered:
+                details["failure_message"] = line
+                break
+    
+    pair_match = re.search(r"pair=\((\d+)\s*,\s*(\d+)\)", text)
+
+    if pair_match:
+        details["failed_pair_i"] = int(pair_match.group(1))
+        details["failed_pair_j"] = int(pair_match.group(2))
+    
+    patterns = {"failed_time": r"(?:failed_time|time)\s*=\s*([-+0-9.eE]+)",
+                "failed_dt": r"(?:failed_dt|dt)\s*=\s*([-+0-9.eE]+)",
+                "failed_distance": r"(?:failed_distance|distance)\s*=\s*([-+0-9.eE]+)",
+                "failed_relative_speed": r"(?:failed_relative_speed|relative_speed)\s*=\s*([-+0-9.eE]+)",
+                "failed_iterations": r"(?:failed_iterations|last_iterations|iterations)\s*=\s*(\d+)"}
+    
+    for key, pattern in patterns.items():
+        match = re.search(pattern, text)
+        if match:
+            value = match.group(1)
+            details[key] = int(value) if key == "failed_iterations" else float(value)
+    
+    return details
+
+def compact_benchmark_table(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    existing_columns = [column for column in columns if column in df.columns]
+    compact = df[existing_columns].copy()
+    for column in compact.columns:
+        if pd.api.types.is_float_dtype(compact[column]):
+            compact[column] = compact[column].map(format_scientific_or_blank)
+    return compact
+
+def format_scientific_or_blank(value) -> str:
+    if pd.isna(value):
+        return ""
+    if isinstance(value, (float, np.floating, int, np.integer)):
+        return f"{float(value):.6e}"
+    return str(value)
+
+def add_test_rank(df: pd.DataFrame, metric: str = "max_dE_over_E0", rank_column: str = "rank_in_test") -> pd.DataFrame:
+    ranked = df.copy()
+    if "test" not in ranked.columns or metric not in ranked.columns:
+        ranked[rank_column] = np.nan
+        return ranked
+    ranked[rank_column] = (ranked.groupby("test")[metric].rank(method="min", ascending=True).astype("Int64"))
+    return ranked
+
+def save_raw_table(df: pd.DataFrame, csv_path: Path, write_parquet: bool = True) -> None:
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(csv_path, index=False)
+    print(f"Saved raw CSV to {csv_path}")
+    if write_parquet:
+        parquet_path = csv_path.with_suffix(".parquet")
+        try:
+            df.to_parquet(parquet_path, index=False)
+            print(f"Saved raw Parquet to {parquet_path}")
+        except Exception as exc:
+            print(f"Skipped Parquet for {csv_path.name}: {exc}. Install pyarrow with: pip install pyarrow")
+
+def save_readable_table(df: pd.DataFrame, csv_path: Path) -> None:
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(csv_path, index=False)
+    html_path = csv_path.with_suffix(".html")
+    df.to_html(html_path, index=False, escape=False)
+    print(f"Saved readable CSV to {csv_path}")
+    print(f"Saved readable HTML to {html_path}")
 
 # ============================================================
 # Compute Functions
@@ -1220,6 +1349,10 @@ def run_benchmark_suite(modes: list[dict] | None = None,
     
     config = PlotConfig()
     output_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    readable_dir = output_dir / "readable"
+    readable_dir.mkdir(parents=True, exist_ok=True)
 
     original_param_text = None
     original_initial_conditions_text = None
@@ -1266,9 +1399,9 @@ def run_benchmark_suite(modes: list[dict] | None = None,
         rebound_reference_rows.append(reference_row)
 
         if save_rebound_reference_plots:
-            rebound_dir = output_dir / f"rebound_reference_{rebound_integrator}"
+            rebound_dir = output_dir / f"rebound_reference_{safe_filename(rebound_integrator)}"
             rebound_dir.mkdir(parents=True, exist_ok=True)
-            plot_path = rebound_dir / f"{test['name']}.png"
+            plot_path = rebound_dir / f"{safe_filename(test['name'])}.png"
             plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False)
             print(f"Saved REBOUND reference plot to {plot_path}")
 
@@ -1282,7 +1415,7 @@ def run_benchmark_suite(modes: list[dict] | None = None,
         benchmark_rows = []
 
         for mode in modes:
-            mode_dir = output_dir / mode["name"]
+            mode_dir = output_dir / safe_filename(mode["name"])
             mode_dir.mkdir(parents=True, exist_ok=True)
 
             for test in BENCHMARK_TESTS:
@@ -1317,6 +1450,9 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                             timestep_refresh_interval = mode.get("timestep_refresh_interval"),
                             timestep_level_decrease_delay = mode.get("timestep_level_decrease_delay"))
                 
+                param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
+                initial_conditions_snapshot = (DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else "")
+
                 if DEFAULT_OUTPUT_PATH.exists():
                     DEFAULT_OUTPUT_PATH.unlink()
                 if DEFAULT_DIAGNOSTICS_PATH.exists():
@@ -1328,57 +1464,87 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                     stdout_tail = exc.stdout[-4000:] if isinstance(exc, SimulationRunError) else ""
                     stderr_tail = exc.stderr[-4000:] if isinstance(exc, SimulationRunError) else ""
                     returncode = exc.returncode if isinstance(exc, SimulationRunError) else np.nan
-                    print(f"Benchmark run failed: {exc}")
+                    failure_details = parse_benchmark_failure_details(stdout_tail=stdout_tail, stderr_tail=stderr_tail, mode_name=mode["name"], test_name=test["name"])
+                    failure_message = failure_details["failure_message"] or str(exc)
+                    print(f"Benchmark run failed: {failure_message}")
                     append_benchmark_row(benchmark_rows=benchmark_rows,
                                          run_number=run_number,
                                          mode=mode,
                                          test=test,
                                          status="failed",
-                                         error=str(exc),
+                                         error=failure_message,
                                          returncode=returncode,
                                          stdout_tail=stdout_tail,
                                          stderr_tail=stderr_tail,
                                          engine="fewbodync",
                                          failure_type=type(exc).__name__,
-                                         failure_message=str(exc),
-                                         rebound_comparison=rebound_comparison)
+                                         failure_message=failure_message,
+                                         rebound_comparison=rebound_comparison,
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot,
+                                         failure_details=failure_details)
                     continue
-
-                output = read_output(DEFAULT_OUTPUT_PATH)
-
-                if use_diagnostics_csv:
-                    diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
-                    if diagnostics is None:
-                        print("Falling back to recomputing diagnostics from output.csv.")
-                        diagnostics = compute_diagnostics_from_output(output, config)
-                else:
-                    diagnostics = compute_diagnostics_from_output(output, config)
-                if rebound_compare and rebound_reference is not None:
-                    try:
-                        rebound_comparison = compare_fewbody_to_rebound(
-                            fewbody_output=output,
-                            fewbody_diagnostics=diagnostics,
-                            rebound_output=rebound_reference["output"],
-                            rebound_diagnostics=rebound_reference["diagnostics"],
-                            config=config,
-                            rebound_integrator=rebound_integrator)
-                    except Exception as exc:
-                        print(f"Comparison to REBOUND failed: {exc}")
-                        rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
                 
-                plot_path = mode_dir / f"{test['name']}.png"
-                plot_verification_suite(output_df = output, diagnostics = diagnostics, config = config, save_path = plot_path, show=False,)
-                print(f"Saved plot to {plot_path}")
+                try:
+                    output = read_output(DEFAULT_OUTPUT_PATH)
 
-                append_benchmark_row(benchmark_rows=benchmark_rows,
-                                     run_number=run_number,
-                                     mode=mode,
-                                     test=test,
-                                     status="success",
-                                     plot_path=plot_path,
-                                     diagnostics=diagnostics,
-                                     engine="fewbodync",
-                                     rebound_comparison=rebound_comparison)
+                    if use_diagnostics_csv:
+                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
+                        if diagnostics is None:
+                            print("Falling back to recomputing diagnostics from output.csv.")
+                            diagnostics = compute_diagnostics_from_output(output, config)
+                    else:
+                        diagnostics = compute_diagnostics_from_output(output, config)
+                    if rebound_compare and rebound_reference is not None:
+                        try:
+                            rebound_comparison = compare_fewbody_to_rebound(
+                                fewbody_output=output,
+                                fewbody_diagnostics=diagnostics,
+                                rebound_output=rebound_reference["output"],
+                                rebound_diagnostics=rebound_reference["diagnostics"],
+                                config=config,
+                                rebound_integrator=rebound_integrator)
+                        except Exception as exc:
+                            print(f"Comparison to REBOUND failed: {exc}")
+                            rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
+                    
+                    plot_path = mode_dir / f"{safe_filename(test['name'])}.png"
+                    plot_verification_suite(output_df = output, diagnostics = diagnostics, config = config, save_path = plot_path, show=False,)
+                    print(f"Saved plot to {plot_path}")
+
+                    append_benchmark_row(benchmark_rows=benchmark_rows,
+                                        run_number=run_number,
+                                        mode=mode,
+                                        test=test,
+                                        status="success",
+                                        plot_path=plot_path,
+                                        diagnostics=diagnostics,
+                                        engine="fewbodync",
+                                        rebound_comparison=rebound_comparison,
+                                        config=config,
+                                        param_snapshot=param_snapshot,
+                                        initial_conditions_snapshot=initial_conditions_snapshot)
+                except Exception as exc:
+                    failure_message = f"Benchmark analysis failed after executable completed: {exc}"
+                    print(failure_message)
+                    append_benchmark_row(benchmark_rows=benchmark_rows,
+                                         run_number=run_number,
+                                         mode=mode,
+                                         test=test,
+                                         status="failed",
+                                         error=failure_message,
+                                         returncode=0,
+                                         stdout_tail="",
+                                         stderr_tail="",
+                                         engine="fewbodync",
+                                         failure_type=type(exc).__name__,
+                                         failure_message=failure_message,
+                                         rebound_comparison=rebound_comparison,
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot)
+                    continue
         
         print("\nBenchmark suite complete.")
         print(f"Plots saved to {output_dir}")
@@ -1387,14 +1553,14 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             print("No benchmark results were collected")
             return
         
+        # Benchmark Summary
         summary = pd.DataFrame(benchmark_rows)
-        summary_path = output_dir / "benchmark_summary.csv"
-        summary.to_csv(summary_path, index=False)
+        summary_path = raw_dir / "benchmark_summary.csv"
+        save_raw_table(summary, summary_path)
         if rebound_reference_rows:
             rebound_reference_summary = pd.DataFrame(rebound_reference_rows)
-            rebound_reference_path = output_dir / f"rebound_reference_{rebound_integrator}_summary.csv"
-            rebound_reference_summary.to_csv(rebound_reference_path, index=False)
-            print(f"Saved REBOUND reference summary CSV to {rebound_reference_path}")
+            rebound_reference_path = raw_dir / f"rebound_reference_{rebound_integrator}_summary.csv"
+            save_raw_table(rebound_reference_summary, rebound_reference_path)
         status_counts = summary["status"].value_counts(dropna=False)
         print("\n" + "=" * 90)
         print("BENCHMARK STATUS SUMMARY")
@@ -1406,18 +1572,89 @@ def run_benchmark_suite(modes: list[dict] | None = None,
         print(f"Warning runs: {int(status_counts.get('warning', 0))}")
         print(f"Saved summary CSV to {summary_path}")
 
+        readable_comparison_columns = [
+            "test",
+            "mode",
+            "rank_in_test",
+            "integrator",
+            "coordinate_mode",
+            "pair_order",
+            "adaptive_timesteps",
+            "dt",
+            "runtime",
+            "status",
+            "max_dE_over_E0",
+            "final_dE_over_E0",
+            "max_dL_over_L0",
+            "max_dP",
+            "max_dRcm",
+            "rebound_status",
+            "ratio_max_dE_over_E0_to_rebound",
+            "plot_path",
+        ]
+
+        readable_best_columns = [
+            "test",
+            "mode",
+            "integrator",
+            "coordinate_mode",
+            "pair_order",
+            "adaptive_timesteps",
+            "dt",
+            "runtime",
+            "max_dE_over_E0",
+            "final_dE_over_E0",
+            "max_dL_over_L0",
+            "max_dP",
+            "max_dRcm",
+            "rebound_status",
+            "ratio_max_dE_over_E0_to_rebound",
+            "plot_path",
+        ]
+
+        readable_worst_columns = [
+            "test",
+            "mode",
+            "integrator",
+            "coordinate_mode",
+            "pair_order",
+            "adaptive_timesteps",
+            "dt",
+            "runtime",
+            "max_dE_over_E0",
+            "final_dE_over_E0",
+            "max_dL_over_L0",
+            "max_dP",
+            "max_dRcm",
+            "rebound_status",
+            "ratio_max_dE_over_E0_to_rebound",
+            "plot_path",
+        ]
+
+        readable_mode_ranking_columns = [
+            "mode",
+            "successful_runs",
+            "median_max_dE_over_E0",
+            "mean_max_dE_over_E0",
+            "worst_max_dE_over_E0",
+            "median_max_dL_over_L0",
+            "median_max_dP",
+            "median_max_dRcm",
+        ]        
+
+        # Failure Summary
         failed_summary = summary[summary["status"] == "failed"].copy()
         if not failed_summary.empty:
-            failures_path = output_dir / "benchmark_failures.csv"
-            failed_summary.to_csv(failures_path, index=False)
-            print(f"Saved failure CSV to {failures_path}")
+            failures_path = raw_dir / "benchmark_failures.csv"
+            save_raw_table(failed_summary, failures_path)
 
+        # Sucess Summary
         successful_summary = summary[summary["status"] == "success"].copy()
-
         if successful_summary.empty:
             print("No successful benchmark runs were collected.")
             return
 
+        # Raw Comparison Table
         base_comparison_columns = [
             "test",
             "mode",
@@ -1434,7 +1671,18 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "status",
             "failure_type",
             "failure_message",
+            "failed_time",
+            "failed_dt",
+            "failed_pair_i",
+            "failed_pair_j",
+            "failed_distance",
+            "failed_relative_speed",
+            "failed_iterations",
+            "failed_mode",
+            "failed_test",
             "returncode",
+            "G",
+            "body_count",
             "max_dE_over_E0",
             "final_dE_over_E0",
             "max_dL_over_L0",
@@ -1475,41 +1723,39 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "ratio_max_dRcm_to_rebound",
         ]
         comparison_columns = [column for column in base_comparison_columns + rebound_comparison_columns if column in summary.columns]
+        comparison_table = summary[comparison_columns].copy()
+        comparison_table = comparison_table.sort_values(["test", "status", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"], na_position="last")
+        comparison_path = raw_dir / "benchmark_comparison_table.csv"
+        save_raw_table(comparison_table, comparison_path)
 
-        # Comparison Table
-        print("\n" + "=" * 90)
-        print("BENCHMARK COMPARISON TABLE")
-        print("=" * 90)
-        print(f"Saved summary CSV to {summary_path}")
-        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 220, "display.float_format", "{:.6e}".format):
-            print(summary[comparison_columns].to_string(index=False))
+        # Readable Comparison Table
+        comparison_readable = add_test_rank(comparison_table, metric="max_dE_over_E0")
+        comparison_readable = compact_benchmark_table(comparison_readable, readable_comparison_columns)
+        comparison_readable_path = readable_dir / "benchmark_comparison_table_readable.csv"
+        save_readable_table(comparison_readable, comparison_readable_path)
 
-        # Best Runs
-        print("\n" + "=" * 90)
-        print("BEST MODE PER TEST BY MAX |dE/E0|")
-        print("=" * 90)
+        # Raw Best Runs
         best_rows = (successful_summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
-        best_columns = ["test", "mode", "pair_order", "adaptive_timesteps", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]
-        best_path = output_dir / "best_by_energy.csv"
-        best_rows.to_csv(best_path, index=False)
-        print(f"Saved best-by-energy CSV to {best_path}")
-        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
-            print(best_rows[best_columns].to_string(index=False))
+        best_path = raw_dir / "best_by_energy.csv"
+        save_raw_table(best_rows, best_path)
+
+        # Readable Best Runs
+        best_readable = compact_benchmark_table(best_rows, readable_best_columns)
+        best_readable_path = readable_dir / "best_by_energy_readable.csv"
+        save_readable_table(best_readable, best_readable_path)
         
-        # Worst Runs
-        print("\n" + "=" * 90)
-        print("WORST 10 RUNS BY MAX |dE/E0|")
-        worst_rows = successful_summary.sort_values("max_dE_over_E0", ascending=False).head(10)
-        worst_path = output_dir / "worst_by_energy.csv"
-        worst_rows.to_csv(worst_path, index=False)
-        print(f"Saved worst-by-energy CSV to {worst_path}")
-        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
-            print(worst_rows[best_columns].to_string(index=False))
+        # Raw Worst Runs
+        worst_rows = (successful_summary.sort_values("max_dE_over_E0", ascending=False).head(10))
+        worst_path = raw_dir / "worst_by_energy.csv"
+        save_raw_table(worst_rows, worst_path)
+
+        # Readable Worst Runs
+        worst_readable = compact_benchmark_table(worst_rows, readable_worst_columns)
+        worst_readable_path = readable_dir / "worst_by_energy_readable.csv"
+        save_readable_table(worst_readable, worst_readable_path)
         
+        # Rebound Comparison
         if rebound_compare and "final_rms_position_error_vs_rebound" in successful_summary.columns:
-            print("\n" + "=" * 90)
-            print("BEST MODE PER TEST VS REBOUND BY FINAL RMS POSITION ERROR")
-            print("=" * 90)
             valid_vs_rebound = successful_summary[np.isfinite(successful_summary["final_rms_position_error_vs_rebound"])].copy()
             if not valid_vs_rebound.empty:
                 best_vs_rebound = (valid_vs_rebound.sort_values([
@@ -1518,30 +1764,29 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                         "final_rms_velocity_error_vs_rebound",
                         "max_rel_energy_difference_vs_rebound",
                     ]).groupby("test", as_index=False).first())
+                
+                # Raw
+                best_vs_rebound_path = raw_dir / f"best_vs_rebound_{safe_filename(rebound_integrator)}.csv"
+                save_raw_table(best_vs_rebound, best_vs_rebound_path)
 
-                best_vs_rebound_path = output_dir / f"best_vs_rebound_{rebound_integrator}.csv"
-                best_vs_rebound.to_csv(best_vs_rebound_path, index=False)
-                print(f"Saved best-vs-REBOUND CSV to {best_vs_rebound_path}")
-                best_rebound_columns = [column
-                    for column in [
-                        "test",
-                        "mode",
-                        "pair_order",
-                        "adaptive_timesteps",
-                        "final_rms_position_error_vs_rebound",
-                        "final_rms_velocity_error_vs_rebound",
-                        "final_rel_energy_difference_vs_rebound",
-                        "ratio_max_dE_over_E0_to_rebound",]
-                    if column in best_vs_rebound.columns]
-                with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 220, "display.float_format", "{:.6e}".format,):
-                    print(best_vs_rebound[best_rebound_columns].to_string(index=False))
+                # Readable
+                best_vs_rebound_readable_columns = ["test",
+                                                    "mode",
+                                                    "integrator",
+                                                    "coordinate_mode",
+                                                    "pair_order",
+                                                    "adaptive_timesteps",
+                                                    "final_rms_position_error_vs_rebound",
+                                                    "final_rms_velocity_error_vs_rebound",
+                                                    "final_rel_energy_difference_vs_rebound",
+                                                    "ratio_max_dE_over_E0_to_rebound"]
+                best_vs_rebound_readable = compact_benchmark_table(best_vs_rebound, best_vs_rebound_readable_columns)
+                best_vs_rebound_readable_path = readable_dir / f"best_vs_rebound_{safe_filename(rebound_integrator)}_readable.csv"
+                save_readable_table(best_vs_rebound_readable, best_vs_rebound_readable_path)
             else:
                 print("No finite REBOUND comparison rows were available.")
 
-        # Ranking by median max
-        print("\n" + "=" * 90)
-        print("MODE RANKINGS BY MEDIAN MAX |dE/E0|")
-        print("=" * 90)
+        # Raw Ranking by Median Max
         mode_rankings = (successful_summary.groupby("mode", as_index=False).agg(
             median_max_dE_over_E0=("max_dE_over_E0", "median"),
             mean_max_dE_over_E0=("max_dE_over_E0", "mean"),
@@ -1549,13 +1794,14 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             median_max_dL_over_L0=("max_dL_over_L0", "median"),
             median_max_dP=("max_dP", "median"),
             median_max_dRcm=("max_dRcm", "median"),
-            successful_runs=("status", "count")).sort_values("median_max_dE_over_E0")
-        )
-        mode_rankings_path = output_dir / "mode_rankings.csv"
-        mode_rankings.to_csv(mode_rankings_path, index=False)
-        print(f"Saved mode rankings CSV to {mode_rankings_path}")
-        with pd.option_context("display.max_rows", None, "display.max_columns", None, "display.width", 180, "display.float_format", "{:.6e}".format):
-            print(mode_rankings.to_string(index=False))
+            successful_runs=("status", "count")).sort_values("median_max_dE_over_E0"))
+        mode_rankings_path = raw_dir / "mode_rankings.csv"
+        save_raw_table(mode_rankings, mode_rankings_path)
+
+        # Readable Ranking by Median Max
+        mode_rankings_readable = compact_benchmark_table(mode_rankings, readable_mode_ranking_columns)
+        mode_rankings_readable_path = readable_dir / "mode_rankings_readable.csv"
+        save_readable_table(mode_rankings_readable, mode_rankings_readable_path)
 
     finally:
         if original_param_text is not None:
