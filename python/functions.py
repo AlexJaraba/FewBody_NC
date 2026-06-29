@@ -163,6 +163,60 @@ BENCHMARK_TESTS = [
 ]
 
 # ============================================================
+# Convergence Cases
+# ============================================================
+
+CONVERGENCE_TESTS = [
+    {
+        "name": "D1_BinaryShort",
+        "dt_ref": 0.00625,
+        "dts": (0.1, 0.05, 0.025, 0.0125),
+        "runtime": 1000,
+        "output_frequency": 100,
+        "initial_conditions": [
+            (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
+            (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
+        ],
+    },
+    {
+        "name": "D2_HierarchicalTripleShort",
+        "dt_ref": 0.00125,
+        "dts": (0.02, 0.01, 0.005, 0.0025),
+        "runtime": 1000,
+        "output_frequency": 100,
+        "initial_conditions": [
+            (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
+            (1.0,   0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
+            (1e-3,  5.0, 0.0, 0.0, 0.0,  0.01089,  0.0),
+        ],
+    },
+    {
+        "name": "D3_Figure8Short",
+        "dt_ref": 0.00025,
+        "dts": (0.004, 0.002, 0.001, 0.0005),
+        "runtime": 20,
+        "output_frequency": 10,
+        "initial_conditions": [
+            (1.0, -0.97000436,  0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
+            (1.0,  0.97000436, -0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
+            (1.0,  0.0,         0.0,        0.0, -0.016038058, -0.014872872, 0.0),
+        ],
+    },
+    {
+        "name": "D4_CloseBinaryPerturberShort",
+        "dt_ref": 0.000625,
+        "dts": (0.01, 0.005, 0.0025, 0.00125),
+        "runtime": 200,
+        "output_frequency": 50,
+        "initial_conditions": [
+            (1.0,  -0.5, 0.0, 0.0,  0.0,    -0.012166, 0.0),
+            (1.0,   0.5, 0.0, 0.0,  0.0,     0.012166, 0.0),
+            (0.01,  1.2, 0.2, 0.0, -0.0020,  0.0040,   0.0),
+        ],
+    },
+]
+
+# ============================================================
 # Benchmark Modes
 # ============================================================
 # These are the current supported integrator/mode combinations.
@@ -615,6 +669,13 @@ def _safe_ratio(numerator: float, denominator: float, epsilon:float = 1e-300) ->
         return float("nan")
     return float(numerator / denominator)
 
+def finite_log2_ratio(coarse_error: float, fine_error: float) -> float:
+    if not np.isfinite(coarse_error) or not np.isfinite(fine_error):
+        return float("nan")
+    if coarse_error <= 0.0 or fine_error <= 0.0:
+        return float("nan")
+    return float(np.log2(coarse_error / fine_error))
+
 def compare_diagnostics_to_rebound(fewbody_diagnostics: pd.DataFrame, rebound_diagnostics: pd.DataFrame, config: PlotConfig, rebound_integrator: str) -> dict:
     comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "success", "rebound_error": ""}
 
@@ -780,6 +841,11 @@ def parse_benchmark_failure_details(stdout_tail: str, stderr_tail: str, mode_nam
             details[key] = int(value) if key == "failed_iterations" else float(value)
     
     return details
+
+def parse_bool_text(value, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
 
 def compact_benchmark_table(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     existing_columns = [column for column in columns if column in df.columns]
@@ -1218,120 +1284,316 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
 # Only the timestep is changed during the sweep.
 # The original param.txt is restored afterward.
 
+def run_convergence_case(case_name: str, 
+                         initial_conditions: list[tuple[float, float, float, float, float, float, float]], 
+                         dt_ref: float, 
+                         dts: tuple, 
+                         runtime: float, 
+                         output_frequency: int, 
+                         integrator: str,
+                         coordinate_mode: str,
+                         pair_order: str,
+                         adaptive_timesteps: bool,
+                         G: float,
+                         use_diagnostics_csv: bool = True) -> pd.DataFrame:
+    config = PlotConfig(G=G)
+    rows = []
+
+    print("\n" + "-" * 90)
+    print(f"Convergence case: {case_name}")
+    print(f"integrator           = {integrator}")
+    print(f"coordinate_mode      = {coordinate_mode}")
+    print(f"pair_order           = {pair_order}")
+    print(f"adaptive_timesteps   = {adaptive_timesteps}")
+    print(f"runtime              = {runtime}")
+    print(f"output_frequency     = {output_frequency}")
+    print(f"G                    = {G}")
+    print(f"reference dt         = {dt_ref}")
+    print(f"dt ladder            = {dts}")
+    print("-" * 90)
+
+    rewrite_initial_conditions(initial_conditions)
+
+    print(f"\nRunning reference solutions: dt = {dt_ref}")
+    rewrite_param(dt=dt_ref, runtime=runtime, output_frequency=output_frequency, integrator=integrator, coordinate_mode=coordinate_mode, G=G, pair_order=pair_order, adaptive_timesteps=adaptive_timesteps)
+    clear_simulation_outputs()
+    run_executable()
+    reference_output = read_output(DEFAULT_OUTPUT_PATH)
+    reference_positions = compute_final_positions(reference_output)
+
+    for dt in dts:
+        print(f"\nRunning {case_name}: dt = {dt}")
+        rewrite_param(dt=dt, runtime=runtime, output_frequency=output_frequency, integrator=integrator, coordinate_mode=coordinate_mode, G=G, pair_order=pair_order, adaptive_timesteps=adaptive_timesteps)
+        param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
+        clear_simulation_outputs()
+        try:
+            run_executable()
+            output = read_output(DEFAULT_OUTPUT_PATH)
+            if use_diagnostics_csv:
+                diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
+                if diagnostics is None:
+                    print("Falling back to recomputing diagnostics from output.csv")
+                    diagnostics = compute_diagnostics_from_output(output, config)
+            else:
+                diagnostics = compute_diagnostics_from_output(output, config)
+            final_positions = compute_final_positions(output)
+            rms_error = error_rms_position(final_positions, reference_positions)
+            diagnostics_summary = error_diagnostic_metric_summary(diagnostics, config)
+            row = {
+                "case": case_name,
+                "dt": dt,
+                "dt_ref": dt_ref,
+                "runtime": runtime,
+                "output_frequency": output_frequency,
+                "integrator": integrator,
+                "coordinate_mode": coordinate_mode,
+                "pair_order": pair_order,
+                "adaptive_timesteps": adaptive_timesteps,
+                "G": G,
+                "rms_final_position_error": rms_error,
+                "error_ratio_to_next_finer": np.nan,
+                "observed_order_to_next_finer": np.nan,
+                "status": "success",
+                "error": "",
+                "param_snapshot": param_snapshot,
+            }
+            row.update(diagnostics_summary)
+        except Exception as exc:
+            row = {
+                "case": case_name,
+                "dt": dt,
+                "dt_ref": dt_ref,
+                "runtime": runtime,
+                "output_frequency": output_frequency,
+                "integrator": integrator,
+                "coordinate_mode": coordinate_mode,
+                "pair_order": pair_order,
+                "adaptive_timesteps": adaptive_timesteps,
+                "G": G,
+                "rms_final_position_error": np.nan,
+                "error_ratio_to_next_finer": np.nan,
+                "observed_order_to_next_finer": np.nan,
+                "max_dE_over_E0": np.nan,
+                "final_dE_over_E0": np.nan,
+                "max_dL_over_L0": np.nan,
+                "final_dL_over_L0": np.nan,
+                "max_dP": np.nan,
+                "final_dP": np.nan,
+                "max_dRcm": np.nan,
+                "final_dRcm": np.nan,
+                "status": "failed",
+                "error": str(exc),
+                "param_snapshot": param_snapshot if "param_snapshot" in locals() else "",
+            }
+            print(f"Convergence run failed: {exc}")
+        
+        rows.append(row)
+    rows = sorted(rows, key=lambda item: item["dt"], reverse=True)
+
+    for i in range(len(rows) - 1):
+        coarse = rows[i]
+        fine = rows[i + 1]
+        coarse_error = coarse["rms_final_position_error"]
+        fine_error = fine["rms_final_position_error"]
+
+        if (coarse["status"] == "success" and fine["status"] == "success" and np.isfinite(coarse_error) and np.isfinite(fine_error) and fine_error > 0.0):
+            coarse["error_ratio_to_next_finer"] = coarse_error / fine_error
+            coarse["observed_order_to_next_finer"] = finite_log2_ratio(coarse_error, fine_error)
+        
+    print("\nConvergence ratios:")
+    for row in rows:
+        print(f"   dt = {row['dt']:.8g}, "
+                f"error = {row['rms_final_position_error']:.6e}, "
+                f"ratio = {row['error_ratio_to_next_finer']:.6e}, "
+                f"order = {row['observed_order_to_next_finer']:.6e}")
+        
+    return pd.DataFrame(rows)
+
 def run_timestep_scaling_study(dt_ref: float = 0.00025,  
                                dts: tuple = (0.01, 0.005, 0.0025, 0.00125),  
                                param_path: Path = DEFAULT_PARAM_PATH,
-                               rebound_compare: bool = False,
-                               rebound_integrator: str = "whfast",
-                               rebound_move_to_com: bool = False) -> None:
+                               use_diagnostics_csv: bool = True,
+                               output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "convergence") -> pd.DataFrame:
     params = read_param(param_path)
 
     runtime = float(params.get("runtime", 1.0))
     output_frequency = int(params.get("output_frequency", 10))
     integrator = params.get("integrator", "hernandez")
     coordinate_mode = params.get("coordinate_mode", "cartesian")
+    pair_order = params.get("pair_order", "canonical")
+    adaptive_timesteps = parse_bool_text(params.get("adaptive_timesteps", "false"))
     G = float(params.get("gravitational_constant", 0.000296014912))
 
-    print("\nConvergence test using current param.txt settings:")
-    print(f"runtime              = {runtime}")
-    print(f"output_frequency     = {output_frequency}")
-    print(f"integrator           = {integrator}")
-    print(f"coordinate_mode      = {coordinate_mode}")
-    print(f"gravitational_constant = {G}")
+    initial_conditions = read_initial_conditions(DEFAULT_INITIAL_CONDITIONS_PATH)
 
-    if rebound_compare:
-        print(f"REBOUND comparison   = true ({rebound_integrator})")
-        initial_conditions = read_initial_conditions(DEFAULT_INITIAL_CONDITIONS_PATH)
-    else:
-        initial_conditions = []
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    readable_dir = output_dir / "readable"
+    readable_dir.mkdir(parents=True, exist_ok=True)
 
-    original_text = param_path.read_text()
+    original_param_text = param_path.read_text()
+    original_initial_conditions_text = (DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None)
 
-    try:
-        print("\nRunning reference solution...")
+    convergence_readable_columns = [
+        "case",
+        "dt",
+        "dt_ref",
+        "runtime",
+        "integrator",
+        "coordinate_mode",
+        "pair_order",
+        "adaptive_timesteps",
+        "rms_final_position_error",
+        "error_ratio_to_next_finer",
+        "observed_order_to_next_finer",
+        "max_dE_over_E0",
+        "final_dE_over_E0",
+        "max_dL_over_L0",
+        "max_dP",
+        "max_dRcm",
+        "status",
+        "error",
+    ]
 
-        rewrite_timestep_only(dt_ref, param_path)
+    try: 
+        print("\nConvergence test using current param.txt settings:")
+        print(f"runtime              = {runtime}")
+        print(f"output_frequency     = {output_frequency}")
+        print(f"integrator           = {integrator}")
+        print(f"coordinate_mode      = {coordinate_mode}")
+        print(f"pair_order           = {pair_order}")
+        print(f"adaptive_timesteps   = {adaptive_timesteps}")
+        print(f"gravitational_constant = {G}")
 
-        if DEFAULT_OUTPUT_PATH.exists():
-            DEFAULT_OUTPUT_PATH.unlink()
-        if DEFAULT_DIAGNOSTICS_PATH.exists():
-            DEFAULT_DIAGNOSTICS_PATH.unlink()
-
-        run_executable()
-
-        df_ref = read_output(DEFAULT_OUTPUT_PATH)
-        reference = compute_final_positions(df_ref)
-
-        errors = []
-        rebound_errors = []
-
-        for dt in dts:
-            print(f"\nRunning dt = {dt}")
-            rewrite_timestep_only(dt, param_path)
-
-            if DEFAULT_OUTPUT_PATH.exists():
-                DEFAULT_OUTPUT_PATH.unlink()
-            if DEFAULT_DIAGNOSTICS_PATH.exists():
-                DEFAULT_DIAGNOSTICS_PATH.unlink()
-            
-            run_executable()
-
-            df = read_output(DEFAULT_OUTPUT_PATH)
-            final_positions = compute_final_positions(df)
-            err = error_rms_position(compute_final_positions(df), reference)
-
-            errors.append(err)
-
-            print(f"RMS position error vs FewBodyNC dt_ref: {err}")
-
-            if rebound_compare:
-                rebound_output, _ = rebound_run_simulation(initial_conditions=initial_conditions,
-                                                           dt=dt,
-                                                           runtime=runtime,
-                                                           output_frequency=output_frequency,
-                                                           G=G,
-                                                           rebound_integrator=rebound_integrator,
-                                                           move_to_com=rebound_move_to_com)
-                
-                rebound_final_positions = compute_final_positions(rebound_output)
-                rebound_error = error_rms_position(final_positions, rebound_final_positions)
-                rebound_errors.append(rebound_error)
-
-                print(f"RMS final-position difference vs REBOUND {rebound_integrator}: {rebound_error}")
+        results = run_convergence_case(case_name="CurrentParamScalingStudy",
+                                       initial_conditions=initial_conditions,
+                                       dt_ref=dt_ref,
+                                       dts=dts,
+                                       runtime=runtime,
+                                       output_frequency=output_frequency,
+                                       integrator=integrator,
+                                       coordinate_mode=coordinate_mode,
+                                       pair_order=pair_order,
+                                       adaptive_timesteps=adaptive_timesteps,
+                                       G=G,
+                                       use_diagnostics_csv=use_diagnostics_csv)
         
-        dts_array = np.array(dts)
-        errors_array = np.array(errors)
+        raw_path = raw_dir / "current_param_scaling_study.csv"
+        save_raw_table(results, raw_path)
+
+        readable = compact_benchmark_table(results, convergence_readable_columns)
+        readable_path = readable_dir / "current_param_scaling_study_readable.csv"
+        save_readable_table(readable, readable_path)
+
+        dts_array = results["dt"].to_numpy(dtype=float)
+        errors_array = results["rms_final_position_error"].to_numpy(dtype=float)
 
         plt.figure(figsize=(7, 5), constrained_layout=True)
         plt.loglog(dts_array, errors_array, marker="o")
-
-        if rebound_compare:
-            rebound_errors_array = np.array(rebound_errors)
-            plt.loglog(dts_array, rebound_errors_array, marker='s', label=f"FewBodyNC vs REBOUND {rebound_integrator}")
-            plt.legend()
-
         plt.gca().invert_xaxis()
         plt.xlabel("Timestep dt")
-        plt.ylabel("RMS final-position error")
-        plt.title(f"Timestep convergence: {integrator}, {coordinate_mode}")
+        plt.ylabel(f"Timestep convergence: {integrator}, {coordinate_mode}")
         plt.grid(True, which="both", ls="--", alpha=0.4)
         plt.show()
 
-        print("\nConvergence Ratios:")
-        for i in range(len(errors_array) - 1):
-            ratio = errors_array[i] / errors_array[i + 1]
-            print(f"{dts_array[i]} -> {dts_array[i + 1]} : ratio = {ratio}")
-        if rebound_compare:
-            comparison = pd.DataFrame({"dt": dts_array, "rms_vs_fewbody_dt_ref": errors_array, f"rms_vs_rebound_{rebound_integrator}": np.array(rebound_errors)})
-            comparison_path = PROJECT_ROOT / "rebound_convergence_comparison.csv"
-            comparison.to_csv(comparison_path, index=False)
-            print("\nREBOUND convergence comparison:")
-            print(comparison.to_string(index=False))
-            print(f"Saved REBOUND convergence comparison to {comparison_path}")
+        return results
     
     finally:
-        param_path.write_text(original_text)
-        print("\nRestored original param.txt settings.")
+        param_path.write_text(original_param_text)
+
+        if original_initial_conditions_text is not None:
+            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        
+        print("\nRestored original param.txt and initial_conditions.txt settings")
+
+def run_convergence_suite(tests: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "convergence", use_diagnostics_csv: bool = True) -> pd.DataFrame:
+    if tests is None:
+        tests = CONVERGENCE_TESTS
+    
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    readable_dir = output_dir / "readable"
+    readable_dir.mkdir(parents=True, exist_ok=True)
+
+    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
+    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
+
+    all_results = []
+
+    convergence_summary_readable_columns = [
+        "case",
+        "successful_runs",
+        "median_observed_order",
+        "min_observed_order",
+        "max_observed_order",
+        "max_rms_final_position_error",
+        "max_dE_over_E0",        
+    ]
+
+    try:
+        print("\n" + "=" * 90)
+        print("ROADMAP 2 STEP D: CARTESIAN HERNANDEZ CONVERGENCE SUITE")
+        print("=" * 90)
+        print("This reuses the existing timestep scaling engine.")
+        print("Mode:")
+        print("  coordinate_mode      = cartesian")
+        print("  integrator           = hernandez")
+        print("  pair_order           = canonical")
+        print("  adaptive_timesteps   = false")
+        print("  G                    = 0.000296014912")
+        for test in tests:
+            result = run_convergence_case(
+                case_name=test["name"],
+                initial_conditions=test["initial_conditions"],
+                dt_ref=test["dt_ref"],
+                dts=test["dts"],
+                runtime=test["runtime"],
+                output_frequency=test["output_frequency"],
+                integrator="hernandez",
+                coordinate_mode="cartesian",
+                pair_order="canonical",
+                adaptive_timesteps=False,
+                G=0.000296014912,
+                use_diagnostics_csv=use_diagnostics_csv)
+            
+            all_results.append(result)
+        
+        results = pd.concat(all_results, ignore_index=True)
+
+        raw_path = raw_dir / "convergence.csv"
+        save_raw_table(results, raw_path)
+
+        readable_path = readable_dir / "convergence_readable.csv"
+        save_readable_table(readable, readable_path)
+
+        successful = results[results["status"] == "success"].copy()
+
+        if not successful.empty:
+            summary = (successful.groupby("case", as_index=False).agg(
+                median_observed_order=("observed_order_to_next_finer", "median"),
+                min_observed_order=("observed_order_to_next_finer", "min"),
+                max_observed_order=("observed_order_to_next_finer", "max"),
+                max_rms_final_position_error=("rms_final_position_error", "max"),
+                max_dE_over_E0=("max_dE_over_E0", "max"),
+                successful_runs=("status", "count")))
+            summary_path = raw_dir / "convergence_summary.csv"
+            save_raw_table(summary, summary_path)
+            summary_readable = compact_benchmark_table(summary, convergence_summary_readable_columns)
+            summary_readable_path = readable_dir / "convergence_summary_readable.csv"
+            save_readable_table(summary_readable, summary_readable_path)
+        
+        print("\nConvergence Suite Complete.")
+        print(f"Results saved under: {output_dir}")
+
+        return results
+    
+    finally:
+        if  original_param_text is not None:
+            DEFAULT_PARAM_PATH.write_text(original_param_text)
+        if original_initial_conditions_text is not None:
+            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        
+        print("\nRestored original param.txt and initial_conditions.txt settings.")
 
 # Run every benchmark test in every selected mode and save the resulting plots.
 # This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
@@ -1923,8 +2185,8 @@ def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_e
 def TestBenchmark(reboundcompare: bool = False, rebound_integrator: str = "whfast", rebound_move_to_com: bool = False, **kwargs) -> None:
     run_benchmark_suite(rebound_compare=reboundcompare, rebound_integrator=rebound_integrator, rebound_move_to_com=rebound_move_to_com, **kwargs)
 
-def TestConvergence(reboundcompare: bool = False, rebound_integrator: str = "whfast", rebound_move_to_com: bool = False, **kwargs) -> None:
-    run_timestep_scaling_study(rebound_compare=reboundcompare, rebound_integrator=rebound_integrator, rebound_move_to_com=rebound_move_to_com, **kwargs)
+def TestConvergence(**kwargs) -> None:
+    run_timestep_scaling_study( **kwargs)
 
 
 # ============================================================

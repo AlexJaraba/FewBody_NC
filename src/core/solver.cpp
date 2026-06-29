@@ -1,5 +1,6 @@
 #include <memory>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <cmath>
 #include <iomanip>
@@ -71,6 +72,26 @@ namespace {
             }
         }
         return pairs;
+    }
+    void validate_finite_bodies(const std::vector<Body>& bodies, const char* context, int step, double time) {
+        for (int i = 0; i < static_cast<int>(bodies.size()); ++i) {
+            const Body& body = bodies[i];
+            if (!std::isfinite(body.mass) || !body.position.is_finite() || !body.velocity.is_finite() || !body.momentum.is_finite() || !body.acceleration.is_finite()) {
+                std::ostringstream msg;
+                msg << std::setprecision(17);
+                msg << "Non-finite body state detected. "
+                    << "failed_step = " << step << ", "
+                    << "failed_time = " << time << ", "
+                    << "body = " << i << ", "
+                    << "context = " << context << ", "
+                    << "mass = " << body.mass << ", "
+                    << "position = (" << body.position.x << ", " << body.position.y << ", " << body.position.z << "), "
+                    << "velocity = (" << body.velocity.x << ", " << body.velocity.y << ", " << body.velocity.z << "), "
+                    << "acceleration = (" << body.acceleration.x << ", " << body.acceleration.y << ", " << body.acceleration.z << "), "
+                    << "momentum = (" << body.momentum.x << ", " << body.momentum.y << ", " << body.momentum.z << ")";
+                throw std::runtime_error(msg.str());
+            }
+        }
     }
 }
 
@@ -259,6 +280,7 @@ void Solver::run_jacobi(const SolverParams& params) {
     }
 
     CanonicalState state = compute_jacobi_state(bodies);
+    validate_finite_bodies(bodies, "jacobi_initial_state", 0, 0.0);
 
     int adaptive_substeps = 1;
     double inner_dt = dt;
@@ -378,7 +400,6 @@ void Solver::run_jacobi(const SolverParams& params) {
     }
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
-
     {
         Diagnostics diag = compute_diagnostics(bodies, G, dt);
         std::cout << "Step: 0, Time: 0" 
@@ -397,20 +418,36 @@ void Solver::run_jacobi(const SolverParams& params) {
         if (params.adaptive_timesteps && current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
             refresh_adaptive_schedule(current_base_step, false);
         }
-        for (int substep = 0; substep < adaptive_substeps; ++substep) {
-            integrator->step(state, inner_dt, G);
-            variational_drift_operator(state, var_state, inner_dt);
-            variational_kick_operator(state, var_state, fixed_pairs, inner_dt, G);
+        try {
+            for (int substep = 0; substep < adaptive_substeps; ++substep) {
+                integrator->step(state, inner_dt, G);
+                variational_drift_operator(state, var_state, inner_dt);
+                variational_kick_operator(state, var_state, fixed_pairs, inner_dt, G);
+            }
+        }
+        catch (const std::exception& exc) {
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Jacobi integration failure. "
+                << "failed_step = " << step << ", "
+                << "failed_time = " << (step - 1) * dt << ", "
+                << "failed_dt = " << inner_dt << ", "
+                << "integrator = " << params.integrator << ", "
+                << "coordinate_mode = " << params.coordinate_mode << ", "
+                << "adaptive_timesteps = " << (params.adaptive_timesteps ? "true" : "false") << ", "
+                << "reason = " << exc.what();
+            throw std::runtime_error(msg.str());
         }
 
         reconstruct_bodies(state, bodies);
+        validate_finite_bodies(bodies, "jacobi_after_step", step, step * dt);
 
-        const double time = step * dt;
+        // const double time = step * dt;
 
         if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
 
-            double tangent = std::max(tangent_norm(var_state), 1e-300);
+            // double tangent = std::max(tangent_norm(var_state), 1e-300);
             // double lambda = std::log(tangent / 1e-10) / time;
 
             // std::cout << "Step: " << step << ", Time: " << time 
@@ -475,6 +512,7 @@ void Solver::run_cartesian(const SolverParams& params) {
     }
 
     std::cout << "Cartesian integrator: " << params.integrator << "\n";
+    validate_finite_bodies(bodies, "cartesian_initial_state", 0, 0.0);
 
     if (use_hernandez_pairwise) {
         std::cout << "Hernandez Pair Order Requested: " << params.pair_order << "\n";
@@ -540,24 +578,40 @@ void Solver::run_cartesian(const SolverParams& params) {
     }
 
     for (int step = 1; step <= steps; ++step) {
-        if (use_hernandez_pairwise) {
-            if (params.adaptive_timesteps) {
-                const int current_base_step = step - 1;
-                if (current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
-                    refresh_hernandez_block_schedule(current_base_step, false);
+        try {
+            if (use_hernandez_pairwise) {
+                if (params.adaptive_timesteps) {
+                    const int current_base_step = step - 1;
+                    if (current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
+                        refresh_hernandez_block_schedule(current_base_step, false);
+                    }
+                    hernandez_integrator.step_block(bodies, hernandez_active_schedule, dt, G);
                 }
-
-                hernandez_integrator.step_block(bodies, hernandez_active_schedule, dt, G);
+                else {
+                    hernandez_integrator.step(bodies, dt, G);
+                }
             }
             else {
-                hernandez_integrator.step(bodies, dt, G);
+                cartesian_step(dt, G);
             }
         }
-        else {
-            cartesian_step(dt, G);
+        catch (const std::exception& exc) {
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Cartesian integration failure. "
+                << "failed_step = " << step << ", "
+                << "failed_time = " << (step - 1) * dt << ", "
+                << "failed_dt = " << dt << ", "
+                << "integrator = " << params.integrator << ", "
+                << "coordinate_mode = " << params.coordinate_mode << ", "
+                << "pair_order = " << params.pair_order << ", "
+                << "effective_pair_order = " << effective_pair_order << ", "
+                << "adaptive_timesteps = " << (params.adaptive_timesteps ? "true" : "false") << ", "
+                << "reason = " << exc.what();
+            throw std::runtime_error(msg.str());
         }
 
-        // const double time = step * dt;
+        validate_finite_bodies(bodies, "cartesian_after_step", step, step * dt);
 
         if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);

@@ -72,6 +72,10 @@ struct Vec3 {
     double norm() const {
         return std::sqrt(norm2());
     }
+
+    bool is_finite() const {
+        return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
+    }
 };
 
 inline double norm(const Vec3& v) {

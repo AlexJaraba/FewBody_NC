@@ -39,7 +39,8 @@ namespace {
        double pair_half_dt = 0.0;
        double correction_half_dt = 0.0;
     };
-    constexpr int PAIR_MAP_MAX_RETRY_DEPTH = 8;
+    constexpr int PAIR_MAP_RETRY_DEPTH = 8;
+    constexpr bool PAIR_MAP_RETRY_ENABLED = true;
     int deepest_nonempty_level(const HernandezPairLevelSchedule& schedule) {
         int deepest_level = 0;
         for (const HernandezPairLevelGroup& group : schedule.levels) {
@@ -76,6 +77,31 @@ namespace {
 
         int last_iterations = 0;
         std::string last_error = "unknown pair-map failure";
+        bool retry_succeeded = false;
+        int retry_depth_used = 0;
+        int substeps_used = 1;
+
+        auto make_failure_message = [&](const std::string& reason) {
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Hernandez pair Kepler map failed. "
+                << "converged = false, "
+                << "pair = (" << pair.i << ", " << pair.j << "), "
+                << "failed_pair_i = " << pair.i << ", "
+                << "failed_pair_j = " << pair.j << ", "
+                << "failed_dt = " << dt << ", "
+                << "G = " << G << ", "
+                << "failed_distance = " << distance << ", "
+                << "failed_relative_speed = " << relative_speed << ", "
+                << "failed iterations = " << PAIR_MAP_RETRY_DEPTH << ", "
+                << "retry_enabled = " << (PAIR_MAP_RETRY_ENABLED ? "true" : "false") << ", "
+                << "retry_succeeded = " << (retry_succeeded ? "true" : "false") << ", "
+                << "retry_depth_used = " << retry_depth_used << ", "
+                << "substeps_used = " << substeps_used << ", "
+                << "reason = " << reason << ", "
+                << "last_error = " << last_error << ", ";
+            return msg.str();
+        };
 
         try {
             const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
@@ -92,10 +118,14 @@ namespace {
             last_error = exc.what();
         }
 
+        if (!PAIR_MAP_RETRY_ENABLED || PAIR_MAP_RETRY_DEPTH <= 0) {
+            throw std::runtime_error(make_failure_message("retry disabled"));
+        }
+
         const std::vector<Body> original_bodies = bodies;
         int substeps = 2;
 
-        for (int retry_depth = 1; retry_depth <= PAIR_MAP_MAX_RETRY_DEPTH; ++retry_depth) {
+        for (int retry_depth = 1; retry_depth <= PAIR_MAP_RETRY_DEPTH; ++retry_depth) {
             std::vector<Body> trial_bodies = original_bodies;
             const double sub_dt = dt / static_cast<double>(substeps);
             bool all_substeps_converged = true;
@@ -118,26 +148,18 @@ namespace {
                 }
             }
 
+            last_iterations = total_iterations;
+            retry_depth_used = retry_depth;
+            substeps_used = substeps;
+
             if (all_substeps_converged) {
+                retry_succeeded = true;
                 bodies = trial_bodies;
                 return;
             }
-            last_iterations = total_iterations;
             substeps *= 2;
         }
-        std::ostringstream msg;
-        msg << std::setprecision(17);
-        msg << "Hernandez pair Kepler map failed to converge after retry."
-            << "pair = (" << pair.i << ", " << pair.j << "), "
-            << "dt = " << dt << ", "
-            << "G = " << G << ", "
-            << "distance_before = " << distance << ", "
-            << "relative_speed_before = " << relative_speed << ", "
-            << "last_iterations = " << last_iterations << ", "
-            << "max_retry_depth = " << PAIR_MAP_MAX_RETRY_DEPTH << ", "
-            << "max_substeps = " << (1 << PAIR_MAP_MAX_RETRY_DEPTH) << ", "
-            << "last_error = " << last_error;
-        throw std::runtime_error(msg.str());
+        throw std::runtime_error(make_failure_message("retry depth exhausted"));
     }
     /*
         Flow of the Hernandez kinetic remainder Hamiltonian.
