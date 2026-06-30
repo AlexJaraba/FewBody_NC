@@ -113,7 +113,7 @@ CONVERGENCE_TESTS = [
 ]
 
 # ============================================================
-# Benchmark Tests
+# Default Benchmark Tests
 # ============================================================
 # Benchmark Tests:
 #   Benchmark systems used to demonstrate both the strengths and limits of the current integrators.
@@ -145,46 +145,10 @@ DEFAULT_BENCHMARK_MODES = [
         "adaptive_timesteps": False,
     },
     {
-        "name": "cartesian_hernandez_strength_fixed",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "strength",
-        "adaptive_timesteps": False,
-    },
-    {
-        "name": "cartesian_hernandez_auto_fixed",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "auto",
-        "adaptive_timesteps": False,
-    },
-    {
         "name": "cartesian_hernandez_canonical_adaptive",
         "integrator": "hernandez",
         "coordinate_mode": "cartesian",
         "pair_order": "canonical",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
-    },
-    {
-        "name": "cartesian_hernandez_strength_adaptive",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "strength",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
-    },
-    {
-        "name": "cartesian_hernandez_auto_adaptive",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "auto",
         "adaptive_timesteps": True,
         "timestep_levels": 4,
         "timestep_eta": 0.05,
@@ -307,6 +271,47 @@ BENCHMARK_TESTS = [
             (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
         ],
     },
+]
+
+# ============================================================
+# Adaptiove/Strength Benchmark Tests
+# ============================================================
+
+PAIR_ORDER_POLICY_MODES = [
+    {
+        "name": "pair_order_canonical_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+        "pair_order_policy_status": "production_default",
+        "expected_effective_pair_order": "canonical",
+    },
+    {
+        "name": "pair_order_strength_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "strength",
+        "adaptive_timesteps": False,
+        "pair_order_policy_status": "optional_fixed_step_diagnostic",
+        "expected_effective_pair_order": "strength",
+    },
+    {
+        "name": "pair_order_auto_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "auto",
+        "adaptive_timesteps": False,
+        "pair_order_policy_status": "conservative_auto_expected_canonical",
+        "expected_effective_pair_order": "canonical",
+    },
+]
+
+PAIR_ORDER_POLICY_TESTS = [
+    BENCHMARK_TESTS[0],  # Binary
+    BENCHMARK_TESTS[2],  # Stronger perturbed triple
+    BENCHMARK_TESTS[3],  # Scattering escape
+    BENCHMARK_TESTS[5],  # Close encounter
 ]
 
 # ============================================================
@@ -2288,6 +2293,201 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             DEFAULT_PARAM_PATH.write_text(original_param_text)
         if original_initial_conditions_text is not None:
             DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        print("\nRestored original param.txt and initial_conditions.txt settings.")
+
+def run_pair_order_policy_suite(modes: list[dict] | None = None, tests: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "pair_order_policy", use_diagnostics_csv: bool = True) -> pd.DataFrame:
+    if modes is None:
+        modes = PAIR_ORDER_POLICY_MODES
+    if tests is None:
+        tests = PAIR_ORDER_POLICY_TESTS
+
+    config = PlotConfig()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    readable_dir = output_dir / "readable"
+    readable_dir.mkdir(parents=True, exist_ok=True)
+    plot_dir = output_dir / "plots"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
+    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
+    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
+    rows = []
+    run_number = 0
+    total_runs = len(modes) * len(tests)
+
+    pair_order_policy_readable_columns = [
+        "test",
+        "mode",
+        "pair_order",
+        "pair_order_policy_status",
+        "expected_effective_pair_order",
+        "adaptive_timesteps",
+        "dt",
+        "runtime",
+        "status",
+        "max_dE_over_E0",
+        "final_dE_over_E0",
+        "max_dL_over_L0",
+        "max_dP",
+        "max_dRcm",
+        "ratio_max_dE_over_E0_to_canonical",
+        "ratio_max_dL_over_L0_to_canonical",
+        "ratio_max_dP_to_canonical",
+        "ratio_max_dRcm_to_canonical",
+        "pair_order_recommendation",
+        "plot_path",
+        "error",
+    ]
+
+    try:
+        print("\n" + "=" * 90)
+        print("PAIR-ORDER POLICY SUITE")
+        print("=" * 90)
+        print("Policy:")
+        print("  canonical = production default")
+        print("  strength  = optional fixed-step diagnostic mode")
+        print("  auto      = conservative; expected to resolve to canonical")
+        print("  adaptive  = not included in this pair-order policy suite")
+
+        for test in tests:
+            for mode in modes:
+                run_number += 1
+
+                print("\n" + "-" * 90)
+                print(f"Run {run_number}/{total_runs}")
+                print(f"Test: {test['name']}")
+                print(f"Mode: {mode['name']}")
+                print(f"Pair order: {mode['pair_order']}")
+                print(f"Policy status: {mode['pair_order_policy_status']}")
+                print("-" * 90)    
+
+                rewrite_initial_conditions(test["initial_conditions"])
+                rewrite_param(
+                    dt=test["dt"],
+                    runtime=test["runtime"],
+                    output_frequency=test["output_frequency"],
+                    integrator=mode["integrator"],
+                    coordinate_mode=mode["coordinate_mode"],
+                    G=config.G,
+                    pair_order=mode.get("pair_order", "canonical"),
+                    adaptive_timesteps=mode.get("adaptive_timesteps", False),
+                    timestep_levels=mode.get("timestep_levels"),
+                    timestep_eta=mode.get("timestep_eta"),
+                    timestep_refresh_interval=mode.get("timestep_refresh_interval"),
+                    timestep_level_decrease_delay=mode.get("timestep_level_decrease_delay"))
+                param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
+                initial_conditions_snapshot = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else ""
+
+                if DEFAULT_OUTPUT_PATH.exists():
+                    DEFAULT_OUTPUT_PATH.unlink()
+                if DEFAULT_DIAGNOSTICS_PATH.exists():
+                    DEFAULT_DIAGNOSTICS_PATH.unlink()
+
+                try:
+                    run_executable()
+                    output = read_output(DEFAULT_OUTPUT_PATH)
+                    if use_diagnostics_csv:
+                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
+                        if diagnostics is None:
+                            print("Falling back to recomputing diagnostics from output.csv.")
+                            diagnostics = compute_diagnostics_from_output(output, config)
+                    else:
+                        diagnostics = compute_diagnostics_from_output(output, config)
+
+                    case_plot_dir = plot_dir / safe_filename(test["name"])
+                    case_plot_dir.mkdir(parents=True, exist_ok=True)
+                    plot_path = case_plot_dir / f"{safe_filename(mode['name'])}.png"
+                    plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False)
+                    append_benchmark_row(benchmark_rows=rows, 
+                                         run_number=run_number, 
+                                         mode=mode, 
+                                         test=test, 
+                                         status="success", 
+                                         plot_path=plot_path, 
+                                         diagnostics=diagnostics, 
+                                         engine="fewbodync", 
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot)
+                    rows[-1]["pair_order_policy_status"] = mode["pair_order_policy_status"]
+                    rows[-1]["expected_effective_pair_order"] = mode["expected_effective_pair_order"]
+
+                    print(f"max |dE/E0|: {rows[-1]['max_dE_over_E0']:.6e}")
+                    print(f"policy status: {rows[-1]['pair_order_policy_status']}")
+                except Exception as exc:
+                    failure_message = str(exc)
+                    append_benchmark_row(benchmark_rows=rows, 
+                                         run_number=run_number, 
+                                         mode=mode, 
+                                         test=test, 
+                                         status="failed", 
+                                         error=failure_message, 
+                                         engine="fewbodync",
+                                         failure_type=type(exc).__name__,
+                                         failure_message=failure_message, 
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot)
+                    rows[-1]["pair_order_policy_status"] = mode["pair_order_policy_status"]
+                    rows[-1]["expected_effective_pair_order"] = mode["expected_effective_pair_order"]
+
+                    print(f"Pair-order policy run failed: {failure_message}")
+        results = pd.DataFrame(rows)
+        
+        # Compare each pair-order mode against canonical for the same test
+        for metric in ["max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]:
+            ratio_column = f"ratio_{metric}_to_canonical"
+            results[ratio_column] = np.nan
+            if metric not in results.columns:
+                continue
+            results[metric] = pd.to_numeric(results[metric], errors="coerce")
+            canonical_reference = results[(results["pair_order"] == "canonical") & (results["status"] == "success")][["test", metric]].drop_duplicates(subset=["test"]).set_index("test")[metric]
+            canonical_values = results["test"].map(canonical_reference)
+            valid = results[metric].notna() & canonical_values.notna() & (canonical_values.abs() > config.epsilon)
+            results.loc[valid, ratio_column] = results.loc[valid, metric] / canonical_values.loc[valid]
+        
+        def recommendation(row: pd.Series) -> str:
+            if row["status"] != "success":
+                return "failed_do_not_use"
+            if row["pair_order"] == "canonical":
+                return "production_default"
+            if row["pair_order"] == "auto":
+                return "allowed_but_expected_to_resolve_to_canonical"
+            if row["pair_order"] == "strength":
+                ratio = row.get("ratio_max_dE_over_E0_to_canonical", np.nan)
+                if np.isfinite(ratio) and ratio <= 1.1:
+                    return "optional_fixed_step_only"
+                return "demoted_not_better_than_canonical"
+            return "unknown"
+        
+        results["pair_order_recommendation"] = results.apply(recommendation, axis=1)
+        raw_path = raw_dir / "pair_order_policy_summary.csv"
+        save_raw_table(results, raw_path)
+        readable = compact_benchmark_table(results, pair_order_policy_readable_columns)
+        readable_path = readable_dir / "pair_order_policy_summary_readable.csv"
+        save_readable_table(readable, readable_path)
+        
+        successful = results[results["status"] == "success"].copy()
+        if not successful.empty:
+            counts = successful.groupby(["pair_order", "pair_order_policy_status", "pair_order_recommendation"], as_index=False).size().rename(columns={"size": "run_count"})
+            counts_path = raw_dir / "pair_order_policy_counts.csv"
+            save_raw_table(counts, counts_path)
+            counts_readable_path = readable_dir / "pair_order_policy_counts_readable.csv"
+            save_readable_table(counts, counts_readable_path)
+        
+        print("\nPair-Order Policy Suite Complete.")
+        print(f"Results saved under: {output_dir}")
+
+        return results
+    
+    finally:
+        if original_param_text is not None:
+            DEFAULT_PARAM_PATH.write_text(original_param_text)
+
+        if original_initial_conditions_text is not None:
+            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+
         print("\nRestored original param.txt and initial_conditions.txt settings.")
 
 """

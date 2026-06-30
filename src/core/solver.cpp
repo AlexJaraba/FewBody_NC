@@ -61,6 +61,12 @@ double tangent_norm(const VariationalState& v) {
 }
 
 namespace {
+    /*
+    Pair-order policy:
+        canonical = production default
+        strength = optional fixed-step diagnostic mode
+        auto = conservative by default; it resovles to canonical unless AUTO_MAY_SELECT_STRENGTH is deliberately changed to true later.
+    */
     constexpr double AUTO_HIERARCHY_RATIO_THRESHOLD = 100.0;
     constexpr bool AUTO_MAY_SELECT_STRENGTH = false;
     std::vector<Pair> make_all_physical_pairs(const std::vector<Body>& test_bodies) {
@@ -143,7 +149,11 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
         std::cout << "Hernandez Pair Order Requested: " << params.pair_order << std::endl;
         std::cout << "Hernandez Hierarchy Ratio: " << hierarchy_ratio << std::endl;
         std::cout << "Hernandez Auto Hierarchy Threshold: " << AUTO_HIERARCHY_RATIO_THRESHOLD << std::endl;
+        std::cout << "Hernandez Auto Strength Selection Enabled: " << (AUTO_MAY_SELECT_STRENGTH ? "true" : "false") << std::endl;
         std::cout << "Hernandez Effective Pair Order: " << effective_pair_order << std::endl;
+    }
+    if (params.pair_order == "auto" && !AUTO_MAY_SELECT_STRENGTH) {
+        std::cout << "Hernandez Auto Policy: strength selection is disabled; auto resovles to canonical." << std::endl;
     }
 
     // Coordinate Mode

@@ -48,6 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adaptive-compare", action="store_true", help="Run Step 10.4 adaptive-on vs adaptive-off comparison.",)
     parser.add_argument("--adaptive-levels", type=int, default=None, help="Timestep levels to use for adaptive comparison.",)
     parser.add_argument("--adaptive-eta", type=float, default=None, help="Eta value to use for adaptive comparison.",)
+    parser.add_argument("--pair-order-policy", action="store_true", help="Run pair-order policy suite.")
     parser.add_argument("--rebound-compare", action="store_true", help="Compare FewBodyNC benchmark/convergence results against a REBOUND reference run.")
     parser.add_argument("--rebound-integrator", type=str, default="whfast", help="REBOUND integrator to use for comparison, such as whfast or leapfrog.")
     parser.add_argument("--rebound-move-to-com", action="store_true", help="Call sim.move_to_com() before running REBOUND comparisons.")
@@ -66,6 +67,9 @@ def main() -> None:
     args = parse_args()
     config = functions.PlotConfig(G=args.G)
 
+    if args.pair_order_policy:
+        functions.run_pair_order_policy_suite(use_diagnostics_csv=args.use_diagnostics_csv)
+        return
     if args.benchmark:
         functions.run_benchmark_suite(
             use_diagnostics_csv=args.use_diagnostics_csv,
