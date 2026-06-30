@@ -42,6 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--G", type=float, default=0.000296014912, help="Gravitational constant used for recomputed diagnostics.",)
     parser.add_argument("--use-diagnostics-csv", action="store_true", help="Use diagnostics.csv for diagnostic plots instead of recomputing from output.csv.",)
     parser.add_argument("--shadow", action="store_true", help="Plot shadow Hamiltonian error from diagnostics.csv.",)
+    parser.add_argument("--energy-boundedness", action="store_true", help="Run energy boundedness and drift suite.")
     parser.add_argument("--convergence", action="store_true", help="Run timestep convergence study.",)
     parser.add_argument("--convergence-suite", choices=["current", "cartesian-hernandez"], default="current", help="Choose which convergence suite to run when --convergence is used.")
     parser.add_argument("--adaptive-compare", action="store_true", help="Run Step 10.4 adaptive-on vs adaptive-off comparison.",)
@@ -76,6 +77,9 @@ def main() -> None:
     if args.shadow:
         functions.plot_shadow_hamiltonian(args.diagnostics)
         return
+    if args.energy_boundedness:
+        functions.run_energy_boundedness_suite(use_diagnostics_csv=args.use_diagnostics_csv)
+        return
     if args.convergence:
         if args.convergence_suite == "cartesian-hernandez":
             functions.run_convergence_suite(use_diagnostics_csv=args.use_diagnostics_csv)
@@ -85,6 +89,7 @@ def main() -> None:
     if args.adaptive_compare:
         functions.run_adaptive_comparison_study(timestep_levels=args.adaptive_levels, timestep_eta=args.adaptive_eta)
         return
+    
     output_df = functions.read_output(args.output)
     if args.use_diagnostics_csv:
         diagnostics = functions.read_diagnostics(args.diagnostics)

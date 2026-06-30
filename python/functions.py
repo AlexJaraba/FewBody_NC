@@ -59,10 +59,157 @@ class SimulationRunError(RuntimeError):
         self.returncode = returncode
 
 # ============================================================
+# Convergence Cases
+# ============================================================
+
+CONVERGENCE_TESTS = [
+    {
+        "name": "D1_BinaryShort",
+        "dt_ref": 0.00625,
+        "dts": (0.1, 0.05, 0.025, 0.0125),
+        "runtime": 1000,
+        "output_frequency": 100,
+        "initial_conditions": [
+            (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
+            (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
+        ],
+    },
+    {
+        "name": "D2_HierarchicalTripleShort",
+        "dt_ref": 0.00125,
+        "dts": (0.02, 0.01, 0.005, 0.0025),
+        "runtime": 1000,
+        "output_frequency": 100,
+        "initial_conditions": [
+            (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
+            (1.0,   0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
+            (1e-3,  5.0, 0.0, 0.0, 0.0,  0.01089,  0.0),
+        ],
+    },
+    {
+        "name": "D3_Figure8Short",
+        "dt_ref": 0.00025,
+        "dts": (0.004, 0.002, 0.001, 0.0005),
+        "runtime": 20,
+        "output_frequency": 10,
+        "initial_conditions": [
+            (1.0, -0.97000436,  0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
+            (1.0,  0.97000436, -0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
+            (1.0,  0.0,         0.0,        0.0, -0.016038058, -0.014872872, 0.0),
+        ],
+    },
+    {
+        "name": "D4_CloseBinaryPerturberShort",
+        "dt_ref": 0.000625,
+        "dts": (0.01, 0.005, 0.0025, 0.00125),
+        "runtime": 200,
+        "output_frequency": 50,
+        "initial_conditions": [
+            (1.0,  -0.5, 0.0, 0.0,  0.0,    -0.012166, 0.0),
+            (1.0,   0.5, 0.0, 0.0,  0.0,     0.012166, 0.0),
+            (0.01,  1.2, 0.2, 0.0, -0.0020,  0.0040,   0.0),
+        ],
+    },
+]
+
+# ============================================================
+# Benchmark Tests
+# ============================================================
 # Benchmark Tests:
 #   Benchmark systems used to demonstrate both the strengths and limits of the current integrators.
 #   These are written directly into data/initial_conditions.txt before each benchmark run.
-# ============================================================
+# These are the current supported integrator/mode combinations:
+# The benchmark suite runs every BENCHMARK_TESTS entry through every mode below.
+# Cartesian:
+#   - leapfrog fixed global timestep
+#   - Hernandez fixed timestep with canonical/strength/auto pair order
+#   - Hernandez adaptive block mode with canonical/strength/auto pair order
+# Jacobi:
+#   - leapfrog fixed/adaptive full-integrator subcycling
+#   - Hernandez fixed/adaptive full-integrator subcycling
+#   - Yoshida4 fixed/adaptive full-integrator subcycling
+
+DEFAULT_BENCHMARK_MODES = [
+    {
+        "name": "cartesian_leapfrog_fixed",
+        "integrator": "leapfrog",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_canonical_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_strength_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "strength",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_auto_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "auto",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "cartesian_hernandez_canonical_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "canonical",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "cartesian_hernandez_strength_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "strength",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "cartesian_hernandez_auto_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "cartesian",
+        "pair_order": "auto",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+    {
+        "name": "jacobi_hernandez_fixed",
+        "integrator": "hernandez",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": False,
+    },
+    {
+        "name": "jacobi_hernandez_adaptive",
+        "integrator": "hernandez",
+        "coordinate_mode": "jacobi",
+        "pair_order": "canonical",
+        "adaptive_timesteps": True,
+        "timestep_levels": 4,
+        "timestep_eta": 0.05,
+        "timestep_refresh_interval": 1,
+        "timestep_level_decrease_delay": 3,
+    },
+]
 
 BENCHMARK_TESTS = [
     {
@@ -163,143 +310,23 @@ BENCHMARK_TESTS = [
 ]
 
 # ============================================================
-# Convergence Cases
+# Energy Boundedness Tests
 # ============================================================
 
-CONVERGENCE_TESTS = [
-    {
-        "name": "D1_BinaryShort",
-        "dt_ref": 0.00625,
-        "dts": (0.1, 0.05, 0.025, 0.0125),
-        "runtime": 1000,
-        "output_frequency": 100,
-        "initial_conditions": [
-            (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
-            (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
-        ],
-    },
-    {
-        "name": "D2_HierarchicalTripleShort",
-        "dt_ref": 0.00125,
-        "dts": (0.02, 0.01, 0.005, 0.0025),
-        "runtime": 1000,
-        "output_frequency": 100,
-        "initial_conditions": [
-            (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
-            (1.0,   0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
-            (1e-3,  5.0, 0.0, 0.0, 0.0,  0.01089,  0.0),
-        ],
-    },
-    {
-        "name": "D3_Figure8Short",
-        "dt_ref": 0.00025,
-        "dts": (0.004, 0.002, 0.001, 0.0005),
-        "runtime": 20,
-        "output_frequency": 10,
-        "initial_conditions": [
-            (1.0, -0.97000436,  0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
-            (1.0,  0.97000436, -0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
-            (1.0,  0.0,         0.0,        0.0, -0.016038058, -0.014872872, 0.0),
-        ],
-    },
-    {
-        "name": "D4_CloseBinaryPerturberShort",
-        "dt_ref": 0.000625,
-        "dts": (0.01, 0.005, 0.0025, 0.00125),
-        "runtime": 200,
-        "output_frequency": 50,
-        "initial_conditions": [
-            (1.0,  -0.5, 0.0, 0.0,  0.0,    -0.012166, 0.0),
-            (1.0,   0.5, 0.0, 0.0,  0.0,     0.012166, 0.0),
-            (0.01,  1.2, 0.2, 0.0, -0.0020,  0.0040,   0.0),
-        ],
-    },
-]
-
-# ============================================================
-# Benchmark Modes
-# ============================================================
-# These are the current supported integrator/mode combinations.
-# The benchmark suite runs every BENCHMARK_TESTS entry through every mode below.
-#
-# Cartesian:
-#   - leapfrog fixed global timestep
-#   - Hernandez fixed timestep with canonical/strength/auto pair order
-#   - Hernandez adaptive block mode with canonical/strength/auto pair order
-#
-# Jacobi:
-#   - leapfrog fixed/adaptive full-integrator subcycling
-#   - Hernandez fixed/adaptive full-integrator subcycling
-#   - Yoshida4 fixed/adaptive full-integrator subcycling
-
-DEFAULT_BENCHMARK_MODES = [
-    {
-        "name": "cartesian_leapfrog_fixed",
-        "integrator": "leapfrog",
-        "coordinate_mode": "cartesian",
-        "pair_order": "canonical",
-        "adaptive_timesteps": False,
-    },
+ENERGY_BOUNDEDNESS_MODES = [
     {
         "name": "cartesian_hernandez_canonical_fixed",
         "integrator": "hernandez",
         "coordinate_mode": "cartesian",
         "pair_order": "canonical",
-        "adaptive_timesteps": False,
-    },
-    {
-        "name": "cartesian_hernandez_strength_fixed",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "strength",
-        "adaptive_timesteps": False,
-    },
-    {
-        "name": "cartesian_hernandez_auto_fixed",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "auto",
-        "adaptive_timesteps": False,
-    },
-    {
-        "name": "cartesian_hernandez_canonical_adaptive",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "canonical",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
-    },
-    {
-        "name": "cartesian_hernandez_strength_adaptive",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "strength",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
-    },
-    {
-        "name": "cartesian_hernandez_auto_adaptive",
-        "integrator": "hernandez",
-        "coordinate_mode": "cartesian",
-        "pair_order": "auto",
-        "adaptive_timesteps": True,
-        "timestep_levels": 4,
-        "timestep_eta": 0.05,
-        "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
+        "adaptive_timesteps": False,        
     },
     {
         "name": "jacobi_hernandez_fixed",
         "integrator": "hernandez",
         "coordinate_mode": "jacobi",
         "pair_order": "canonical",
-        "adaptive_timesteps": False,
+        "adaptive_timesteps": False,        
     },
     {
         "name": "jacobi_hernandez_adaptive",
@@ -310,8 +337,66 @@ DEFAULT_BENCHMARK_MODES = [
         "timestep_levels": 4,
         "timestep_eta": 0.05,
         "timestep_refresh_interval": 1,
-        "timestep_level_decrease_delay": 3,
+        "timestep_level_decrease_delay": 3,        
+    }
+]
+
+ENERGY_BOUNDEDNESS_CASES = [
+    {
+        "name": "E1_LongBinary_CartesianHernandez",
+        "description": "Long isolated binary boundedness test for Cartesian Hernandez canonical fixed.",
+        "modes": [ENERGY_BOUNDEDNESS_MODES[0]],
+        "test": {
+            "name": "E1_LongBinary",
+            "dt": 0.1,
+            "runtime": 100000,
+            "output_frequency": 1000,
+            "initial_conditions": [
+                (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
+                (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
+            ],
+        },        
     },
+    {
+        "name": "E2_FullSolarSystem_Secular",
+        "description": "Long solar-system secular boundedness comparison.",
+        "modes": ENERGY_BOUNDEDNESS_MODES,
+        "test": {
+            "name": "E2_FullSolarSystem",
+            "dt": 1.0,
+            "runtime": 36525,
+            "output_frequency": 100,
+            "initial_conditions": [
+                (1.0,        0.0,            0.0,            0.0,  0.0,            0.0,            0.0),
+                (1.6601e-7,  0.3637531341,   0.1323953134,   0.0, -0.0094579726,  0.0259855662,  0.0),
+                (2.4478e-6,  0.1872120975,   0.6986850598,   0.0, -0.0195403467,  0.0052358201,  0.0),
+                (3.0035e-6, -0.6427876097,   0.7660444431,   0.0, -0.0131798787, -0.0110592314,  0.0),
+                (3.2272e-7, -1.3195447212,  -0.7618395000,   0.0,  0.0069691551, -0.0120709307,  0.0),
+                (9.5458e-4,  2.6022000000,  -4.5071426115,   0.0,  0.0065344536,  0.0037726685,  0.0),
+                (2.8588e-4,  7.3406974806,   6.1595765486,   0.0, -0.0035730960,  0.0042582500,  0.0),
+                (4.3662e-5, -18.0593886633,  6.5730799225,   0.0, -0.0013423302, -0.0036880218,  0.0),
+                (5.1514e-5, -5.2285466296, -29.6525614432,   0.0,  0.0030879059, -0.0005444811,  0.0),
+            ],
+        },        
+    },
+    {
+        "name": "E3_InnerPlanets_Secular",
+        "description": "Inner-planets boundedness comparison.",
+        "modes": ENERGY_BOUNDEDNESS_MODES,
+        "test": {
+            "name": "E3_InnerPlanets",
+            "dt": 0.1,
+            "runtime": 36525,
+            "output_frequency": 10,
+            "initial_conditions": [
+                (1.0,        0.0,            0.0,           0.0,  0.0,            0.0,            0.0),
+                (1.6601e-7,  0.3637531341,   0.1323953134,  0.0, -0.0094579726,  0.0259855662,  0.0),
+                (2.4478e-6,  0.1872120975,   0.6986850598,  0.0, -0.0195403467,  0.0052358201,  0.0),
+                (3.0035e-6, -0.6427876097,   0.7660444431,  0.0, -0.0131798787, -0.0110592314,  0.0),
+                (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
+            ],
+        },        
+    }
 ]
 
 # ============================================================
@@ -606,6 +691,12 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "final_energy": np.nan,
            "max_dE_over_E0": np.nan,
            "final_dE_over_E0": np.nan,
+           "energy_drfit_slope": np.nan,
+           "energy_abs_drift_slope": np.nan,
+           "energy_drift_over_run": np.nan,
+           "energy_drift_fraction_of_max": np.nan,
+           "energy_rms_dE_over_E0": np.nan,
+           "energy_boundedness_class": "",
            "initial_angular_momentum": np.nan,
            "final_angular_momentum": np.nan,
            "max_dL_over_L0": np.nan,
@@ -657,6 +748,7 @@ def append_benchmark_row(benchmark_rows: list[dict],
                     "final_com_drift": com[-1] if len(com) else np.nan,
                     "max_dRcm": compute_finite_max(dRcm),
                     "final_dRcm": float(dRcm[-1]) if len(dRcm) else np.nan,})
+        row.update(energy_boundedness_summary(diagnostics, config))
     if rebound_comparison is not None:
         row.update(rebound_comparison)
     
@@ -862,6 +954,77 @@ def format_scientific_or_blank(value) -> str:
         return f"{float(value):.6e}"
     return str(value)
 
+def finite_linear_slope(x: np.ndarray, y: np.ndarray) -> float:
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    finite = np.isfinite(x) & np.isfinite(y)
+
+    if np.count_nonzero(finite) < 2:
+        return float("nan")
+    
+    xf = x[finite]
+    yf = y[finite]
+    x_centered = xf - np.mean(xf)
+    y_centered = yf - np.mean(yf)
+    denominator = np.sum(x_centered * x_centered)
+
+    if denominator <= 0.0 or not np.isfinite(denominator):
+        return float("nan")
+    
+    return float(np.sum(x_centered * y_centered) / denominator)
+
+def classify_energy_boundness(max_abs_dE: float, final_abs_dE: float, drift_over_run: float, drift_fraction_of_max: float) -> str:
+    if not (np.isfinite(max_abs_dE) and np.isfinite(final_abs_dE) and np.isfinite(drift_over_run) and np.isfinite(drift_fraction_of_max)):
+        return "undetermined"
+    if max_abs_dE <= 1e-14:
+        return "bounded_like_machine_precision"
+    if drift_fraction_of_max <= 0.25 and final_abs_dE <= 0.75 * max_abs_dE:
+        return "bounded_like"
+    return "mixed_unclear"
+
+def energy_boundedness_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> dict:
+    if diagnostics is None or diagnostics.empty:
+        return {"energy_drift_slope": float("nan"), 
+                "energy_abs_drift_slope": float("nan"), 
+                "energy_drift_over_run": float("nan"), 
+                "energy_drift_fraction_of_max": float("nan"), 
+                "energy_rms_dE_over_E0": float("nan"),
+                "energy_boundedness_class": "undetermined"}
+    
+    time = diagnostics["time"].to_numpy(dtype=float)
+    energy = diagnostics["total_energy"].to_numpy(dtype=float)
+    signed_dE = error_signed_relative_energy(energy, config.epsilon)
+    abs_dE = np.abs(signed_dE)
+    max_abs_dE = compute_finite_max(abs_dE)
+    final_abs_dE = float(abs_dE[-1]) if len(abs_dE) else float("nan")
+    energy_drift_slope = finite_linear_slope(time, signed_dE)
+    energy_abs_drift_slope = finite_linear_slope(time, abs_dE)
+    finite_time = time[np.isfinite(time)]
+
+    if finite_time.size >= 2 and np.isfinite(energy_drift_slope):
+        duration = float(finite_time[-1] - finite_time[0])
+        drift_over_run = abs(energy_drift_slope) * duration
+    else:
+        drift_over_run = float("nan")
+    if np.isfinite(max_abs_dE) and max_abs_dE > 0.0 and np.isfinite(drift_over_run):
+        drift_fraction_of_max = drift_over_run / max_abs_dE
+    else:
+        drift_fraction_of_max = float("nan")
+
+    finite_abs_dE = abs_dE[np.isfinite(abs_dE)]
+
+    if finite_abs_dE.size:
+        rms_dE = float(np.sqrt(np.mean(finite_abs_dE * finite_abs_dE)))
+    else:
+        rms_dE = float("nan")
+    
+    return {"energy_drift_slope": energy_drift_slope, 
+            "energy_abs_drift_slope": energy_abs_drift_slope, 
+            "energy_drift_over_run": drift_over_run,
+            "energy_drift_fraction_of_max": drift_fraction_of_max,
+            "energy_rms_dE_over_E0": rms_dE,
+            "energy_boundness_class": classify_energy_boundness(max_abs_dE=max_abs_dE, final_abs_dE=final_abs_dE, drift_over_run=drift_over_run, drift_fraction_of_max=drift_fraction_of_max)}
+
 def add_test_rank(df: pd.DataFrame, metric: str = "max_dE_over_E0", rank_column: str = "rank_in_test") -> pd.DataFrame:
     ranked = df.copy()
     if "test" not in ranked.columns or metric not in ranked.columns:
@@ -959,6 +1122,25 @@ def error_rms_position(test_positions: dict[int, np.ndarray], reference_position
 
     return np.sqrt(total / count)
 
+def error_signed_relative_energy(energy: np.ndarray, epsilon: float = 1e-300) -> np.ndarray:
+    energy = np.asarray(energy, dtype=float)
+    safe_epsilon = max(float(epsilon), 1e-14)
+    finite = np.isfinite(energy)
+    result = np.full_like(energy, np.nan, dtype=float)
+
+    if not np.any(finite):
+        return result
+    
+    reference = energy[0]
+
+    if not np.isfinite(reference):
+        reference = energy[finite][0]
+
+    scale = max(abs(reference), safe_epsilon)
+    result[finite] = (energy[finite] - reference) / scale
+
+    return result
+
 def error_safe_log_values(values: np.ndarray, floor: float = 1e-300, ceiling: float = 1e50) -> np.ndarray:
     values = np.asarray(values, dtype=float)
     
@@ -1002,14 +1184,17 @@ def error_diagnostic_metric_summary(diagnostics: pd.DataFrame, config: PlotConfi
     dP = error_absolute(linear)
     dRcm = error_absolute(com)
 
-    return {"max_dE_over_E0": compute_finite_max(dE), 
-            "final_dE_over_E0": float(dE[-1]), 
-            "max_dL_over_L0": compute_finite_max(dL), 
-            "final_dL_over_L0": float(dL[-1]), 
-            "max_dP": compute_finite_max(dP), 
-            "final_dP": float(dP[-1]), 
-            "max_dRcm": compute_finite_max(dRcm), 
-            "final_dRcm": float(dRcm[-1]),}
+    summary = {"max_dE_over_E0": compute_finite_max(dE),
+               "final_dE_over_E0": float(dE[-1]),
+               "max_dL_over_L0": compute_finite_max(dL),
+               "final_dL_over_L0": float(dL[-1]),
+               "max_dP": compute_finite_max(dP),
+               "final_dP": float(dP[-1]),
+               "max_dRcm": compute_finite_max(dRcm),
+               "final_dRcm": float(dRcm[-1])}
+    summary.update(energy_boundedness_summary(diagnostics, config))
+
+    return summary
 
 # ============================================================
 # Plotting
@@ -1252,10 +1437,11 @@ def rewrite_adaptive_settings(adaptive_timesteps: bool, timestep_levels: int | N
     
     param_path.write_text("\n".join(updated) + "\n")
 
-# Write initial conditions in the exact format expected by the C++ reader:
-#   mass x y z vx vy vz
-# No header row is written
-
+"""
+Write initial conditions in the exact format expected by the C++ reader:
+    mass x y z vx vy vz
+No header row is written
+"""
 def rewrite_initial_conditions(rows: list[tuple[float, float, float, float, float, float, float]], output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1280,10 +1466,11 @@ def run_executable(executable_path: Path = DEFAULT_EXECUTABLE_PATH) -> None:
 
     print("Simulation finished successfully")
 
-# Run a convergence study using the current settings in data/param.txt
-# Only the timestep is changed during the sweep.
-# The original param.txt is restored afterward.
-
+"""
+Run a convergence study using the current settings in data/param.txt
+Only the timestep is changed during the sweep.
+The original param.txt is restored afterward.
+"""
 def run_convergence_case(case_name: str, 
                          initial_conditions: list[tuple[float, float, float, float, float, float, float]], 
                          dt_ref: float, 
@@ -1595,10 +1782,12 @@ def run_convergence_suite(tests: list[dict] | None = None, output_dir: Path = DE
         
         print("\nRestored original param.txt and initial_conditions.txt settings.")
 
+"""
 # Run every benchmark test in every selected mode and save the resulting plots.
 # This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
 # The original files should be restored at the end of the run.
 
+"""
 def run_benchmark_suite(modes: list[dict] | None = None, 
                         output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, 
                         use_diagnostics_csv: bool = True,
@@ -1847,6 +2036,11 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "status",
             "max_dE_over_E0",
             "final_dE_over_E0",
+            "energy_drift_slope",
+            "energy_drift_over_run",
+            "energy_drift_fraction_of_max",
+            "energy_rms_dE_over_E0",
+            "energy_boundedness_class",
             "max_dL_over_L0",
             "max_dP",
             "max_dRcm",
@@ -1866,6 +2060,11 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "runtime",
             "max_dE_over_E0",
             "final_dE_over_E0",
+            "energy_drift_slope",
+            "energy_drift_over_run",
+            "energy_drift_fraction_of_max",
+            "energy_rms_dE_over_E0",
+            "energy_boundedness_class",
             "max_dL_over_L0",
             "max_dP",
             "max_dRcm",
@@ -1885,6 +2084,11 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "runtime",
             "max_dE_over_E0",
             "final_dE_over_E0",
+            "energy_drift_slope",
+            "energy_drift_over_run",
+            "energy_drift_fraction_of_max",
+            "energy_rms_dE_over_E0",
+            "energy_boundedness_class",
             "max_dL_over_L0",
             "max_dP",
             "max_dRcm",
@@ -1902,6 +2106,10 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "median_max_dL_over_L0",
             "median_max_dP",
             "median_max_dRcm",
+            "median_abs_energy_drift_slope",
+            "median_energy_drift_fraction_of_max",
+            "bounded_like_runs",
+            "drifting_like_runs",
         ]        
 
         # Failure Summary
@@ -1947,6 +2155,12 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "body_count",
             "max_dE_over_E0",
             "final_dE_over_E0",
+            "energy_drift_slope",
+            "energy_abs_drift_slope",
+            "energy_drift_over_run",
+            "energy_drift_fraction_of_max",
+            "energy_rms_dE_over_E0",
+            "energy_boundedness_class",
             "max_dL_over_L0",
             "final_dL_over_L0",
             "max_dP",
@@ -2050,13 +2264,17 @@ def run_benchmark_suite(modes: list[dict] | None = None,
 
         # Raw Ranking by Median Max
         mode_rankings = (successful_summary.groupby("mode", as_index=False).agg(
-            median_max_dE_over_E0=("max_dE_over_E0", "median"),
-            mean_max_dE_over_E0=("max_dE_over_E0", "mean"),
-            worst_max_dE_over_E0=("max_dE_over_E0", "max"),
-            median_max_dL_over_L0=("max_dL_over_L0", "median"),
-            median_max_dP=("max_dP", "median"),
-            median_max_dRcm=("max_dRcm", "median"),
-            successful_runs=("status", "count")).sort_values("median_max_dE_over_E0"))
+            median_max_dE_over_E0 = ("max_dE_over_E0", "median"),
+            mean_max_dE_over_E0 = ("max_dE_over_E0", "mean"),
+            worst_max_dE_over_E0 = ("max_dE_over_E0", "max"),
+            median_abs_energy_drift_slope = ("energy_abs_drift_slope", "median"),
+            median_energy_drift_fraction_of_max = ("energy_drift_fraction_of_max", "median"),
+            median_max_dL_over_L0 = ("max_dL_over_L0", "median"),
+            median_max_dP = ("max_dP", "median"),
+            median_max_dRcm = ("max_dRcm", "median"),
+            bounded_like_runs = ("energy_boudedness_class", lambda values: int(values.astype(str).contains("bounded_like").sum())),
+            drifting_like_runs = ("energy_boundedness_class", lambda values: int((values.astype(str) == "drifting_like").sum())),
+            successful_runs = ("status", "count")).sort_values("median_max_dE_over_E0"))
         mode_rankings_path = raw_dir / "mode_rankings.csv"
         save_raw_table(mode_rankings, mode_rankings_path)
 
@@ -2072,6 +2290,12 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
         print("\nRestored original param.txt and initial_conditions.txt settings.")
 
+"""
+# Run comparison for adaptive timestep vs. fixed time step for every integrator and save the resulting plots.
+# This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
+# The original files should be restored at the end of the run.
+
+"""
 def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_eta: float | None = None, param_path: Path = DEFAULT_PARAM_PATH) -> None:
     config = PlotConfig()
 
@@ -2177,6 +2401,164 @@ def run_adaptive_comparison_study(timestep_levels: int | None = None, timestep_e
     finally:
         param_path.write_text(original_param_text)
         print("\nRestored original param.txt settings.")
+
+"""
+# Run energy boundedness tests and save the resulting plots.
+# This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
+# The original files should be restored at the end of the run.
+
+"""
+def run_energy_boundedness_suite(cases: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "energy_boundedness", use_diagnostics_csv: bool = True) -> pd.DataFrame:
+    if cases is None:
+        cases = ENERGY_BOUNDEDNESS_CASES
+
+    config = PlotConfig()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    raw_dir = output_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    readable_dir = output_dir / "readable"
+    readable_dir.mkdir(parents=True, exist_ok=True)
+    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
+    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
+    rows = []
+    run_number = 0
+    total_runs = sum(len(case["modes"]) for case in cases)
+
+    energy_boundedness_readable_columns = [
+        "case",
+        "test",
+        "mode",
+        "integrator",
+        "coordinate_mode",
+        "pair_order",
+        "adaptive_timesteps",
+        "dt",
+        "runtime",
+        "max_dE_over_E0",
+        "final_dE_over_E0",
+        "energy_drift_slope",
+        "energy_abs_drift_slope",
+        "energy_drift_over_run",
+        "energy_drift_fraction_of_max",
+        "energy_rms_dE_over_E0",
+        "energy_boundedness_class",
+        "max_dL_over_L0",
+        "max_dP",
+        "max_dRcm",
+        "status",
+        "error",
+    ]
+
+    try:
+        print("\n" + "=" * 90)
+        print("Energy Boundedness and Drift Suite")
+        print("=" * 90)
+
+        for case in cases:
+            test = case["test"]
+            for mode in case["modes"]:
+                run_number += 1
+                
+                print("\n" + "-" * 90)
+                print(f"Run {run_number}/{total_runs}")
+                print(f"Case: {case['name']}")
+                print(f"Mode: {mode['name']}")
+                print(f"Test: {test['name']}")
+                print("-" * 90)
+
+                rewrite_initial_conditions(test["initial_conditions"])
+                rewrite_param(dt=test["dt"],
+                              runtime=test["runtime"],
+                              output_frequency=test["output_frequency"],
+                              integrator=mode["integrator"],
+                              coordinate_mode=mode["coordinate_mode"],
+                              G=config.G,
+                              pair_order=mode.get("pair_order", "canonical"),
+                              adaptive_timesteps=mode.get("adaptive_timesteps", False),
+                              timestep_levels=mode.get("timestep_levels"),
+                              timestep_eta=mode.get("timestep_eta"),
+                              timestep_refresh_interval=mode.get("timestep_refresh_interval"),
+                              timestep_level_decrease_delay=mode.get("timestep_level_decrease_delay"))
+                param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
+                initial_conditions_snapshot = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else ""
+
+                clear_simulation_outputs()
+
+                try:
+                    run_executable()
+                    output = read_output(DEFAULT_OUTPUT_PATH)
+                    if use_diagnostics_csv:
+                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
+                        if diagnostics is None:
+                            print("Falling back to recomputing diagnostics from output.csv")
+                            diagnostics = compute_diagnostics_from_output(output, config)
+                    else:
+                        diagnostics = compute_diagnostics_from_output(output, config)
+                    
+                    append_benchmark_row(benchmark_rows=rows,
+                                         run_number=run_number,
+                                         mode=mode,
+                                         test=test,
+                                         status="success",
+                                         diagnostics=diagnostics,
+                                         engine="fewbodync",
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot)
+                    rows[-1]["case"] = case["name"]
+                    rows[-1]["case_description"] = case.get("description", "")
+
+                    print(f"max |dE/E0|: {rows[-1]['max_dE_over_E0']:.6e}")
+                    print(f"final |dE/E0|: {rows[-1]['final_dE_over_E0']:.6e}")
+                    print(f"energy drift slope: {rows[-1]['energy_drift_slope']:.6e}")
+                    print(f"energy boundedness: {rows[-1]['energy_boundedness_class']}")     
+
+                except Exception as exc:
+                    failure_message = str(exc)
+                    append_benchmark_row(benchmark_rows=rows,
+                                         run_number=run_number,
+                                         mode=mode,
+                                         test=test,
+                                         status="failed",
+                                         error=failure_message,
+                                         engine="fewbodync",
+                                         failure_type=type(exc).__name__,
+                                         failure_message=failure_message,
+                                         config=config,
+                                         param_snapshot=param_snapshot,
+                                         initial_conditions_snapshot=initial_conditions_snapshot)
+                    rows[-1]["case"] = case["name"]
+                    rows[-1]["case_description"] = case.get("description", "")
+
+                    print(f"Energy Boundedness Run Failed: {failure_message}")
+        results = pd.DataFrame(rows)
+        raw_path = raw_dir / "energy_boundedness_summary.csv"
+        save_raw_table(results, raw_path)
+        readable = compact_benchmark_table(results, energy_boundedness_readable_columns)
+        readable_path = readable_dir / "energy_boundedness_summary_readable.csv"
+        save_readable_table(readable, readable_path)
+
+        successful = results[results["status"] == "success"].copy()
+
+        if not successful.empty:
+            ranking = successful.sort_values(["case", "energy_boundedness_class", "energy_drift_fraction_of_max", "max_dE_over_E0"], na_position="last").copy()
+            ranking_path = raw_dir / "energy_boundedness_rankings.csv"
+            save_raw_table(ranking, ranking_path)
+            ranking_readable = compact_benchmark_table(ranking, energy_boundedness_readable_columns)
+            ranking_readable_path = readable_dir / "energy_boundedness_rankings_readable.csv"
+            save_readable_table(ranking_readable, ranking_readable_path)
+        
+        print("\nEnergy Boundedness Suite Complete")
+        print(f"Results saved under: {output_dir}")
+
+        return results
+    
+    finally:
+        if original_param_text is not None:
+            DEFAULT_PARAM_PATH.write_text(original_param_text)
+        if original_initial_conditions_text is not None:
+            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        print("\nRestored original param.txt and initial_conditions.txt settings")
 
 # ============================================================
 # Test Convergence and Benchmark
