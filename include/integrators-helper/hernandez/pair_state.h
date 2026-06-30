@@ -7,7 +7,7 @@
 
 /* ==========================================================
 
-    HernandezPairState stores the physical two-body variables for one Cartesian pair.
+    HernandezPairState stores the physical two-body variables for one body pair.
 
     It converts the physical bodies into:
         center-of-mass position and velocity

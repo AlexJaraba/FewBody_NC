@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "integrators/hernandez.h"
+#include "integrators-helper/hernandez/body_stepper.h"
 #include "integrators-helper/hernandez/pair_map.h"
 #include "dynamics/pairing.h"
 #include "dynamics/timestep_planner.h"
@@ -50,7 +50,7 @@ namespace {
         }
         return deepest_level;
     }
-    void apply_block_level(const HernandezCartesianCore& hernandez, std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, int level, int max_level, double dt, double G) {
+    void apply_block_level(const HernandezBodyStepper& hernandez, std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, int level, int max_level, double dt, double G) {
         if (level > max_level || level >= static_cast<int>(schedule.levels.size())) {
             return;
         }
@@ -86,14 +86,14 @@ namespace {
             msg << std::setprecision(17);
             msg << "Hernandez pair Kepler map failed. "
                 << "converged = false, "
-                << "pair = (" << pair.i << ", " << pair.j << "), "
+                << "pair=(" << pair.i << "," << pair.j << "), "
                 << "failed_pair_i = " << pair.i << ", "
                 << "failed_pair_j = " << pair.j << ", "
                 << "failed_dt = " << dt << ", "
                 << "G = " << G << ", "
                 << "failed_distance = " << distance << ", "
                 << "failed_relative_speed = " << relative_speed << ", "
-                << "failed iterations = " << PAIR_MAP_RETRY_DEPTH << ", "
+                << "failed iterations = " << last_iterations << ", "
                 << "retry_enabled = " << (PAIR_MAP_RETRY_ENABLED ? "true" : "false") << ", "
                 << "retry_succeeded = " << (retry_succeeded ? "true" : "false") << ", "
                 << "retry_depth_used = " << retry_depth_used << ", "
@@ -207,9 +207,9 @@ namespace {
     }
 }
 
-HernandezCartesianCore::HernandezCartesianCore(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
+HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
 
-void HernandezCartesianCore::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
+void HernandezBodyStepper::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
     const std::vector<Pair> ordered_pairs = canonicalize_pairs_preserve_order(active_pairs);
     const double pair_half_dt = 0.5 * dt;
 
@@ -221,7 +221,7 @@ void HernandezCartesianCore::apply_pair_group(std::vector<Body>& bodies, const s
     }
 }
 
-void HernandezCartesianCore::step(std::vector<Body>& bodies, double dt, double G) {
+void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) {
     const HernandezHamiltonianBookKeeping bookkeeping = make_hernandez_bookkeeping(bodies, pairs_, dt);
     if (bookkeeping.body_count <= 1 || bookkeeping.pair_count == 0) {
         return;
@@ -232,7 +232,7 @@ void HernandezCartesianCore::step(std::vector<Body>& bodies, double dt, double G
     apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
-void HernandezCartesianCore::step_block(std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, double dt, double G) const {
+void HernandezBodyStepper::step_block(std::vector<Body>& bodies, const HernandezPairLevelSchedule& schedule, double dt, double G) const {
     const HernandezHamiltonianBookKeeping bookkeeping = make_hernandez_bookkeeping(bodies, pairs_, dt);
     const int max_level = deepest_nonempty_level(schedule);
 
@@ -248,6 +248,6 @@ void HernandezCartesianCore::step_block(std::vector<Body>& bodies, const Hernand
     apply_hernandez_remainder_flow(bodies, bookkeeping.correction_half_dt);
 }
 
-const std::vector<Pair>& HernandezCartesianCore::pairs() const {
+const std::vector<Pair>& HernandezBodyStepper::pairs() const {
     return pairs_;
 }

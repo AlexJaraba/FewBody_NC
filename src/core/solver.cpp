@@ -42,8 +42,13 @@ Responsibilities:
     - Write output.csv and diagnostics.csv
 
 Coordinate Modes:
-    - Jacobi mode evolves a CanonicalState using the selected canonical integrator, then reconstructs Cartesian bodies for output and diagnostics
-    - Cartesian mode evolves the Body objects directly using Solver::cartesian_step()
+    - Jacobi mode evolves a CanonicalState and reconstructs physical Body objects for output and diagnostics
+    - Cartesian mode evolves the Body objects directly
+
+Integrator Policy:
+    - Hernandez is one integrator class:
+        - In Jacobi mode, Hernandez advances the canonical state
+        - In Cartesian mode, Hernandez advances physical Body objects through its body-state path
 
    ====================================================================== */
 
@@ -99,9 +104,9 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
     effective_pair_order = "canonical";
     hierarchy_ratio = strongest_pair_strength_ratio(fixed_pairs, bodies);
 
-    const bool use_cartesian_hernandez = params.coordinate_mode == "cartesian" && params.integrator == "hernandez";
+    const bool use_hernandez_body_path = params.coordinate_mode == "cartesian" && params.integrator == "hernandez";
 
-    if (use_cartesian_hernandez) {
+    if (use_hernandez_body_path) {
         if (params.pair_order == "canonical") {
             fixed_pairs = canonicalize_pairs(fixed_pairs);
             effective_pair_order = "canonical";
@@ -129,7 +134,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
 
     // Pairing
-    if (use_cartesian_hernandez) {
+    if (use_hernandez_body_path) {
         std::cout << "Hernandez Pair Order Requested: " << params.pair_order << std::endl;
         std::cout << "Hernandez Hierarchy Ratio: " << hierarchy_ratio << std::endl;
         std::cout << "Hernandez Auto Hierarchy Threshold: " << AUTO_HIERARCHY_RATIO_THRESHOLD << std::endl;
@@ -190,11 +195,14 @@ void recenter_system(std::vector<Body>& bodies) {
     Dispatch the simulation to the selected coordinate mode.
 
     Jacobi Mode:
-    - Uses a symplectic integrator on the canonical state.
-    - Reconstructs Cartesian states for output and diagnostics.
+        - Build a CanonicalState
+        - Advances that state using the selected integrator
+        - Reconstructs physical Body objects for output and diagnostics
+
     Cartesian Mode:
-    - Evolves Body objects directly using the selected Cartesian integrator.
-    - Supported Cartesian integrators are leapfrog and hernandez.
+        - Evolves physical Body objects directly
+        - Leapfrog uses Solver::cartesian_step()
+        - Hernandez uses the same Hernandez integrator class through its body-state path
 */
 
 void Solver::run() {
@@ -475,21 +483,21 @@ void Solver::run_cartesian(const SolverParams& params) {
     const double G = params.gravitational_constant;
     const int steps = static_cast<int>(runtime / dt);
     const bool use_leapfrog = (params.integrator == "leapfrog");
-    const bool use_hernandez_pairwise = (params.integrator == "hernandez");
+    const bool use_hernandez = (params.integrator == "hernandez");
 
-    if (!use_leapfrog && !use_hernandez_pairwise) {
-        throw std::runtime_error("Cartesian mode currently supports integrator 'leapfrog' or 'hernandez'.");
+    if (!use_leapfrog && !use_hernandez) {
+        throw std::runtime_error("Cartesian mode supports integrator 'leapfrog' or 'hernandez'.");
     }
-    if (params.adaptive_timesteps && !use_hernandez_pairwise) {
-        std::cout << "Adaptive timestep planning currently applies only to Cartesian Hernandez mode.\n";
-        std::cout << "Cartesian leapfrog will continue using fixed global dt.\n";
+    if (params.adaptive_timesteps && !use_hernandez) {
+        std::cout << "Adaptive timestep planning currently applies only to Hernandez bidy-state path.\n";
+        std::cout << "Leapfrog will continue using fixed global dt.\n";
     }
 
-    std::cout << "Cartesian integrator: " << params.integrator << "\n";
+    std::cout << "Body-State integrator: " << params.integrator << "\n";
     validate_finite_bodies(bodies, "cartesian_initial_state", 0, 0.0);
 
-    if (use_hernandez_pairwise) {
-        std::cout << "Hernandez Pair Order Requested: " << params.pair_order << "\n";
+    if (use_hernandez) {
+        std::cout << "Hernandez Body-State Pair Order Requested: " << params.pair_order << "\n";
         std::cout << "Hernandez Effective Pair Order: " << effective_pair_order << "\n";
     }
 
@@ -533,7 +541,7 @@ void Solver::run_cartesian(const SolverParams& params) {
             std::cout << "\n";
         }};
 
-    if (use_hernandez_pairwise && params.adaptive_timesteps) {
+    if (use_hernandez && params.adaptive_timesteps) {
         refresh_hernandez_block_schedule(0, true);
     }
 
@@ -553,7 +561,7 @@ void Solver::run_cartesian(const SolverParams& params) {
 
     for (int step = 1; step <= steps; ++step) {
         try {
-            if (use_hernandez_pairwise) {
+            if (use_hernandez) {
                 if (params.adaptive_timesteps) {
                     const int current_base_step = step - 1;
                     if (current_base_step > 0 && current_base_step % timestep_refresh_interval == 0) {
@@ -562,7 +570,7 @@ void Solver::run_cartesian(const SolverParams& params) {
                     hernandez_integrator.step_block(bodies, hernandez_active_schedule, dt, G);
                 }
                 else {
-                    hernandez_integrator.step(bodies, dt, G);
+                    hernandez_integrator.step_bodies(bodies, dt, G);
                 }
             }
             else {
@@ -572,7 +580,7 @@ void Solver::run_cartesian(const SolverParams& params) {
         catch (const std::exception& exc) {
             std::ostringstream msg;
             msg << std::setprecision(17);
-            msg << "Cartesian integration failure. "
+            msg << "Body-state integration failure. "
                 << "failed_step = " << step << ", "
                 << "failed_time = " << (step - 1) * dt << ", "
                 << "failed_dt = " << dt << ", "

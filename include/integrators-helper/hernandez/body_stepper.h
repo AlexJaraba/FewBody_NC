@@ -7,9 +7,9 @@
 
 struct HernandezPairLevelSchedule;
 
-class HernandezCartesianCore {
+class HernandezBodyStepper {
 public:
-    explicit HernandezCartesianCore(const std::vector<Pair>& fixed_pairs);
+    explicit HernandezBodyStepper(const std::vector<Pair>& fixed_pairs);
 
     void step(std::vector<Body>& bodies, double dt, double G);
     void apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const;

@@ -4,7 +4,7 @@
 
 /* ================================================================================
 
-    Small 3x3 matrix type used for force Jacobians and variational equations.
+    Small 3x3 matrix type used for force Jacobians and local linear algebra.
 
     Mat3 is intentionally lightweight and stores components directly rather than allocating dynamic arrays.
 
