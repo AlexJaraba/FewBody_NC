@@ -7,6 +7,7 @@
 
 struct Body {
     double mass;
+    double radius;
     Vec3 position;
     Vec3 velocity;
     Vec3 acceleration;
@@ -14,7 +15,7 @@ struct Body {
 
     BodyState toState(double time) const;
 
-    Body(double m, Vec3 pos, Vec3 vel);
+    Body(double m, Vec3 pos, Vec3 vel, double r = 0.0);
 
     void updateAcceleration(const std::vector<Body>& bodies, double G);
     void updatePosition(double dt);

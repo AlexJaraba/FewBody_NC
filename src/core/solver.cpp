@@ -135,7 +135,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
 
     // Pairing
     if (use_hernandez_body_path) {
-        std::cout << "Hernandez Pair Order Requested: " << params.pair_order << std::endl;
+        std::cout << "Hernandez Body-State Pair Order Requested: " << params.pair_order << std::endl;
         std::cout << "Hernandez Hierarchy Ratio: " << hierarchy_ratio << std::endl;
         std::cout << "Hernandez Auto Hierarchy Threshold: " << AUTO_HIERARCHY_RATIO_THRESHOLD << std::endl;
         std::cout << "Hernandez Auto Strength Selection Enabled: " << (AUTO_MAY_SELECT_STRENGTH ? "true" : "false") << std::endl;

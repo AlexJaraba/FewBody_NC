@@ -2,8 +2,8 @@
 
 #include "core/body.h"
 
-Body::Body(double m, Vec3 pos, Vec3 vel)
-    : mass(m), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}
+Body::Body(double m, Vec3 pos, Vec3 vel, double r)
+    : mass(m), radius(r), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}
 
 void Body::updateAcceleration(const std::vector<Body>& bodies, double G) {
     acceleration = Vec3();

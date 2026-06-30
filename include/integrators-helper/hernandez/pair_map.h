@@ -8,7 +8,8 @@
 
     Hernandez pairwise Kepler map.
 
-    This applies one exact two-body Kepler evolution to one physical Cartesian pair (i, j), using the existing universal-variable Kepler propagator.
+    This applies one exact two-body Kepler evolution to one physical body pair (i, j), using the existing universal-variable Kepler propagator.
+    Close-encounter hardening is handled by HernandezBodyStepper, which may split one difficult pair map into several smaller exact Kepler maps.
 
    ===================================================================== */
 

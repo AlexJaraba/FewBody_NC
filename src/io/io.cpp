@@ -4,6 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <cctype>
+#include <stdexcept>
 
 #include "io/io.h"
 #include "math/vec3.h"
@@ -12,7 +13,7 @@
 
     Input Parsing
 
-    initial_conditions.txt format: mass x y z vx vy vz
+    initial_conditions.txt format: mass x y z vx vy vz [radius]
     param.txt format:
         output_frequency <int>
         runtime <double>
@@ -37,13 +38,20 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         double mass;
+        double radius = 0.0;
         Vec3 position; 
         Vec3 velocity;
 
         if (!(iss >> mass >> position.x >> position.y >> position.z 
                           >> velocity.x >> velocity.y >> velocity.z)) { continue; }
         
-        bodies.emplace_back(mass, position, velocity);
+        if (iss >> radius) {
+            if (radius < 0.0) {
+                throw std::runtime_error("Initial condition radius must be non-negative.");
+            }
+        }
+
+        bodies.emplace_back(mass, position, velocity, radius);
     }
     std::cout << "Number of bodies read: " << bodies.size() << std::endl;
 }

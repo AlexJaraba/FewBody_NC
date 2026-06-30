@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <limits>
 
 #include "integrators-helper/hernandez/body_stepper.h"
 #include "integrators-helper/hernandez/pair_map.h"
@@ -39,8 +41,137 @@ namespace {
        double pair_half_dt = 0.0;
        double correction_half_dt = 0.0;
     };
-    constexpr int PAIR_MAP_RETRY_DEPTH = 8;
+    
     constexpr bool PAIR_MAP_RETRY_ENABLED = true;
+    constexpr int PAIR_MAP_MAX_SUBSTEPS = 1024;
+    constexpr double PAIR_MAP_TIMESCALE_FRACTION = 0.25;
+    constexpr double PAIR_MAP_NEAR_ZERO_DISTANCE = 1e-14;
+
+    double positive_radius(const Body& body) {
+        return std::max(0.0, body.radius);
+    }
+    double collision_distance_for_pair(const std::vector<Body>& bodies, const Pair& pair) {
+        return positive_radius(bodies[pair.i]) + positive_radius(bodies[pair.j]);
+    }
+    int next_power_of_two_substeps(int requested) {
+        int substeps = 1;
+        while (substeps < requested && substeps < PAIR_MAP_MAX_SUBSTEPS) {
+            substeps *= 2;
+        }
+        return std::max(1, std::min(substeps, PAIR_MAP_MAX_SUBSTEPS));
+    }
+    int recommended_pair_substeps(const std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        const Body& bi = bodies[pair.i];
+        const Body& bj = bodies[pair.j];
+        const Vec3 dr = bj.position - bi.position;
+        const Vec3 dv = bj.velocity - bi.velocity;
+        const double distance = dr.norm();
+        const double relative_speed = dv.norm();
+        const double collision_distance = collision_distance_for_pair(bodies, pair);
+        const double grav_mu = G * (bi.mass + bj.mass);
+
+        if (!std::isfinite(distance) || distance <= PAIR_MAP_NEAR_ZERO_DISTANCE) {
+            return PAIR_MAP_MAX_SUBSTEPS;
+        }
+
+        double local_timescale = std::numeric_limits<double>::infinity();
+
+        if (relative_speed > 0.0) {
+            const double clearance = std::max(distance - collision_distance, PAIR_MAP_NEAR_ZERO_DISTANCE);
+            local_timescale = std::min(local_timescale, clearance / relative_speed);
+        }
+        if (grav_mu > 0.0) {
+            local_timescale = std::min(local_timescale, std::sqrt((distance * distance * distance) / grav_mu));
+        }
+        if (!std::isfinite(local_timescale) || local_timescale <= 0.0) {
+            return 1;
+        }
+
+        const double safe_dt = PAIR_MAP_TIMESCALE_FRACTION * local_timescale;
+        const double abs_dt = std::abs(dt);
+
+        if (abs_dt <= safe_dt) {
+            return 1;
+        }
+
+        const int requested = static_cast<int>(std::ceil(abs_dt / safe_dt));
+
+        return next_power_of_two_substeps(requested);
+    }
+    void validate_pair_before_map(const std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        const Body& bi = bodies[pair.i];
+        const Body& bj = bodies[pair.j];
+        const Vec3 dr = bj.position - bi.position;
+        const Vec3 dv = bj.velocity - bi.velocity;
+        const double distance = dr.norm();
+        const double relative_speed = dv.norm();
+        const double collision_distance = collision_distance_for_pair(bodies, pair);
+
+        if (!std::isfinite(distance) || !std::isfinite(relative_speed)) {
+            std::ostringstream msg;
+            msg << "Hernandez pair map received a non-finite encounter state. "
+                << "pair=(" << pair.i << "," << pair.j << "), "
+                << "failed_dt = " << dt << ", "
+                << "G = " << G << ", "
+                << "distance = " << distance << ", "
+                << "relative_speed = " << relative_speed;
+            throw std::runtime_error(msg.str());            
+        }
+        if (collision_distance > 0.0 && distance <= collision_distance) {
+            std::ostringstream msg;
+            msg << "Hernandez collision event detected. "
+                << "collision_detected = true, "
+                << "pair=(" << pair.i << "," << pair.j << "), "
+                << "failed_pair_i = " << pair.i << ", "
+                << "failed_pair_j = " << pair.j << ", "
+                << "failed_dt = " << dt << ", "
+                << "G = " << G << ", "
+                << "distance = " << distance << ", "
+                << "relative_speed = " << relative_speed << ", "
+                << "collision_distance = " << collision_distance << ", "
+                << "radius_i = " << positive_radius(bi) << ", "
+                << "radius_j = " << positive_radius(bj);
+            throw std::runtime_error(msg.str());
+        }
+        if (distance <= PAIR_MAP_NEAR_ZERO_DISTANCE) {
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Hernandez near-singular pair encounter detected. "
+                << "near_singular_encounter = true, "
+                << "pair=(" << pair.i << "," << pair.j << "), "
+                << "failed_pair_i = " << pair.i << ", "
+                << "failed_pair_j = " << pair.j << ", "
+                << "failed_dt = " << dt << ", "
+                << "G = " << G << ", "
+                << "distance = " << distance << ", "
+                << "relative_speed = " << relative_speed;
+            throw std::runtime_error(msg.str());         
+        }
+    }
+    bool try_pair_map_substeps(const std::vector<Body>& original_bodies, std::vector<Body>& accepted_bodies, const Pair& pair, double dt, double G, int substeps, int& total_iterations, std::string& last_error) {
+            std::vector<Body> trial_bodies = original_bodies;
+            const double sub_dt = dt / static_cast<double>(substeps);
+            total_iterations = 0;
+
+            for (int substep = 0; substep < substeps; ++substep) {
+                try {
+                    validate_pair_before_map(trial_bodies, pair, sub_dt, G);
+                    const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(trial_bodies, pair.i, pair.j, sub_dt, G);
+                    total_iterations += result.iterations;
+                    if (!result.converged) {
+                        last_error = "universal-variable solve did not converge during pair-local substepping";
+                        return false;
+                    }
+                }
+                catch (const std::exception& exc) {
+                    last_error = exc.what();
+                    return false;
+                }
+            }
+
+            accepted_bodies = trial_bodies;
+            return true;
+        }
     int deepest_nonempty_level(const HernandezPairLevelSchedule& schedule) {
         int deepest_level = 0;
         for (const HernandezPairLevelGroup& group : schedule.levels) {
@@ -70,16 +201,20 @@ namespace {
         hernandez.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
     }
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        validate_pair_before_map(bodies, pair, dt, G);
+
+        const std::vector<Body> original_bodies = bodies;
         const Vec3 dr = bodies[pair.j].position - bodies[pair.i].position;
         const Vec3 dv = bodies[pair.j].velocity - bodies[pair.i].velocity;
         const double distance = dr.norm();
         const double relative_speed = dv.norm();
+        const double collision_distance = collision_distance_for_pair(bodies, pair);
 
         int last_iterations = 0;
         std::string last_error = "unknown pair-map failure";
         bool retry_succeeded = false;
-        int retry_depth_used = 0;
         int substeps_used = 1;
+        const int recommended_substeps = recommended_pair_substeps(bodies, pair, dt, G);
 
         auto make_failure_message = [&](const std::string& reason) {
             std::ostringstream msg;
@@ -93,73 +228,69 @@ namespace {
                 << "G = " << G << ", "
                 << "failed_distance = " << distance << ", "
                 << "failed_relative_speed = " << relative_speed << ", "
-                << "failed iterations = " << last_iterations << ", "
+                << "collision_distance = " << collision_distance << ", "
+                << "failed_iterations = " << last_iterations << ", "
                 << "retry_enabled = " << (PAIR_MAP_RETRY_ENABLED ? "true" : "false") << ", "
                 << "retry_succeeded = " << (retry_succeeded ? "true" : "false") << ", "
-                << "retry_depth_used = " << retry_depth_used << ", "
+                << "recommended_substeps = " << recommended_substeps << ", "
                 << "substeps_used = " << substeps_used << ", "
+                << "max_substeps = " << PAIR_MAP_MAX_SUBSTEPS << ", "
                 << "reason = " << reason << ", "
                 << "last_error = " << last_error << ", ";
             return msg.str();
         };
 
-        try {
-            const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
-            last_iterations = result.iterations;
-
-            if (result.converged) {
+        if (recommended_substeps > 1) {
+            std::vector<Body> accepted_bodies;
+            if (try_pair_map_substeps(original_bodies, accepted_bodies, pair, dt, G, recommended_substeps, last_iterations, last_error)) {
+                bodies = accepted_bodies;
+                retry_succeeded = true;
+                substeps_used = recommended_substeps;
                 return;
             }
+            substeps_used = recommended_substeps;
+        }
+        else {
+            try {
+                const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+                last_iterations = result.iterations;
 
-            last_error = "universal-variable solve did not converge";
+                if (result.converged) {
+                    return;
+                }
+
+                last_error = "universal-variable solve did not converge";
+            }
+            catch (const std::exception& exc) {
+                last_error = exc.what();
+            }
         }
 
-        catch (const std::exception& exc) {
-            last_error = exc.what();
-        }
-
-        if (!PAIR_MAP_RETRY_ENABLED || PAIR_MAP_RETRY_DEPTH <= 0) {
+        if (!PAIR_MAP_RETRY_ENABLED) {
             throw std::runtime_error(make_failure_message("retry disabled"));
         }
 
-        const std::vector<Body> original_bodies = bodies;
-        int substeps = 2;
+        int substeps = std::max(2, recommended_substeps * 2);
+        substeps = next_power_of_two_substeps(substeps);
 
-        for (int retry_depth = 1; retry_depth <= PAIR_MAP_RETRY_DEPTH; ++retry_depth) {
-            std::vector<Body> trial_bodies = original_bodies;
-            const double sub_dt = dt / static_cast<double>(substeps);
-            bool all_substeps_converged = true;
-            int total_iterations = 0;
-            for (int substep = 0; substep < substeps; ++substep) {
-                try {
-                    const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(trial_bodies, pair.i, pair.j, sub_dt, G);
-                    total_iterations += result.iterations;
-                    if (!result.converged) {
-                        all_substeps_converged = false;
-                        last_iterations = result.iterations;
-                        last_error = "universal-variable solve did not converge during retry";
-                        break;
-                    }
-                }
-                catch (const std::exception& exc) {
-                    all_substeps_converged = false;
-                    last_error = exc.what();
-                    break;
-                }
-            }
-
-            last_iterations = total_iterations;
-            retry_depth_used = retry_depth;
-            substeps_used = substeps;
-
-            if (all_substeps_converged) {
+        while (substeps <= PAIR_MAP_MAX_SUBSTEPS) {
+            std::vector<Body> accepted_bodies;
+            if (try_pair_map_substeps(bodies, accepted_bodies, pair, dt, G, recommended_substeps, last_iterations, last_error)) {
+                bodies = accepted_bodies;
                 retry_succeeded = true;
-                bodies = trial_bodies;
+                substeps_used = substeps;
                 return;
             }
-            substeps *= 2;
+
+            substeps_used = substeps;
+            if (substeps == PAIR_MAP_MAX_SUBSTEPS) {
+                break;
+            }
+
+            substeps = std::min(substeps * 2, PAIR_MAP_MAX_SUBSTEPS);
         }
-        throw std::runtime_error(make_failure_message("retry depth exhausted"));
+
+        throw std::runtime_error(make_failure_message("maximum pair-local substeps exhausted"));
     }
     /*
         Flow of the Hernandez kinetic remainder Hamiltonian.
