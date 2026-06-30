@@ -1,26 +1,33 @@
-# Build files
+# Build artifacts
 build/
 *.o
 *.out
 *.exe
+few_body_nc
+few_body_nc.exe
 
-# Output Files
+# Local repository / dependency folders
+.git/
+.venv/
+venv/
+
+# Generated simulation outputs
 *.csv
+*.parquet
+*.html
 benchmark_plots/
+results/
 
 # Logs
 *.log
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-
 # Python cache (for your python folder)
-.venv/
 __pycache__/
 python/__pycache__/
-*.pyc
+*.py[cod]
+
+# OS / IDE files
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db

@@ -6,10 +6,6 @@
 #include "core/solver.h"
 #include "io/io.h"
 #include "io/csv_output_writer.h"
-#include "integrators/hernandez.h"
-#include "integrators/yoshida4.h"
-#include "dynamics/jacobi.h"
-#include "dynamics/operators.h"
 
 int main() {
     // Read initial conditions and create bodies
@@ -27,8 +23,6 @@ int main() {
     Solver sim(bodies, output);
 
     sim.run();
-
-    // Run Optional Tests for Validation (example: sim.tests.[]())
 
     // Close output file
     output.close();

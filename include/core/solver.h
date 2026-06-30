@@ -10,9 +10,7 @@
 #include "integrators/integrator.h"
 #include "integrators/leapfrog.h"
 #include "integrators/hernandez.h"
-#include "integrators/yoshida4.h"
 #include "dynamics/pairing.h"
-#include "analysis/validation_tests.h"
 
 
 class CSVOutputWriter;
@@ -23,10 +21,8 @@ class Solver {
 public:
     Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
     void run();
-    Tests tests;
 
 private:
-    friend class Tests;
     std::vector<Body>& bodies;
     std::vector<Pair> fixed_pairs;
     std::unique_ptr<Integrator> integrator;

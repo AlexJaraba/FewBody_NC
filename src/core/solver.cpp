@@ -9,7 +9,6 @@
 
 #include "core/solver.h"
 #include "core/body.h"
-#include "core/variational_state.h"
 #include "core/canonical_state.h"
 
 #include "io/io.h"
@@ -19,14 +18,11 @@
 #include "analysis/diagnostics.h"
 
 #include "integrators/hernandez.h"
-#include "integrators/yoshida4.h"
 #include "integrators/integrator.h"
 
 #include "dynamics/pairing.h"
-#include "dynamics/pair_graph.h"
 #include "dynamics/jacobi.h"
 #include "dynamics/jacobi_transform.h"
-#include "dynamics/variational_operators.h"
 
 #include "math/vec3.h"
 
@@ -51,21 +47,12 @@ Coordinate Modes:
 
    ====================================================================== */
 
-double tangent_norm(const VariationalState& v) {
-    double sum = 0.0;
-    for (size_t i = 1; i < v.delta_q.size(); ++i) {
-        sum += v.delta_q[i].norm2();
-        sum += v.delta_p[i].norm2();
-    }
-    return std::sqrt(sum);
-}
-
 namespace {
     /*
     Pair-order policy:
         canonical = production default
         strength = optional fixed-step diagnostic mode
-        auto = conservative by default; it resovles to canonical unless AUTO_MAY_SELECT_STRENGTH is deliberately changed to true later.
+        auto = conservative by default; it resolves to canonical unless AUTO_MAY_SELECT_STRENGTH is deliberately changed to true later.
     */
     constexpr double AUTO_HIERARCHY_RATIO_THRESHOLD = 100.0;
     constexpr bool AUTO_MAY_SELECT_STRENGTH = false;
@@ -101,11 +88,10 @@ namespace {
     }
 }
 
-Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*this), bodies(bodies_), integrator(nullptr), writer(writer_) {
+Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), integrator(nullptr), writer(writer_) {
 
     SolverParams params = readParams("data/param.txt");
     
-    PairGraph graph = build_hierarchical_pair_graph(bodies);
     fixed_pairs.clear();
 
     fixed_pairs = make_all_physical_pairs(bodies);
@@ -139,8 +125,6 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
         }
     }
 
-    std::cout << "Graph Kepler Pairs: " << graph.kepler_pairs.size() << std::endl;
-    std::cout << "Graph Perturbation Pairs: " << graph.perturbation_pairs.size() << std::endl;
     std::cout << "Physical Pairs Used For Full Perturbation Split: " << fixed_pairs.size() << std::endl;
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
 
@@ -153,7 +137,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
         std::cout << "Hernandez Effective Pair Order: " << effective_pair_order << std::endl;
     }
     if (params.pair_order == "auto" && !AUTO_MAY_SELECT_STRENGTH) {
-        std::cout << "Hernandez Auto Policy: strength selection is disabled; auto resovles to canonical." << std::endl;
+        std::cout << "Hernandez Auto Policy: strength selection is disabled; auto resolves to canonical." << std::endl;
     }
 
     // Coordinate Mode
@@ -170,9 +154,6 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : tests(*th
     }
     else if (params.integrator == "hernandez") {
         integrator = std::make_unique<Hernandez>(fixed_pairs);
-    }
-    else if (params.integrator == "Yoshida4") {
-        integrator = std::make_unique<Yoshida4>(fixed_pairs);
     }
     else {
         throw std::runtime_error("Invalid integrator specified");
@@ -210,7 +191,6 @@ void recenter_system(std::vector<Body>& bodies) {
 
     Jacobi Mode:
     - Uses a symplectic integrator on the canonical state.
-    - Applies variational operators to track the growth of perturbations.
     - Reconstructs Cartesian states for output and diagnostics.
     Cartesian Mode:
     - Evolves Body objects directly using the selected Cartesian integrator.
@@ -397,17 +377,7 @@ void Solver::run_jacobi(const SolverParams& params) {
     };
 
     refresh_adaptive_schedule(0, true);
-
-    VariationalState var_state;
     const int N = static_cast<int>(bodies.size());
-
-    var_state.delta_q.resize(N);
-    var_state.delta_p.resize(N);
-
-    for (int i = 1; i < N; ++i) {
-        var_state.delta_q[i] = Vec3(1e-10, 0.0, 0.0);  // Small perturbation in position
-        var_state.delta_p[i] = Vec3();  // Small perturbation in momentum
-    }
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
     {
@@ -431,8 +401,6 @@ void Solver::run_jacobi(const SolverParams& params) {
         try {
             for (int substep = 0; substep < adaptive_substeps; ++substep) {
                 integrator->step(state, inner_dt, G);
-                variational_drift_operator(state, var_state, inner_dt);
-                variational_kick_operator(state, var_state, fixed_pairs, inner_dt, G);
             }
         }
         catch (const std::exception& exc) {
@@ -456,10 +424,6 @@ void Solver::run_jacobi(const SolverParams& params) {
 
         if (step % output_frequency == 0 || step == steps) {
             Diagnostics diag = compute_diagnostics(bodies, G, dt);
-
-            // double tangent = std::max(tangent_norm(var_state), 1e-300);
-            // double lambda = std::log(tangent / 1e-10) / time;
-
             // std::cout << "Step: " << step << ", Time: " << time 
             //         << ", | Total Energy: " << diag.total_energy 
             //         << ", | Linear Momentum: " << diag.linear_momentum 
