@@ -691,7 +691,7 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "final_energy": np.nan,
            "max_dE_over_E0": np.nan,
            "final_dE_over_E0": np.nan,
-           "energy_drfit_slope": np.nan,
+           "energy_drift_slope": np.nan,
            "energy_abs_drift_slope": np.nan,
            "energy_drift_over_run": np.nan,
            "energy_drift_fraction_of_max": np.nan,
@@ -973,7 +973,7 @@ def finite_linear_slope(x: np.ndarray, y: np.ndarray) -> float:
     
     return float(np.sum(x_centered * y_centered) / denominator)
 
-def classify_energy_boundness(max_abs_dE: float, final_abs_dE: float, drift_over_run: float, drift_fraction_of_max: float) -> str:
+def classify_energy_boundedness(max_abs_dE: float, final_abs_dE: float, drift_over_run: float, drift_fraction_of_max: float) -> str:
     if not (np.isfinite(max_abs_dE) and np.isfinite(final_abs_dE) and np.isfinite(drift_over_run) and np.isfinite(drift_fraction_of_max)):
         return "undetermined"
     if max_abs_dE <= 1e-14:
@@ -1023,7 +1023,7 @@ def energy_boundedness_summary(diagnostics: pd.DataFrame, config: PlotConfig) ->
             "energy_drift_over_run": drift_over_run,
             "energy_drift_fraction_of_max": drift_fraction_of_max,
             "energy_rms_dE_over_E0": rms_dE,
-            "energy_boundness_class": classify_energy_boundness(max_abs_dE=max_abs_dE, final_abs_dE=final_abs_dE, drift_over_run=drift_over_run, drift_fraction_of_max=drift_fraction_of_max)}
+            "energy_boundedness_class": classify_energy_boundedness(max_abs_dE=max_abs_dE, final_abs_dE=final_abs_dE, drift_over_run=drift_over_run, drift_fraction_of_max=drift_fraction_of_max)}
 
 def add_test_rank(df: pd.DataFrame, metric: str = "max_dE_over_E0", rank_column: str = "rank_in_test") -> pd.DataFrame:
     ranked = df.copy()
