@@ -37,6 +37,7 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
 
     int next_id = 0;
 
+    if (!infile) throw std::runtime_error("Could not open " + filename);
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         double mass;
@@ -64,7 +65,7 @@ SolverParams readParams(const std::string& filename) {
     std::string line, param;
     SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 0.000296014912, "canonical", false, 0, 0.03, 1, 3};  // Default values
 
-
+    if (!infile) throw std::runtime_error("Could not open " + filename);
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         if (iss >> param) {

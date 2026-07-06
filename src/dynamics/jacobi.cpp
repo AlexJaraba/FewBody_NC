@@ -22,13 +22,13 @@
     
         R_{0...k-1} is the center of mass of all previous bodies.
     
-    The conjugate momentum P_k is build using the reduced mass:
+    The conjugate momentum P_k is built using the reduced mass:
 
         P_k = mu_k * dQ_k/dt
     
     with:
 
-        mu_k = m_k = m_k{k-1} / M_k
+        mu_k = m_k - m_k * M_{k-1} / M_k
     
     Q_0 and P_0 represent the total center-of-mass coordinate and momentum respectively.
 

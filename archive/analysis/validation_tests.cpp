@@ -1174,7 +1174,7 @@ void Tests::TestHernandezRecursiveOrderingValidation() {
     const double hierarchical_error = max_forward_backward_error(hierarchical_bodies, recursive_order, 0.001, 1000);
 
     if (hierarchical_error > 1.0e-8) {
-        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: recursive order reversiblity error is too large.");
+        throw std::runtime_error("TestHernandezRecursiveOrderingValidation failed: recursive order reversibility error is too large.");
     }
 
     std::vector<Body> nonhierarchical_bodies;

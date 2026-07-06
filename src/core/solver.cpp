@@ -177,6 +177,9 @@ void recenter_system(std::vector<Body>& bodies) {
         com_velocity += body.mass * body.velocity;
     }
 
+    if (bodies.empty() || total_mass <= 0.0) {
+        throw std::runtime_error("Cannont recenter empty or non-positive-mass system.");
+    }
     com /= total_mass;
     com_velocity /= total_mass;
 

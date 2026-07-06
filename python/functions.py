@@ -274,7 +274,7 @@ BENCHMARK_TESTS = [
 ]
 
 # ============================================================
-# Adaptiove/Strength Benchmark Tests
+# Adaptive/Strength Benchmark Tests
 # ============================================================
 
 PAIR_ORDER_POLICY_MODES = [
@@ -1173,9 +1173,9 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
             "com_y": float(rcm[1]),
             "com_z": float(rcm[2]),
 
-            "vcm_x": float(vcm[0]),
-            "vcm_y": float(vcm[1]),
-            "vcm_z": float(vcm[2]),
+            "com_vx": float(vcm[0]),
+            "com_vy": float(vcm[1]),
+            "com_vz": float(vcm[2]),
         })
     
     if not rows:
@@ -1459,7 +1459,7 @@ def plot_verification_suite(output_df: pd.DataFrame,
     plot_error(ax_ycm, time, dYcm, "COM Drift Y Error", r"$|\Delta y_{\rm cm}|$", floor=1e-20, ymin_fixed=1e-20)
 
     if save_path is not None:
-        title = f"FewBodyNc Verification Suite: {save_path.parent.name} / {save_path.stem}"
+        title = f"FewBodyNC Verification Suite: {save_path.parent.name} / {save_path.stem}"
     else:
         title = "FewBodyNC Verification Suite"
         
