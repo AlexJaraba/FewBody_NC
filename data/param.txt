@@ -1,9 +1,9 @@
-output_frequency 5
-runtime 5
-timestep 0.005
+output_frequency 10
+runtime 1.4
+timestep 0.000015
 coordinate_mode cartesian
 integrator hernandez
-gravitational_constant 0.000296014912
+gravitational_constant 1.0
 pair_order canonical
 
 adaptive_timesteps false

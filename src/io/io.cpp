@@ -35,6 +35,8 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
     std::ifstream infile(filename);
     std::string line;
 
+    int next_id = 0;
+
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         double mass;
@@ -51,7 +53,8 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
             }
         }
 
-        bodies.emplace_back(mass, position, velocity, radius);
+        bodies.emplace_back(next_id, mass, position, velocity, radius);
+        ++next_id;
     }
     std::cout << "Number of bodies read: " << bodies.size() << std::endl;
 }
@@ -59,7 +62,7 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 0.000296014912, "canonical",false, 0, 0.03, 1, 3};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 0.000296014912, "canonical", false, 0, 0.03, 1, 3};  // Default values
 
 
     while (std::getline(infile, line)) {

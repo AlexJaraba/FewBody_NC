@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--benchmark", action="store_true", help="Run benchmark suite instead of plotting.",)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH, help="Path to output.csv.",)
     parser.add_argument("--diagnostics", type=Path, default=DEFAULT_DIAGNOSTICS_PATH, help="Path to diagnostics.csv.",)
-    parser.add_argument("--G", type=float, default=0.000296014912, help="Gravitational constant used for recomputed diagnostics.",)
+    parser.add_argument("--G", type=float, default=None, help="Gravitational constant used for recomputed diagnostics.",)
     parser.add_argument("--use-diagnostics-csv", action="store_true", help="Use diagnostics.csv for diagnostic plots instead of recomputing from output.csv.",)
     parser.add_argument("--shadow", action="store_true", help="Plot shadow Hamiltonian error from diagnostics.csv.",)
     parser.add_argument("--energy-boundedness", action="store_true", help="Run energy boundedness and drift suite.")
@@ -65,8 +65,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    config = functions.PlotConfig(G=args.G)
+    params = functions.read_param(DEFAULT_PARAM_PATH)
 
+    if args.G is None:
+        G = float(params.get("gravitational_constant", 0.000296014912))
+    else:
+        G = args.G
+
+    config = functions.PlotConfig(G=G)
+    
     if args.pair_order_policy:
         functions.run_pair_order_policy_suite(use_diagnostics_csv=args.use_diagnostics_csv)
         return
@@ -97,10 +104,22 @@ def main() -> None:
     output_df = functions.read_output(args.output)
     if args.use_diagnostics_csv:
         diagnostics = functions.read_diagnostics(args.diagnostics)
-        output_df = functions.read_output(args.output)
+        required_component_columns = {"linear_momentum_x", "linear_momentum_y", "linear_momentum_z", 
+                            "angular_momentum_x", "angular_momentum_y", "angular_momentum_z", 
+                            "com_x", "com_y", "com_z"}
         if diagnostics is None:
             print("Falling back to recomputing diagnostics from output.csv.")
             diagnostics = functions.compute_diagnostics_from_output(output_df, config)
+        else:
+            missing = sorted(required_component_columns - set(diagnostics.columns))
+            nonfinite = []
+            for column in sorted(required_component_columns & set(diagnostics.columns)):
+                values = diagnostics[column]
+                if not values.notna().any():
+                    nonfinite.append(column)
+            if missing or nonfinite:
+                print(f"diagnostics.csv is missing usable component diagnostics; missing = {missing}, nonfinite = {nonfinite}. Recomputing from output.csv.")
+                diagnostics = functions.compute_diagnostics_from_output(output_df, config)
     else:
         diagnostics = functions.compute_diagnostics_from_output(output_df, config)
 

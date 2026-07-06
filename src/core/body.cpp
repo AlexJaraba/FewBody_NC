@@ -3,7 +3,10 @@
 #include "core/body.h"
 
 Body::Body(double m, Vec3 pos, Vec3 vel, double r)
-    : mass(m), radius(r), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}
+    : Body(-1, m, pos, vel, r) {}
+
+Body::Body(int id_, double m, Vec3 pos, Vec3 vel, double r)
+    : id(id_), mass(m), radius(r), position(pos), velocity(vel), acceleration(), momentum(m * vel) {}
 
 void Body::updateAcceleration(const std::vector<Body>& bodies, double G) {
     acceleration = Vec3();
@@ -43,9 +46,11 @@ void Body::updateMomentumFromVelocity() {
 BodyState Body::toState(double time) const {
     return BodyState{
         time,
+        id,
         {position.x, position.y, position.z},
         {velocity.x, velocity.y, velocity.z},
-        mass
+        mass,
+        radius
     };
 }
 

@@ -385,7 +385,6 @@ void Solver::run_jacobi(const SolverParams& params) {
     };
 
     refresh_adaptive_schedule(0, true);
-    const int N = static_cast<int>(bodies.size());
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
     {
@@ -489,7 +488,7 @@ void Solver::run_cartesian(const SolverParams& params) {
         throw std::runtime_error("Cartesian mode supports integrator 'leapfrog' or 'hernandez'.");
     }
     if (params.adaptive_timesteps && !use_hernandez) {
-        std::cout << "Adaptive timestep planning currently applies only to Hernandez bidy-state path.\n";
+        std::cout << "Adaptive timestep planning currently applies only to Hernandez body-state path.\n";
         std::cout << "Leapfrog will continue using fixed global dt.\n";
     }
 

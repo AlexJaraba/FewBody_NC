@@ -91,6 +91,7 @@ static void kepler_pair_step(CanonicalState& state, int i, double dt, double G) 
 */
 
 void kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    (void)pairs;
     for (size_t  i = 1; i < state.Q.size(); ++i) {
         kepler_pair_step(state, i, dt, G);
     }
@@ -102,6 +103,7 @@ void kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, doub
 */
 
 void symmetric_kepler_operator(CanonicalState& state, const std::vector<Pair>& pairs, double dt, double G) {
+    (void)pairs;
     for (size_t i = 1; i < state.Q.size(); ++i) {
         kepler_pair_step(state, i, 0.5 * dt, G);
     }

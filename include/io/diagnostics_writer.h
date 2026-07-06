@@ -4,6 +4,7 @@
 #include <string>
 
 #include "analysis/diagnostics.h"
+#include "math/vec3.h"
 
 class DiagnosticsWriter {
 public:
@@ -12,5 +13,16 @@ public:
     void close();
 private:
     std::ofstream file_;
-    bool header_written_;
+    bool header_written_ = false;
+    bool reference_set_ = false;
+    double reference_time_ = 0.0;
+    double reference_energy_ = 0.0;
+    double reference_shadow_energy_ = 0.0;
+    Vec3 reference_angular_momentum_;
+    Vec3 reference_linear_momentum_;
+    Vec3 reference_center_of_mass_;
+    Vec3 reference_center_of_mass_velocity_;
+
+    void write_header_if_needed();
+    void set_reference(double time, const Diagnostics& diagnostics);
 };

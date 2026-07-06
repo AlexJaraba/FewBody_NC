@@ -20,19 +20,22 @@ CSVOutputWriter::CSVOutputWriter(const std::string& filename)
 
 void CSVOutputWriter::write(const std::vector<BodyState>& bodies) {
     if (!header_written_) {
-        file_ << "time,id,x,y,z,vx,vy,vz,mass\n";
+        file_ << "time,id,x,y,z,vx,vy,vz,mass,radius\n";
         header_written_ = true;
     }
 
     for (size_t i = 0; i < bodies.size(); ++i) {
         const auto& b = bodies[i];
-        file_ << b.time << "," << i << ","
-             << b.position[0] << "," << b.position[1] << "," << b.position[2] << ","
-             << b.velocity[0] << "," << b.velocity[1] << "," << b.velocity[2] << ","
-             << b.mass << "\n";
+        file_ << b.time << "," 
+              << b.id << ","
+              << b.position[0] << "," << b.position[1] << "," << b.position[2] << ","
+              << b.velocity[0] << "," << b.velocity[1] << "," << b.velocity[2] << ","
+              << b.mass << "," << b.radius << "\n";
     }
 }
 
 void CSVOutputWriter::close() {
-    if (file_.is_open()) file_.close();
+    if (file_.is_open()) {
+        file_.close();
+    }
 }

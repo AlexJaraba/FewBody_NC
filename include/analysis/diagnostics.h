@@ -7,14 +7,21 @@
 #include "math/vec3.h"
 
 struct Diagnostics {
-    double kinetic_energy;
-    double potential_energy;
-    double total_energy;
-    double shadow_energy;
-    double angular_momentum;
-    double com_drift;
-    double linear_momentum;
-    double timestep;
+    double kinetic_energy = 0.0;
+    double potential_energy = 0.0;
+    double total_energy = 0.0;
+    double shadow_energy = 0.0;
+
+    Vec3 linear_momentum_vec;
+    Vec3 angular_momentum_vec;
+    Vec3 center_of_mass;
+    Vec3 center_of_mass_velocity;
+
+    // Backward-compatible scalar aliases used by older Python paths.
+    double angular_momentum = 0.0;
+    double com_drift = 0.0;
+    double linear_momentum = 0.0;
+    double timestep = 0.0;
 };
 
 struct PairDiagnostics {

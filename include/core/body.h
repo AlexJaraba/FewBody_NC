@@ -6,6 +6,7 @@
 #include "math/vec3.h"
 
 struct Body {
+    int id;
     double mass;
     double radius;
     Vec3 position;
@@ -16,6 +17,7 @@ struct Body {
     BodyState toState(double time) const;
 
     Body(double m, Vec3 pos, Vec3 vel, double r = 0.0);
+    Body(int id_, double m, Vec3 pos, Vec3 vel, double r = 0.0);
 
     void updateAcceleration(const std::vector<Body>& bodies, double G);
     void updatePosition(double dt);

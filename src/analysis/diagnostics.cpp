@@ -25,18 +25,28 @@
 
 Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, double dt) {
     Diagnostics d{};
+    d.timestep = dt;
+    double total_mass = 0.0;
+    Vec3 mass_weighted_position;
 
     // Compute kinetic energy
     for (const auto& body : bodies) {
+        if (body.mass <= 0.0) {
+            throw std::runtime_error("compute_diagnostics requires positive body masses.");
+        }
         d.kinetic_energy += body.kineticEnergy();
+        d.linear_momentum_vec += body.momentum;
+        d.angular_momentum_vec += cross(body.position, body.momentum);
+        total_mass += body.mass;
+        mass_weighted_position += body.mass * body.position;
     }
 
     // Compute potential energy
-    const int N = bodies.size();
+    const int N = static_cast<int>(bodies.size());
     for (int i = 0; i < N; ++i) {
         for (int j = i + 1; j < N; ++j) {
-            Vec3 dr = bodies[j].position - bodies[i].position;
-            double r = dr.norm();
+            const Vec3 dr = bodies[j].position - bodies[i].position;
+            const double r = dr.norm();
             if (r < 1e-14) {
                 continue;
             }
@@ -46,33 +56,13 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
 
     d.total_energy = d.kinetic_energy + d.potential_energy;
 
-    // Compute linear momentum
-    Vec3 P;
-    for (const auto& body : bodies) {
-        P += body.momentum;
+    if (total_mass > 0.0) {
+        d.center_of_mass = mass_weighted_position / total_mass;
+        d.center_of_mass_velocity = d.linear_momentum_vec / total_mass;
     }
-
-    d.linear_momentum = P.norm();
-
-    // Compute angular momentum
-    Vec3 L;
-    for (const auto& body : bodies) {
-        L += cross(body.position, body.momentum);
-    }
-
-    d.angular_momentum = L.norm();
-
-    // Compute center of mass drift
-    Vec3 Rcm;
-    double total_mass = 0.0;
-    for (const auto& body : bodies) {
-        total_mass += body.mass;
-        Rcm += body.mass * body.position;
-    }
-
-    Rcm /= total_mass;
-    d.com_drift = Rcm.norm();
-
+    d.linear_momentum = d.linear_momentum_vec.norm();
+    d.angular_momentum = d.angular_momentum_vec.norm();
+    d.com_drift = d.center_of_mass.norm();
     // Second-order shadow Hamiltonian estimate
     // double p2sum = 0.0;
     // for (const auto& body : bodies) {
@@ -80,8 +70,6 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
     // }
 
     d.shadow_energy = d.total_energy;
-
-    d.timestep = dt;
 
     return d;
 }

@@ -444,8 +444,8 @@ def read_initial_conditions(path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> lis
 
         parts = stripped.split()
 
-        if len(parts) != 7:
-            raise ValueError(f"Initial-conditions line {line_number} must have 7 values: mass x y z vx vy vz")
+        if len(parts) not in (7, 8):
+            raise ValueError(f"Initial-conditions line {line_number} must have 7 or 8 values: mass x y z vx vy vz [radius]")
         
         rows.append(tuple(float(value) for value in parts))
 
@@ -464,6 +464,9 @@ def read_output(path: Path = DEFAULT_OUTPUT_PATH) -> pd.DataFrame:
     if missing:
         raise ValueError(f"Missing required columns in output: {sorted(missing)}")
     
+    if "radius" not in df.columns:
+        df["radius"] = 0.0
+    
     df = df.sort_values(by=["time", "id"]).reset_index(drop=True)
 
     return df
@@ -473,74 +476,50 @@ def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | No
         return None
     
     df = pd.read_csv(path)
-    required = {"time", "total_energy", "angular_momentum", "linear_momentum", "com_drift", "shadow_energy", "timestep"}
+    required = {"time", "total_energy"}
     missing = required - set(df.columns)
 
     if missing:
         print(f"Warning: Missing required columns in diagnostics: {sorted(missing)}")
         return None
     
-    return df.sort_values(by="time").reset_index(drop=True)
-
-# ============================================================
-# Compute functions
-# ============================================================
-
-def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
-    times = np.sort(df["time"].unique())
-    body_ids = np.sort(df["id"].unique())
-
-    nt = len(times)
-    nb = len(body_ids)
-
-    expected_rows = nt * nb
-    if len(df) != expected_rows:
-        raise ValueError("Output.csv does not look rectangular." "Expected one row per body per time step.")
+    if "kinetic_energy" not in df.columns:
+        df["kinetic_energy"] = np.nan
+    if "potential_energy" not in df.columns:
+        df["potential_energy"] = np.nan
+    if "shadow_energy" not in df.columns:
+        df["shadow_energy"] = df["total_energy"]
+    if "timestep" not in df.columns:
+        time = df["time"].to_numpy(dtype=float)
+        if len(time) >= 2:
+            dt = np.diff(time, prepend=time[0])
+            if len(dt) > 1:
+                dt[0] = dt[1]
+            df["timestep"] = dt
+        else:
+            df["timestep"] = np.nan
     
-    ordered = df.sort_values(["time", "id"])
+    alias_default = {
+        "linear_momentum_x": "linear_momentum",
+        "linear_momentum_y": None,
+        "linear_momentum_z": None,
+        "angular_momentum_x": None,
+        "angular_momentum_y": None,
+        "angular_momentum_z": "angular_momentum",
+        "com_x": "com_drift",
+        "com_y": None,
+        "com_z": None,
+    }
+
+    for column, fallback in alias_default.items():
+        if column not in df.columns:
+            if fallback is not None and fallback in df.columns:
+                df[column] = df[fallback]
+            else:
+                df[column] = np.nan
     
-    mass = ordered["mass"].to_numpy().reshape(nt, nb)
-    pos = ordered[["x", "y", "z"]].to_numpy().reshape(nt, nb, 3)
-    vel = ordered[["vx", "vy", "vz"]].to_numpy().reshape(nt, nb, 3)
-
-    # Kinetic Energy
-    kinetic = 0.5 * np.sum(mass * np.sum(vel * vel, axis=2), axis=1)
-
-    # Potential Energy
-    potential = np.zeros(nt)
-
-    for i in range(nb):
-        for j in range(i+1, nb):
-            dr = pos[:, j, :] - pos[:, i, :]
-            r = np.linalg.norm(dr, axis=1)
-            potential -= config.G * mass[:, i] * mass[:, j] / np.maximum(r, config.epsilon)
-    
-    # Total Energy
-    total_energy = kinetic + potential
-
-    # Linear Momentum
-    momentum_vec = np.sum(mass[:, :, None] * vel, axis=1)
-    linear_momentum = np.linalg.norm(momentum_vec, axis=1)
-
-    # Angular Momentum
-    angular_vec = np.sum(np.cross(pos, mass[:, :, None] * vel), axis=1)
-    angular_momentum = np.linalg.norm(angular_vec, axis=1)
-
-    # Center of Mass Drift
-    total_mass = np.sum(mass, axis=1)
-    rcm = np.sum(mass[:, :, None] * pos, axis=1) / total_mass[:, None]
-    com_drift = np.linalg.norm(rcm, axis=1)
-
-    # Diagnostic Table
-    diagnostics = pd.DataFrame({
-        "time": times,
-        "kinetic_energy": kinetic,
-        "potential_energy": potential,
-        "total_energy": total_energy,
-        "angular_momentum": angular_momentum,
-        "linear_momentum": linear_momentum,
-        "com_drift": com_drift,
-    })
+    diagnostics = df.sort_values(by="time").reset_index(drop=True)
+    diagnostics = add_diagnostics_error_columns(diagnostics, PlotConfig())
     return diagnostics
 
 # ============================================================
@@ -726,33 +705,30 @@ def append_benchmark_row(benchmark_rows: list[dict],
         if not row["error"]:
             row["error"] = row["failure_message"]
     if diagnostics is not None and not diagnostics.empty:
+        time = diagnostics["time"].to_numpy(dtype=float)
         energy = diagnostics["total_energy"].to_numpy()
         angular = diagnostics["angular_momentum"].to_numpy()
-        linear = diagnostics["linear_momentum"].to_numpy()
-        com = diagnostics["com_drift"].to_numpy()
-        time = diagnostics["time"].to_numpy()
-        dE = error_relative(energy, config.epsilon)
-        dL = error_relative(angular, config.epsilon)
-        dP = error_absolute(linear)
-        dRcm = error_absolute(com)
+        px = diagnostics.get("linear_momentum_x", diagnostics["linear_momentum"]).to_numpy(dtype=float)
+        xcm = diagnostics.get("com_x", diagnostics.get("com_drift", pd.Series(np.nan, index=diagnostics.index))).to_numpy(dtype=float)
+        metric_summary = error_diagnostic_metric_summary(diagnostics, config)
 
         row.update({"final_time": time[-1] if len(time) else np.nan,
                     "initial_energy": energy[0] if len(energy) else np.nan,
                     "final_energy": energy[-1] if len(energy) else np.nan,
-                    "max_dE_over_E0": compute_finite_max(dE),
-                    "final_dE_over_E0": float(dE[-1]) if len(dE) else np.nan,
+                    "max_dE_over_E0": metric_summary["max_dE_over_E0"],
+                    "final_dE_over_E0": metric_summary["final_dE_over_E0"],
                     "initial_angular_momentum": angular[0] if len(angular) else np.nan,
                     "final_angular_momentum": angular[-1] if len(angular) else np.nan,
-                    "max_dL_over_L0": compute_finite_max(dL),
-                    "final_dL_over_L0": float(dL[-1]) if len(dL) else np.nan,
-                    "initial_linear_momentum": linear[0] if len(linear) else np.nan,
-                    "final_linear_momentum": linear[-1] if len(linear) else np.nan,
-                    "max_dP": compute_finite_max(dP),
-                    "final_dP": float(dP[-1]) if len(dP) else np.nan,
-                    "initial_com_drift": com[0] if len(com) else np.nan,
-                    "final_com_drift": com[-1] if len(com) else np.nan,
-                    "max_dRcm": compute_finite_max(dRcm),
-                    "final_dRcm": float(dRcm[-1]) if len(dRcm) else np.nan,})
+                    "max_dL_over_L0": metric_summary["max_dL_over_L0"],
+                    "final_dL_over_L0": metric_summary["final_dL_over_L0"],
+                    "initial_linear_momentum": px[0] if len(px) else np.nan,
+                    "final_linear_momentum": px[-1] if len(px) else np.nan,
+                    "max_dP": metric_summary["max_dP"],
+                    "final_dP": metric_summary["final_dP"],
+                    "initial_com_drift": xcm[0] if len(xcm) else np.nan,
+                    "final_com_drift": xcm[-1] if len(xcm) else np.nan,
+                    "max_dRcm": metric_summary["max_dRcm"],
+                    "final_dRcm": metric_summary["final_dRcm"],})
         row.update(energy_boundedness_summary(diagnostics, config))
     if rebound_comparison is not None:
         row.update(rebound_comparison)
@@ -1058,9 +1034,169 @@ def save_readable_table(df: pd.DataFrame, csv_path: Path) -> None:
     print(f"Saved readable CSV to {csv_path}")
     print(f"Saved readable HTML to {html_path}")
 
+def add_diagnostics_error_columns(diagnostics: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
+    df = diagnostics.copy()
+
+    if df.empty:
+        return df
+    if "time" not in df.columns and "times" in df.columns:
+        df = df.rename(columns={"times": "time"})
+    
+    def ensure_column(column: str, default=np.nan) -> None:
+        if column not in df.columns:
+            df[column] = default
+
+    if "linear_momentum_x" not in df.columns and "linear_momentum" in df.columns:
+        df["linear_momentum_x"] = df["linear_momentum"]
+    if "angular_momentum_z" not in df.columns and "angular_momentum" in df.columns:
+        df["angular_momentum_z"] = df["angular_momentum"]
+    if "com_x" not in df.columns and "com_drift" in df.columns:
+        df["com_x"] = df["com_drift"]
+    
+    for column in ["angular_momentum_x", "angular_momentum_y", "angular_momentum_z", 
+                   "linear_momentum_x", "linear_momentum_y", "linear_momentum_z", 
+                   "com_x", "com_y", "com_z",
+                   "com_vx", "com_vy", "com_vz",
+                   "shadow_energy", "total_energy"]:
+        ensure_column(column)
+
+    time = df["time"].to_numpy(dtype=float)
+    t0 = time[0] if len(time) else 0.0
+    energy = df["total_energy"].to_numpy(dtype=float)
+    if "dE_over_E0" not in df.columns:
+        df["dE_over_E0"] = error_relative(energy, config.epsilon)
+    if "dE_abs" not in df.columns:
+        df["dE_abs"] = error_absolute(energy)
+
+    for component in ["x", "y", "z"]:
+        L = df[f"angular_momentum_{component}"].to_numpy(dtype=float)
+        P = df[f"linear_momentum_{component}"].to_numpy(dtype=float)
+        R = df[f"com_{component}"].to_numpy(dtype=float)
+        V = df[f"com_v{component}"].to_numpy(dtype=float)
+        R0 = R[0] if len(R) else np.nan
+        V0 = V[0] if len(V) else np.nan
+
+        dL = error_absolute(L)
+        dP = error_absolute(P)
+        dR = error_absolute(R)
+        C = R - R0 - V0 * (time - t0)
+
+        df[f"dL_{component}"] = dL
+        df[f"dP_{component}"] = dP
+        df[f"dRcm_{component}"] = dR
+        df[f"com_integral_{component}"] = C
+        df[f"dCcm_{component}"] = np.abs(C)
+        df[f"dL{component}"] = dL
+        df[f"dP{component}"] = dP
+
+    df["dL"] = df["dLz"]
+    df["dPcm_x"] = df["dPx"]
+    df["dPcm_y"] = df["dPy"]
+    df["dXcm"] = df["dRcm_x"]
+    df["dYcm"] = df["dRcm_y"]
+
+    nine_columns = ["dLx", "dLy", "dLz", "dPx", "dPy", "dPz", "dCcm_x", "dCcm_y", "dCcm_z",]
+    nine = np.abs(df[nine_columns].to_numpy(dtype=float))
+    df["nine_integral_of_motion_error_max"] = np.nanmax(nine, axis=1)
+
+    if "dShadow_over_Shadow0" not in df.columns:
+        df["dShadow_over_Shadow0"] = error_relative(df["shadow_energy"].to_numpy(dtype=float), config.epsilon)
+    
+    return df
+
+def thin_for_plotting(time: np.ndarray, values: np.ndarray, max_points: int = 1000) -> tuple[np.ndarray, np.ndarray]:
+    time = np.asarray(time, dtype=float)
+    values = np.asarray(values, dtype=float)
+
+    if len(time) <= max_points:
+        return time, values
+    
+    indices = np.linspace(0, len(time) - 1, max_points).astype(int)
+    return time[indices], values[indices]
+
 # ============================================================
 # Compute Functions
 # ============================================================
+
+def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
+    rows = []
+
+    for time_values, group in df.groupby("time", sort=True):
+        group = group.sort_values("id")
+        mass = group["mass"].to_numpy(dtype=float)
+        pos = group[["x", "y", "z"]].to_numpy(dtype=float)
+        vel = group[["vx", "vy", "vz"]].to_numpy(dtype=float)
+
+        if mass.size == 0:
+            continue
+
+        total_mass = float(np.sum(mass))
+        kinetic = 0.5 * np.sum(mass * np.sum(vel * vel, axis=1))
+        potential = 0.0
+        for i in range(len(mass)):
+            dr = pos[i + 1:] - pos[i]
+            if len(dr) == 0:
+                continue
+            r = np.linalg.norm(dr, axis=1)
+            valid = r > config.epsilon
+            if np.any(valid):
+                potential -= np.sum(config.G * mass[i] * mass[i + 1:][valid] / r[valid])
+        total_energy = kinetic + potential
+        momentum_vec = np.sum(mass[:, None] * vel, axis=0)
+        angular_vec = np.sum(np.cross(pos, mass[:, None] * vel), axis=0)
+
+        if total_mass != 0.0:
+            rcm = np.sum(mass[:, None] * pos, axis=0) / total_mass
+            vcm = momentum_vec / total_mass
+        else:
+            rcm = np.full(3, np.nan)
+            vcm = np.full(3, np.nan)
+        
+        rows.append({
+            "time": time_values,
+            "kinetic_energy": float(kinetic),
+            "potential_energy": float(potential),
+            "total_energy": float(total_energy),
+
+            "angular_momentum": float(np.linalg.norm(angular_vec)),
+            "angular_momentum_x": float(angular_vec[0]),
+            "angular_momentum_y": float(angular_vec[1]),
+            "angular_momentum_z": float(angular_vec[2]),
+
+            "linear_momentum": float(np.linalg.norm(momentum_vec)),
+            "linear_momentum_x": float(momentum_vec[0]),
+            "linear_momentum_y": float(momentum_vec[1]),
+            "linear_momentum_z": float(momentum_vec[2]),
+
+            "com_drift": float(np.linalg.norm(rcm)),
+            "com_x": float(rcm[0]),
+            "com_y": float(rcm[1]),
+            "com_z": float(rcm[2]),
+
+            "vcm_x": float(vcm[0]),
+            "vcm_y": float(vcm[1]),
+            "vcm_z": float(vcm[2]),
+        })
+    
+    if not rows:
+        raise ValueError("No valid data found in output DataFrame to compute diagnostics.")
+    
+    diagnostics = pd.DataFrame(rows).sort_values(by="time").reset_index(drop=True)
+
+    if "shadow_energy" not in diagnostics.columns:
+        diagnostics["shadow_energy"] = diagnostics["total_energy"]
+    if "timestep" not in diagnostics.columns:
+        times = diagnostics["time"].to_numpy(dtype=float)
+        if len(times) >= 2:
+            dt = np.diff(times, prepend=times[0])
+            if len(dt) > 1:
+                dt[0] = dt[1]
+            diagnostics["timestep"] = dt
+        else:
+            diagnostics["timestep"] = np.nan
+
+    diagnostics = add_diagnostics_error_columns(diagnostics, config)
+    return diagnostics
 
 def compute_final_positions(df: pd.DataFrame) -> dict[int, np.ndarray]:
     final_time = df["time"].max()
@@ -1158,45 +1294,61 @@ def error_safe_log_values(values: np.ndarray, floor: float = 1e-300, ceiling: fl
     return safe
 
 def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
-    energy = diagnostics["total_energy"].to_numpy()
-    angular = diagnostics["angular_momentum"].to_numpy()
-    linear = diagnostics["linear_momentum"].to_numpy()
-    com = diagnostics["com_drift"].to_numpy()
+    diagnostics = add_diagnostics_error_columns(diagnostics, config)
 
-    dE = error_relative(energy, config.epsilon)
-    dL = error_relative(angular, config.epsilon)
-    dP = error_absolute(linear)
-    dRcm = error_absolute(com)
+    dE = diagnostics["dE_over_E0"].to_numpy(dtype=float)
+    dLz = diagnostics["dLz"].to_numpy(dtype=float)
+    dPx = diagnostics["dPx"].to_numpy(dtype=float)
+    dPy = diagnostics["dPy"].to_numpy(dtype=float)
+    dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)
+    dYcm = diagnostics["dRcm_y"].to_numpy(dtype=float)
+
+    nine = diagnostics["nine_integral_of_motion_error_max"].to_numpy(dtype=float)
 
     print("Summary of Diagnostics:")
-    print(f"Max |dE/E0|:", np.max(dE))
-    print(f"Max |dL/L0|:", np.max(dL))
-    print(f"Max |dP|:", np.max(dP))
-    print(f"Max |dRcm|:", np.max(dRcm))
-    print(f"Final dE/E0:", dE[-1])
-    print(f"Final dL/L0:", dL[-1])
-    print(f"Final dP:", dP[-1])
-    print(f"Final dRcm:", dRcm[-1])
+    print(f"Max |dE/E0|:", compute_finite_max(dE))
+    print(f"Max |dLz|:", compute_finite_max(dLz))
+    print(f"Max |dPcm_x|:", compute_finite_max(dPx))
+    print(f"Max |dPcm_y|:", compute_finite_max(dPy))
+    print(f"Max |dXcm|:", compute_finite_max(dXcm))
+    print(f"Max |dYcm|:", compute_finite_max(dYcm))
+    print(f"Max nine-integral-of-motion error:", compute_finite_max(nine))
+    print(f"Final dE/E0:", float(dE[-1]) if len(dE) else np.nan)
+    print(f"Final dLz:", float(dLz[-1]) if len(dLz) else np.nan)
+    print(f"Final dPcm_x:", float(dPx[-1]) if len(dPx) else np.nan)
+    print(f"Final dPcm_y:", float(dPy[-1]) if len(dPy) else np.nan)
+    print(f"Final dXcm:", float(dXcm[-1]) if len(dXcm) else np.nan)
+    print(f"Final dYcm:", float(dYcm[-1]) if len(dYcm) else np.nan)
 
 def error_diagnostic_metric_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> dict:
-    energy = diagnostics["total_energy"].to_numpy()
-    angular = diagnostics["angular_momentum"].to_numpy()
-    linear = diagnostics["linear_momentum"].to_numpy()
-    com = diagnostics["com_drift"].to_numpy()
+    diagnostics = add_diagnostics_error_columns(diagnostics, config)
 
-    dE = error_relative(energy, config.epsilon)
-    dL = error_relative(angular, config.epsilon)
-    dP = error_absolute(linear)
-    dRcm = error_absolute(com)
+    dE = diagnostics["dE_over_E0"].to_numpy(dtype=float)
+    dLz = diagnostics["dLz"].to_numpy(dtype=float)
+    dP = np.nanmax(diagnostics[["dPx", "dPy", "dPz"]].to_numpy(dtype=float), axis=1)
+    dRcm = np.nanmax(diagnostics[["dRcm_x", "dRcm_y", "dRcm_z"]].to_numpy(dtype=float), axis=1)
+    nine = diagnostics["nine_integral_of_motion_error_max"].to_numpy(dtype=float)
 
     summary = {"max_dE_over_E0": compute_finite_max(dE),
-               "final_dE_over_E0": float(dE[-1]),
-               "max_dL_over_L0": compute_finite_max(dL),
-               "final_dL_over_L0": float(dL[-1]),
+               "final_dE_over_E0": float(dE[-1]) if len(dE) else np.nan,
+               "max_dL_over_L0": compute_finite_max(dLz),
+               "final_dL_over_L0": float(dLz[-1]) if len(dLz) else np.nan,
                "max_dP": compute_finite_max(dP),
-               "final_dP": float(dP[-1]),
+               "final_dP": float(dP[-1]) if len(dP) else np.nan,
                "max_dRcm": compute_finite_max(dRcm),
-               "final_dRcm": float(dRcm[-1])}
+               "final_dRcm": float(dRcm[-1]) if len(dRcm) else np.nan,
+               "max_dLx": compute_finite_max(diagnostics["dLx"].to_numpy(dtype=float)),
+               "max_dLy": compute_finite_max(diagnostics["dLy"].to_numpy(dtype=float)),
+               "max_dLz": compute_finite_max(diagnostics["dLz"].to_numpy(dtype=float)),
+               "max_dPx": compute_finite_max(diagnostics["dPx"].to_numpy(dtype=float)),
+               "max_dPy": compute_finite_max(diagnostics["dPy"].to_numpy(dtype=float)),
+               "max_dPz": compute_finite_max(diagnostics["dPz"].to_numpy(dtype=float)),
+               "max_dCcm_x": compute_finite_max(diagnostics["dCcm_x"].to_numpy(dtype=float)),
+               "max_dCcm_y": compute_finite_max(diagnostics["dCcm_y"].to_numpy(dtype=float)),
+               "max_dCcm_z": compute_finite_max(diagnostics["dCcm_z"].to_numpy(dtype=float)),
+               "overall_max_nine_integral_of_motion_error": compute_finite_max(nine),
+               "final_nine_integral_of_motion_error": float(nine[-1]) if len(nine) else np.nan}
+               
     summary.update(energy_boundedness_summary(diagnostics, config))
 
     return summary
@@ -1217,7 +1369,10 @@ def plot_orbits(ax, df: pd.DataFrame, config: PlotConfig) -> None:
         if not np.any(valid):
             continue
 
-        ax.plot(x[valid], y[valid], linewidth=1, label=f'Body {body_id}')
+        x_plot = x[valid]
+        y_plot = y[valid]
+
+        ax.plot(x_plot, y_plot, linewidth=1, label=f'Body {body_id}')
         first_valid = np.flatnonzero(valid)[0]
         ax.scatter(x[first_valid], y[first_valid], s=config.start_marker_size, zorder=5)
 
@@ -1228,8 +1383,10 @@ def plot_orbits(ax, df: pd.DataFrame, config: PlotConfig) -> None:
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
 
-def plot_error(ax, time, values, title, ylabel, floor=1e-300) -> None:
+def plot_error(ax, time, values, title, ylabel, floor=1e-300, ymin_fixed=None, max_points: int = 5000) -> None:
     time = np.asarray(time, dtype=float)
+    values = np.asarray(values, dtype=float)
+    time, values = thin_for_plotting(time, values, max_points=max_points)
     y = error_safe_log_values(values, floor=floor)
 
     valid = np.isfinite(time) & np.isfinite(y)
@@ -1246,11 +1403,12 @@ def plot_error(ax, time, values, title, ylabel, floor=1e-300) -> None:
             ymin = max(ymin * 0.5, floor)
             ymax = min(ymax * 2.0, 1e50)
         
+        if ymin_fixed is not None and np.isfinite(ymin_fixed) and ymin_fixed > 0.0:
+            ymin = ymin_fixed
         if not np.isfinite(ymin) or ymin <= 0.0:
             ymin = floor
         if not np.isfinite(ymax) or ymax <= ymin:
             ymax = ymin * 10.0
-        
         ax.set_ylim(ymin, ymax)
     else:
         ax.text(0.5, 0.5, "No finite diagnostic values", ha="center", va="center", transform=ax.transAxes,)
@@ -1265,32 +1423,40 @@ def plot_verification_suite(output_df: pd.DataFrame,
                             config: PlotConfig, 
                             save_path: Path | None = None, 
                             show: bool = True,) -> None:
-    
-    time = diagnostics["time"].to_numpy()
-    dE = error_relative(diagnostics["total_energy"].to_numpy(), config.epsilon)
-    dL = error_relative(diagnostics["angular_momentum"].to_numpy(), config.epsilon)
-    dP = error_absolute(diagnostics["linear_momentum"].to_numpy())
-    dRcm = error_absolute(diagnostics["com_drift"].to_numpy())
+    diagnostics = add_diagnostics_error_columns(diagnostics, config)
+    time = diagnostics["time"].to_numpy(dtype=float)
+    dE = diagnostics["dE_over_E0"].to_numpy(dtype=float)
+    dL = diagnostics["dLz"].to_numpy(dtype=float)
+    dPcm_x = diagnostics["dPx"].to_numpy(dtype=float)
+    dPcm_y = diagnostics["dPy"].to_numpy(dtype=float)
+    dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)
+    dYcm = diagnostics["dRcm_y"].to_numpy(dtype=float)
 
     error_print_summary(diagnostics, config)
 
-    fig = plt.figure(figsize=config.figure_size, constrained_layout=True)
-    gs = fig.add_gridspec(2, 4)
+    fig = plt.figure(figsize=config.figure_size)
+    gs = fig.add_gridspec(3, 4)
 
     ax_orbit = fig.add_subplot(gs[:, 0:2])
     plot_orbits(ax_orbit, output_df, config)
 
     ax_energy = fig.add_subplot(gs[0, 2])
-    plot_error(ax_energy, time, dE, "Relative Energy Error", r"$|E - E_0|/|E_0|$", floor=1e-18)
+    plot_error(ax_energy, time, dE, "Relative Energy Error", r"$|\Delta E/E|$", floor=1e-20, ymin_fixed=1e-11)
 
     ax_angular = fig.add_subplot(gs[0, 3])
-    plot_error(ax_angular, time, dL, "Relative Angular Momentum Error", r"$|L - L_0|/|L_0|$", floor=1e-18)
+    plot_error(ax_angular, time, dL, "Angular Momentum Error", r"$|\Delta L|$", floor=1e-20, ymin_fixed=1e-20)
 
-    ax_linear = fig.add_subplot(gs[1, 2])
-    plot_error(ax_linear, time, dP, "Linear Momentum Error", r"$|P - P_0|$", floor=1e-30)
+    ax_px = fig.add_subplot(gs[1, 2])
+    plot_error(ax_px, time, dPcm_x, "COM Momentum X Error", r"$|\Delta p_{\rm cm,x}|$", floor=1e-20, ymin_fixed=1e-20)
 
-    ax_com = fig.add_subplot(gs[1, 3])
-    plot_error(ax_com, time, dRcm, "Center of Mass Drift", r"$|R_{\rm cm} - R_{\rm cm,0}|$", floor=1e-30)
+    ax_py = fig.add_subplot(gs[1, 3])
+    plot_error(ax_py, time, dPcm_y, "COM Momentum Y Error", r"$|\Delta p_{\rm cm,y}|$", floor=1e-20, ymin_fixed=1e-20)
+
+    ax_xcm = fig.add_subplot(gs[2, 2])
+    plot_error(ax_xcm, time, dXcm, "COM Drift X Error", r"$|\Delta x_{\rm cm}|$", floor=1e-20, ymin_fixed=1e-20)
+
+    ax_ycm = fig.add_subplot(gs[2, 3])
+    plot_error(ax_ycm, time, dYcm, "COM Drift Y Error", r"$|\Delta y_{\rm cm}|$", floor=1e-20, ymin_fixed=1e-20)
 
     if save_path is not None:
         title = f"FewBodyNc Verification Suite: {save_path.parent.name} / {save_path.stem}"
@@ -1298,6 +1464,7 @@ def plot_verification_suite(output_df: pd.DataFrame,
         title = "FewBodyNC Verification Suite"
         
     fig.suptitle(title, fontsize=16)
+    fig.tight_layout()
     
     if save_path is not None:
         save_path = Path(save_path)
