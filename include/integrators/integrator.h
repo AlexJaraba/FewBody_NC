@@ -1,16 +1,12 @@
 #pragma once
 
-#include <string_view>
 #include <vector>
 
+#include "core/canonical_state.h"
 #include "core/body.h"
 
 class Integrator {
 public:
+    virtual void step(std::vector<Body>& bodies, double dt, double G) = 0;
     virtual ~Integrator() = default;
-
-    [[nodiscard]] virtual std::string_view name()  const noexcept = 0;
-
-    virtual void step(std::vector<Body>& bodies, double timestep, double gravitational_constant) = 0;
-    
 };

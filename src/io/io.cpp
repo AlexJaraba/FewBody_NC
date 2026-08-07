@@ -2,8 +2,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <algorithm>
-#include <cctype>
 #include <stdexcept>
 
 #include "io/io.h"
@@ -26,18 +24,12 @@
 
    ============================================================================================================= */
 
-namespace {bool parse_bool(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {return static_cast<char>(std::tolower(c)); });
-    return value == "true" || value == "1" || value == "yes" || value == "on";
-}}
-
 void readInitialConditions(const std::string& filename, std::vector<Body>& bodies) {
     std::ifstream infile(filename);
     std::string line;
-
     int next_id = 0;
 
-    if (!infile) throw std::runtime_error("Could not open " + filename);
+    if (!infile) {throw std::runtime_error("Could not open " + filename); }
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
         double mass;
@@ -63,41 +55,29 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
 SolverParams readParams(const std::string& filename) {
     std::ifstream infile(filename);
     std::string line, param;
-    SolverParams params = {100, 10.0, 0.01, "hernandez", "cartesian", 0.000296014912, "canonical", false, 0, 0.03, 1, 3};  // Default values
+    SolverParams params = {100, 10.0, 0.01, "hernandez", 0.000296014912, "canonical"};  // Default values
 
-    if (!infile) throw std::runtime_error("Could not open " + filename);
+    if (!infile) {throw std::runtime_error("Could not open " + filename); }
     while (std::getline(infile, line)) {
         std::istringstream iss(line);
-        if (iss >> param) {
-            if (param == "output_frequency") {
-                iss >> params.output_frequency;
-            } else if (param == "runtime") {
-                iss >> params.runtime;
-            } else if (param == "timestep") {
-                iss >> params.timestep;
-            } else if (param == "integrator") {
-                iss >> params.integrator;
-            } else if (param == "coordinate_mode") {
-                iss >> params.coordinate_mode;
-            } else if (param == "gravitational_constant") {
-	            iss >> params.gravitational_constant;
-            } else if (param == "pair_order") {
-                iss >> params.pair_order;
-            } else if (param == "adaptive_timesteps") {
-                std::string value;
-                iss >> value;
-                params.adaptive_timesteps = parse_bool(value);
-            } else if (param == "timestep_levels") {
-                iss >> params.timestep_levels;
-            } else if (param == "timestep_eta") {
-                iss >> params.timestep_eta;
-            } else if (param == "timestep_refresh_interval") {
-                iss >> params.timestep_refresh_interval;
-            } else if (param == "timestep_level_decrease_delay") {
-                iss >> params.timestep_level_decrease_delay;
-            }
+        if (!(iss >> param)) {
+            continue;
+        }
+        if (param == "output_frequency") {
+            iss >> params.output_frequency;
+        } else if (param == "runtime") {
+            iss >> params.runtime;
+        } else if (param == "timestep") {
+            iss >> params.timestep;
+        } else if (param == "integrator") {
+            iss >> params.integrator;
+        } else if (param == "gravitational_constant") {
+            iss >> params.gravitational_constant;
+        } else if (param == "pair_order") {
+            iss >> params.pair_order;
         }
     }
 
     return params;
 }
+

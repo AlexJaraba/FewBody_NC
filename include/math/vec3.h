@@ -16,79 +16,80 @@ struct Vec3 {
     double y;
     double z;
 
-    constexpr Vec3() = default;
-    constexpr Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+    Vec3() : x(0.0), y(0.0), z(0.0) {}
+    Vec3(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
 
     // Addition
-    [[nodiscard]] constexpr Vec3 operator+(const Vec3& other) const noexcept {
-        return {x + other.x, y + other.y, z + other.z};
+    Vec3 operator+(const Vec3& rhs) const {
+        return {x + rhs.x, y + rhs.y, z + rhs.z};
     }
 
     // Subtract
-    [[nodiscard]] constexpr Vec3 operator-(const Vec3& other) const noexcept {
-        return {x - other.x, y - other.y, z - other.z};
-    }
-
-    // Negative
-    [[nodiscard]] constexpr Vec3 operator-() const noexcept {
-        return {-x, -y, -z};
+    Vec3 operator-(const Vec3& rhs) const {
+        return {x - rhs.x, y - rhs.y, z - rhs.z};
     }
 
     // Multiply
-    [[nodiscard]] constexpr Vec3 operator*(double scalar) const noexcept {
-        return {x * scalar, y * scalar, z * scalar};
+    Vec3 operator*(double s) const {
+        return {x * s, y * s, z * s};
     }
 
     // Divide
-    [[nodiscard]] constexpr Vec3 operator/(double scalar) const noexcept {
-        return {x / scalar, y / scalar, z / scalar};
+    Vec3 operator/(double s) const {
+        return {x / s, y / s, z / s};
     }
 
     // Compound Operators
-    constexpr Vec3& operator+=(const Vec3& other) noexcept {
-        x += other.x;
-        y += other.y;
-        z += other.z;
+    Vec3& operator+=(const Vec3& rhs) {
+        x += rhs.x;
+        y += rhs.y;
+        z += rhs.z;
         return *this;
     }
-    constexpr Vec3& operator-=(const Vec3& other) noexcept {
-        x -= other.x;
-        y -= other.y;
-        z -= other.z;
+    Vec3& operator-=(const Vec3& rhs) {
+        x -= rhs.x;
+        y -= rhs.y;
+        z -= rhs.z;
         return *this;
     }
-    constexpr Vec3& operator*=(double scalar) noexcept {
-        x *= scalar;
-        y *= scalar;
-        z *= scalar;
+    Vec3& operator*=(double s) {
+        x *= s;
+        y *= s;
+        z *= s;
         return *this;
     }
-    constexpr Vec3& operator/=(double scalar) noexcept {
-        x /= scalar;
-        y /= scalar;
-        z /= scalar;
+    Vec3& operator/=(double s) {
+        x /= s;
+        y /= s;
+        z /= s;
         return *this;
     }
 
     // Norms
-    [[nodiscard]] constexpr double norm2() const noexcept {
+    double norm2() const {
         return x*x + y*y + z*z;
     }
-    [[nodiscard]] double norm() const noexcept {
+    double norm() const {
         return std::sqrt(norm2());
     }
 
-    [[nodiscard]] bool is_finite() const noexcept {
+    bool is_finite() const {
         return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
     }
 };
 
-[[nodiscard]] constexpr inline double dot(const Vec3& a, const Vec3& b) {
+inline double norm(const Vec3& v) {
+    return v.norm();
+}
+inline double norm2(const Vec3& v) {
+    return v.norm2();
+}
+inline double dot(const Vec3& a, const Vec3& b) {
     return a.x*b.x + a.y*b.y + a.z*b.z;
 }
-[[nodiscard]] constexpr inline Vec3 cross(const Vec3& a, const Vec3& b) {
+inline Vec3 cross(const Vec3& a, const Vec3& b) {
     return {a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x};
 }
-[[nodiscard]] constexpr inline Vec3 operator*(double scalar, const Vec3& vector) noexcept {
-    return vector * scalar;
+inline Vec3 operator *(double s, const Vec3& v) {
+    return {s*v.x, s*v.y, s*v.z};
 }

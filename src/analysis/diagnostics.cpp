@@ -19,7 +19,7 @@
         - Center-of-mass Drift
         - Shadow-energy placeholder/estimate
     
-    Diagnostics are always computed in Cartesian coordinates, even when the integrator evolves the system internally in Jacobi coordinates.
+    Diagnostics are computed from the physical body states.
 
    ==================================================================================================== */
 

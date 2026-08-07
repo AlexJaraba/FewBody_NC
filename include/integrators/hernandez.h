@@ -2,20 +2,21 @@
 
 #include <vector>
 
+#include "core/body.h"
+#include "core/canonical_state.h"
+#include "numerics/composition.h"
 #include "integrators/integrator.h"
+#include "integrators-helper/hernandez/body_stepper.h"
 #include "dynamics/pairing.h"
 
-
-class HernandezIntegrator final : public Integrator {
+class Hernandez : public Integrator {
 public:
-    explicit HernandezIntegrator(const std::vector<Pair>& fixed_pairs);
+    explicit Hernandez(const std::vector<Pair>& fixed_pairs);
 
-    [[nodiscard]] std::string_view name() const noexcept override;
-    [[nosdiscard]] std::vector<Pair>& fixed_pair_order() const noexcept;
-    void step(std::vector<Body>& bodies, double timestep, double gravitational_constant) override;
+    // Body-state Path: Used when the solver evolves physical Body objects directly.
+    void step(std::vector<Body>& bodies, double dt, double G) override;
+    const std::vector<Pair>& pairs() const;
 
 private:
-    std::vector<Pair> fixed_pairs_;
-    void apply_phi(std::vector<Body>& bodies, double timestep, double gravitational_constant) const;
-    void apply_phi_adjoint(std::vector<Body>& bodies, double timestep, double gravitational_constant) const;
+    HernandezBodyStepper body_stepper_;
 };

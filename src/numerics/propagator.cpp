@@ -24,14 +24,11 @@
 */
 
 CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
-    Vec3 v0;
-
-    v0 = p0 / reduced_mass;
-
     if (reduced_mass <= 0.0 || mu_grav <= 0.0 || q0.norm() < 1e-14) {
         return {{}, {}, false, 0};
     }
 
+    const Vec3 v0 = p0 / reduced_mass;
     const double r0_mag = norm(q0);
     const double v0_mag = norm(v0);
     const double vr0 = dot(q0, v0) / r0_mag;

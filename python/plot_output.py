@@ -44,10 +44,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shadow", action="store_true", help="Plot shadow Hamiltonian error from diagnostics.csv.",)
     parser.add_argument("--energy-boundedness", action="store_true", help="Run energy boundedness and drift suite.")
     parser.add_argument("--convergence", action="store_true", help="Run timestep convergence study.",)
-    parser.add_argument("--convergence-suite", choices=["current", "cartesian-hernandez"], default="current", help="Choose which convergence suite to run when --convergence is used.")
-    parser.add_argument("--adaptive-compare", action="store_true", help="Run Step 10.4 adaptive-on vs adaptive-off comparison.",)
-    parser.add_argument("--adaptive-levels", type=int, default=None, help="Timestep levels to use for adaptive comparison.",)
-    parser.add_argument("--adaptive-eta", type=float, default=None, help="Eta value to use for adaptive comparison.",)
+    parser.add_argument("--convergence-suite", choices=["current", "hernandez", "cartesian-hernandez"], default="current", help="Choose the current-parameter scaling study or the Hernandez convergence suite. The legacy cartesian-hernandez name is kept as an alias.")
     parser.add_argument("--pair-order-policy", action="store_true", help="Run pair-order policy suite.")
     parser.add_argument("--rebound-compare", action="store_true", help="Compare FewBodyNC benchmark/convergence results against a REBOUND reference run.")
     parser.add_argument("--rebound-integrator", type=str, default="whfast", help="REBOUND integrator to use for comparison, such as whfast or leapfrog.")
@@ -92,15 +89,12 @@ def main() -> None:
         functions.run_energy_boundedness_suite(use_diagnostics_csv=args.use_diagnostics_csv)
         return
     if args.convergence:
-        if args.convergence_suite == "cartesian-hernandez":
+        if args.convergence_suite in {"hernandez", "cartesian-hernandez"}:
             functions.run_convergence_suite(use_diagnostics_csv=args.use_diagnostics_csv)
         else:
             functions.run_timestep_scaling_study(use_diagnostics_csv=args.use_diagnostics_csv)
         return
-    if args.adaptive_compare:
-        functions.run_adaptive_comparison_study(timestep_levels=args.adaptive_levels, timestep_eta=args.adaptive_eta)
-        return
-    
+
     output_df = functions.read_output(args.output)
     if args.use_diagnostics_csv:
         diagnostics = functions.read_diagnostics(args.diagnostics)

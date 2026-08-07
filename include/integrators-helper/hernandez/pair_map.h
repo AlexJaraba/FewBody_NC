@@ -3,15 +3,19 @@
 #include <vector>
 
 #include "core/body.h"
-#include "dynamics/pairing.h"
 
-struct TwoBodyState;
+/* =====================================================================
 
-struct PairKeplerMapResult {
-    bool converged =  false;
-    int iterations = 0;
+    Hernandez pairwise Kepler map.
+
+    This applies one exact two-body Kepler evolution to one physical body pair (i, j), using the existing universal-variable Kepler propagator.
+    Close-encounter hardening is handled by HernandezBodyStepper, which may split one difficult pair map into several smaller exact Kepler maps.
+
+   ===================================================================== */
+
+struct HernandezPairMapResult {
+    bool converged;
+    int iterations;
 };
 
-void advance_pair_COM(TwoBodyState& pair_state, double timestep);
-
-[[nodiscard]] PairKeplerMapResult apply_exact_two_body_flow(std::vector<Body>& bodies, const Pair& pair, double timestep, double gravitational_constant);
+HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies, int i, int j, double dt, double G);

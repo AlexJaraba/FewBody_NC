@@ -1,25 +1,35 @@
 #pragma once
 
 #include <vector>
-#include <cstdint>
+#include <string>
+#include <memory>
 
 #include "core/body.h"
-#include "io/output_writer.h"
+#include "io/csv_output_writer.h"
 #include "io/io.h"
+#include "dynamics/pairing.h"
 #include "integrators/integrator.h"
 
-void move_to_COM_frame(std::vector<Body>& bodies);
+
+class CSVOutputWriter;
+
+void recenter_system(std::vector<Body>& bodies);
 
 class Solver {
 public:
-    Solver(std::vector<Body>& bodies, OutputWriter& output_writer);
-    void run(const SolverParams& params);
+    Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
+    void run();
 
 private:
-    std::vector<Body>& bodies_;
-    OutputWriter& output_writer_;
+    std::vector<Body>& bodies;
+    std::unique_ptr<Integrator> integrator;
+    std::vector<Pair> fixed_pairs;
+    CSVOutputWriter& writer;
+    
+    std::string effective_pair_order = "canonical";
+    double hierarchy_ratio = 0.0;
 
-    void run_fixed_step_integration(Integrator& integrator, const SolverParams& params);
-    void validate_body_states_are_finite(std::uint64_t step, double time, const char* context) const;
-    void write_body_snapshot(double time);
+    void run_fixed_step(const SolverParams& params);
+    void leapfrog_step(double dt, double G);
+    void write_current_bodies(double time);
 };

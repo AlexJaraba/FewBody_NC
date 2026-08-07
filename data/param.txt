@@ -1,13 +1,6 @@
 output_frequency 10
-runtime 1.4
-timestep 0.000015
-coordinate_mode cartesian
+runtime 81.3712974694812
+timestep 0.000871835330030156
 integrator hernandez
-gravitational_constant 1.0
+gravitational_constant 0.000296014912
 pair_order canonical
-
-adaptive_timesteps false
-timestep_levels 2
-timestep_eta 0.001
-timestep_refresh_interval 1
-timestep_level_decrease_delay 3

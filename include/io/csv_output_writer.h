@@ -9,10 +9,7 @@
 class CSVOutputWriter final: public OutputWriter {
 public:
     explicit CSVOutputWriter(const std::string& filename);
-    ~CSVOutputWriter() override;
-
-    CSVOutputWriter(const CSVOutputWriter&) = delete;
-    CSVOutputWriter& operator=(const CSVOutputWriter&) = delete;
+    ~CSVOutputWriter() override = default;
 
     void write(const std::vector<BodyState>& bodies) override;
     void close() override;
