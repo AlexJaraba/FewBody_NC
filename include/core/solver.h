@@ -1,38 +1,25 @@
 #pragma once
 
 #include <vector>
-#include <memory>
-#include <string>
+#include <cstdint>
 
 #include "core/body.h"
-#include "io/csv_output_writer.h"
+#include "io/output_writer.h"
 #include "io/io.h"
 #include "integrators/integrator.h"
-#include "integrators/leapfrog.h"
-#include "integrators/hernandez.h"
-#include "dynamics/pairing.h"
 
-
-class CSVOutputWriter;
-
-void recenter_system(std::vector<Body>& bodies);
+void move_to_COM_frame(std::vector<Body>& bodies);
 
 class Solver {
 public:
-    Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
-    void run();
+    Solver(std::vector<Body>& bodies, OutputWriter& output_writer);
+    void run(const SolverParams& params);
 
 private:
-    std::vector<Body>& bodies;
-    std::vector<Pair> fixed_pairs;
-    std::unique_ptr<Integrator> integrator;
-    CSVOutputWriter& writer;
-    
-    std::string effective_pair_order = "canonical";
-    double hierarchy_ratio = 0.0;
+    std::vector<Body>& bodies_;
+    OutputWriter& output_writer_;
 
-    void run_jacobi(const SolverParams& params);
-    void run_cartesian(const SolverParams& params);
-    void cartesian_step(double dt, double G);
-    void write_current_bodies(double time);
+    void run_fixed_step_integration(Integrator& integrator, const SolverParams& params);
+    void validate_body_states_are_finite(std::uint64_t step, double time, const char* context) const;
+    void write_body_snapshot(double time);
 };

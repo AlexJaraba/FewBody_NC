@@ -1,25 +1,19 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 #include <string>
 
 #include "core/body.h"
 
 struct SolverParams {
-  int output_frequency;
-  double runtime;
-  double timestep;
-  std::string integrator;
-  std::string coordinate_mode;
-  double gravitational_constant;
-  std::string pair_order;
-
-  bool adaptive_timesteps;
-  int timestep_levels;
-  double timestep_eta;
-  int timestep_refresh_interval;
-  int timestep_level_decrease_delay;
+    std::uint64_t output_frequency = 100;
+    double runtime = 10.0;
+    double timestep = 0.01;
+    double gravitational_constant = 0.000296014912;
+    std::string integrator = "hernandez";
+    std::string pair_order = "canonical";
 };
 
-void readInitialConditions(const std::string& filename, std::vector<Body>& bodies);
-SolverParams readParams(const std::string& filename);
+[[nodiscard]] std::vector<Body> load_initial_conditions(const std::string& filename);
+[[nodiscard]] SolverParams load_solver_params(const std::string& filename);

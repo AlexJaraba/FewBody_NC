@@ -2,19 +2,21 @@
 
 #include "math/vec3.h"
 
-struct ChiResult {
-    double chi;
-    int iterations;
-    bool converged;
+struct UniversalAnomalyResult {
+    double anomaly = 0.0;
+    int iterations = 0;
+    bool converged = false;
 };
 
-double stumpff_C(double z);
-double stumpff_S(double z);
-double norm(const Vec3& v);
+[[nodiscard]] double stumpff_C(double argument);
+[[nodiscard]] double stumpff_S(double argument);
 
-ChiResult solve_chi(double mu, double alpha,
-                    const Vec3& r0,
-                    double vr, double dt,
-                    double abs_tol = 1e-14,
-                    double rel_tol = 1e-13,
-                    int max_iter = 100);
+[[nodiscard]] UniversalAnomalyResult solve_univeral_anomaly(
+    double gravitational_parameter, 
+    double reciprocal_semimajor_axis,
+    const Vec3& initial_position,
+    double initial_radial_velocity, 
+    double timestep,
+    double abs_tol = 1e-13,
+    double rel_tol = 1e-13,
+    int max_iterations = 100);

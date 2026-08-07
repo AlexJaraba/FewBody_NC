@@ -3,43 +3,25 @@
 #include <vector>
 
 #include "core/body.h"
+#include "dynamics/pairing.h"
 #include "math/vec3.h"
 
-/* ==========================================================
-
-    HernandezPairState stores the physical two-body variables for one body pair.
-
-    It converts the physical bodies into:
-        center-of-mass position and velocity
-        relative position and velocity
-        total mass
-        reduced mass
-
-    This class only handles the exact coordinate conversion and reconstruction.
-
-   ==========================================================*/
-
-struct HernandezPairState {
-    int i = -1;
-    int j = -1;
-    
-    double mass_i = 0.0;
-    double mass_j = 0.0;
+struct TwoBodyState {
+    Pair pair;
+    double first_mass = 0.0;
+    double second_mass = 0.0;
     double total_mass = 0.0;
     double reduced_mass = 0.0;
-
-    Vec3 com_position;
-    Vec3 com_velocity;
+    Vec3 COM_position;
+    Vec3 COM_veklocity;
     Vec3 relative_position;
-    Vec3 relative_velocity;
+    Vec3 relative_momentum;
 
-    static HernandezPairState from_bodies(const std::vector<Body>& bodies, int i, int j);
+    [[nodiscard]] static TwoBodyState from_body_pair(const std::vector<Body>& bodies, const Pair& body_pair);
+    [[nodiscard]] double relative_gravitational_parameter(double gravitational_constant) const;
+    [[nodiscard]] double relative_orbital_energy(double gravitational_constant) const;
+    [[nodiscard]] Vec3 relative_angular_momentum() const;
+    [[nodiscard]] Vec3 total_linear_momentum() const;
 
-    void write_to_bodies(std::vector<Body>& bodies) const;
-
-    double gravitational_parameter(double G) const;
-    double two_body_energy(double G) const;
-
-    Vec3 two_body_angular_momentum() const;
-    Vec3 total_momentum() const;
+    void write_back_to_bodies(std::vector<Body>& bodies) const;
 };

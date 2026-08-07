@@ -4,17 +4,12 @@
 
 #include "math/vec3.h"
 
-struct CanonicalStateVector {
-    Vec3 q;
-    Vec3 p;
-    bool converged;
-    int iterations;
+struct KeplerPropagationResult {
+    Vec3 relative_position;
+    Vec3 relative_momentum;
+    bool converged = false;
+    int iterations = 0;
 };
 
-CanonicalStateVector propagate_universal(
-    double mu_grav,
-    double reduced_mass,
-    const Vec3& q0,
-    const Vec3& p0,
-    double dt
-);
+[[nodiscard]] KeplerPropagationResult propagate_two_body_state(double gravitational_parameter, 
+    double reduced_mass, const Vec3& initial_relative_position, const Vec3& initial_relative_momentum, double timestep);

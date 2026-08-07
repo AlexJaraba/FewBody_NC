@@ -1,15 +1,9 @@
 #pragma once
 
-#include <vector>
-
 #include "integrators/integrator.h"
-#include "core/canonical_state.h"
-#include "dynamics/pairing.h"
 
-class Leapfrog : public Integrator {
+class LeapfrogIntegrator final : public Integrator {
 public:
-    explicit Leapfrog(const std::vector<Pair>& pairs);
-    void step(CanonicalState& state, double dt, double G);
-private:
-    std::vector<Pair> pairs_;
+    [[nodiscard]] std::string_view name() const noexcept override;
+    void step(std::vector<Body>& bodies, double timestep, gravitational_constant) override;
 };
