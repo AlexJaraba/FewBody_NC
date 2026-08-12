@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <limits>
 
 #include "dynamics/pairing.h"
 
@@ -17,27 +16,15 @@ double pair_strength(const std::vector<Body>& bodies, const Pair& pair) {
     if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size())) {
         throw std::runtime_error("pair_strength received an out-of-range pair.");
     }
-    const Vec3 dr = bodies[pair.i].position - bodies[pair.j].position;
-    const double r2 = std::max(dr.norm2(), 1.0e-300);
+    const std::size_t i = static_cast<std::size_t>(pair.i);
+    const std::size_t j = static_cast<std::size_t>(pair.j);
+    const Vec3 dr = bodies[i].position - bodies[j].position;
+    const double r2 = dr.norm2();
+    if (!std::isfinite(r2) || r2 <= 0.0) {
+        throw std::runtime_error("pair_strength requires a finite, non-zero pair separation.");
+    }
 
     return (bodies[pair.i].mass * bodies[pair.j].mass) / r2;
-}
-
-double strongest_pair_strength_ratio(const std::vector<Pair>& pairs, const std::vector<Body>& bodies) {
-    const std::vector<Pair> ordered_pairs = order_pairs_by_strength(pairs, bodies);
-
-    if (ordered_pairs.size() < 2) {
-        return std::numeric_limits<double>::infinity();
-    }
-
-    const double strongest = pair_strength(bodies, ordered_pairs[0]);
-    const double second_strongest = pair_strength(bodies, ordered_pairs[1]);
-
-    if (second_strongest <= 0.0) {
-        return std::numeric_limits<double>::infinity();
-    }
-
-    return strongest / second_strongest;
 }
 
 std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs) {

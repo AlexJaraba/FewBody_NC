@@ -17,7 +17,6 @@ private:
     bool reference_set_ = false;
     double reference_time_ = 0.0;
     double reference_energy_ = 0.0;
-    double reference_shadow_energy_ = 0.0;
     Vec3 reference_angular_momentum_;
     Vec3 reference_linear_momentum_;
     Vec3 reference_center_of_mass_;

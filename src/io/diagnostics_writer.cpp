@@ -43,7 +43,6 @@ void DiagnosticsWriter::write_header_if_needed() {
 void DiagnosticsWriter::set_reference(double time, const Diagnostics& diagnostics) {
     reference_time_ = time;
     reference_energy_ = diagnostics.total_energy;
-    reference_shadow_energy_ = diagnostics.shadow_energy;
     reference_angular_momentum_ = diagnostics.angular_momentum_vec;
     reference_linear_momentum_ = diagnostics.linear_momentum_vec;
     reference_center_of_mass_ = diagnostics.center_of_mass;
@@ -61,7 +60,6 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
     const Vec3 com_integral = d.center_of_mass - reference_center_of_mass_ - dt_from_reference * reference_center_of_mass_velocity_;
     const double dE_abs = absolute_difference(d.total_energy, reference_energy_);
     const double dE_rel = relative_energy_error(d.total_energy, reference_energy_);
-    const double dShadow_rel = relative_energy_error(d.shadow_energy, reference_shadow_energy_);
     const double dPx = absolute_difference(d.linear_momentum_vec.x, reference_linear_momentum_.x);
     const double dPy = absolute_difference(d.linear_momentum_vec.y, reference_linear_momentum_.y);
     const double dPz = absolute_difference(d.linear_momentum_vec.z, reference_linear_momentum_.z);
@@ -74,7 +72,6 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
     const double dRcm_x = absolute_difference(d.center_of_mass.x, reference_center_of_mass_.x);
     const double dRcm_y = absolute_difference(d.center_of_mass.y, reference_center_of_mass_.y);
     const double dRcm_z = absolute_difference(d.center_of_mass.z, reference_center_of_mass_.z);
-    const double nine_integrals_of_motion_error_max = std::max({dLx, dLy, dLz, dPx, dPy, dPz, dCcm_x, dCcm_y, dCcm_z});
 
     file_ << time << ","
           << d.total_energy << "," << d.kinetic_energy << "," << d.potential_energy << "," << dE_rel << "," << dE_abs << ","
@@ -85,8 +82,7 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
           << com_integral.x << "," << com_integral.y << "," << com_integral.z << ","
           << dCcm_x << "," << dCcm_y << "," << dCcm_z << ","
           << dRcm_x << "," << dRcm_y << "," << dRcm_z << ","
-          << nine_integrals_of_motion_error_max << ","
-          <<d.shadow_energy << "," << dShadow_rel << "," << d.timestep << "\n";
+          << d.timestep << "\n";
 }
 
 void DiagnosticsWriter::close() {

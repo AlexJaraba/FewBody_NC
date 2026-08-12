@@ -15,9 +15,10 @@ namespace {
         if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size()) || pair.i == pair.j) {
             throw std::runtime_error("Hernandez pair map received invalid body indices.");
         }
-
-        const Body& body_i = bodies[pair.i];
-        const Body& body_j = bodies[pair.j];
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        const Body& body_i = bodies[i];
+        const Body& body_j = bodies[j];
         const Vec3 relative_position = body_j.position - body_i.position;
         const Vec3 relative_velocity = body_j.velocity - body_i.velocity;
         const double distance = relative_position.norm();
@@ -32,6 +33,20 @@ namespace {
                 << "distance = " << distance << ", "
                 << "relative_speed = " << relative_speed;
             throw std::runtime_error(msg.str());            
+        }
+        const double collision_distance = body_i.radius + body_j.radius;
+        if (collision_distance > 0.0 && distance <= collision_distance) {
+            std::ostringstream msg;
+            msg << std::setprecision(17);
+            msg << "Hernandez physical collision detected. "
+                << "collision_detected = true, "
+                << "pair=(" << pair.i << "," << pair.j << "), "
+                << "failed_dt = " << dt << ", "
+                << "distance = " << distance << ", "
+                << "collision_distance = " << collision_distance << ", "
+                << "radius_i = " << body_i.radius << ", "
+                << "radius_j = " << body_j.radius;
+            throw std::runtime_error(msg.str());
         }
         if (distance <= PAIR_MAP_NEAR_ZERO_DISTANCE) {
             std::ostringstream msg;
@@ -51,9 +66,10 @@ namespace {
 
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
         validate_pair_before_map(bodies, pair, dt, G);
-
-        const Vec3 relative_position = bodies[pair.j].position - bodies[pair.i].position;
-        const Vec3 relative_velocity = bodies[pair.j].velocity - bodies[pair.i].velocity;
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        const Vec3 relative_position = bodies[j].position - bodies[i].position;
+        const Vec3 relative_velocity = bodies[j].velocity - bodies[i].velocity;
         const double distance = relative_position.norm();
         const double relative_speed = relative_velocity.norm();
 
@@ -101,10 +117,12 @@ namespace {
     }
 
     void drift_pair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
-        bodies[pair.i].position += drift_dt * bodies[pair.i].velocity;
-        bodies[pair.j].position += drift_dt * bodies[pair.j].velocity;
-        bodies[pair.i].updateMomentumFromVelocity();
-        bodies[pair.j].updateMomentumFromVelocity();
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        bodies[i].position += drift_dt * bodies[i].velocity;
+        bodies[j].position += drift_dt * bodies[j].velocity;
+        bodies[i].updateMomentumFromVelocity();
+        bodies[j].updateMomentumFromVelocity();
     }
 
     void apply_phi(std::vector<Body>& bodies, const std::vector<Pair>& ordered_pairs, double h, double G) {

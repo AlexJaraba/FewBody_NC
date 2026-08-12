@@ -25,11 +25,10 @@ private:
     std::unique_ptr<Integrator> integrator;
     std::vector<Pair> fixed_pairs;
     CSVOutputWriter& writer;
+    SolverParams params_;
     
     std::string effective_pair_order = "canonical";
-    double hierarchy_ratio = 0.0;
 
     void run_fixed_step(const SolverParams& params);
-    void leapfrog_step(double dt, double G);
     void write_current_bodies(double time);
 };

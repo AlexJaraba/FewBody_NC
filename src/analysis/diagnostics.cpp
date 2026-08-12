@@ -6,8 +6,6 @@
 #include "math/vec3.h"
 #include "integrators-helper/hernandez/pair_state.h"
 
-
-
 /* ====================================================================================================
 
     Diagnostics
@@ -17,7 +15,6 @@
         - Linear Momentum
         - Angular Momentum
         - Center-of-mass Drift
-        - Shadow-energy placeholder/estimate
     
     Diagnostics are computed from the physical body states.
 
@@ -42,13 +39,13 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
     }
 
     // Compute potential energy
-    const int N = static_cast<int>(bodies.size());
-    for (int i = 0; i < N; ++i) {
-        for (int j = i + 1; j < N; ++j) {
+    const std::size_t N = bodies.size();
+    for (std::size_t i = 0; i < N; ++i) {
+        for (std::size_t j = i + 1; j < N; ++j) {
             const Vec3 dr = bodies[j].position - bodies[i].position;
             const double r = dr.norm();
-            if (r < 1e-14) {
-                continue;
+            if (!std::isfinite(r) || r <= 0.0) {
+                throw std::runtime_error("compute_diagnostics encountered a non-finite or zero pair separation.");
             }
             d.potential_energy -= (G * bodies[i].mass * bodies[j].mass) / r;
         }
@@ -63,14 +60,6 @@ Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, doubl
     d.linear_momentum = d.linear_momentum_vec.norm();
     d.angular_momentum = d.angular_momentum_vec.norm();
     d.com_drift = d.center_of_mass.norm();
-    // Second-order shadow Hamiltonian estimate
-    // double p2sum = 0.0;
-    // for (const auto& body : bodies) {
-    //     p2sum += body.momentumMagnitudeSquared();
-    // }
-
-    d.shadow_energy = d.total_energy;
-
     return d;
 }
 

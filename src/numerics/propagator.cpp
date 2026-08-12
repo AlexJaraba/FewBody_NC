@@ -1,5 +1,4 @@
 #include <cmath>
-#include <iostream>
 
 #include "numerics/univ_vari_solve.h"
 #include "numerics/propagator.h"
@@ -16,14 +15,14 @@
    ================================================================= */
 
 /*
-    Propagate a Jacobi relative coordinate through the Kepler part of the split.
+    Propagate a physical pair relative coordinate through the exact two-body Kepler map.
     The canonical momentum p is converted to relative velocity using:
         v = p / mu
     After propagation the updated velocity is converted back to canonical momentum:
         p = mu * v
 */
 
-CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
+KeplerPropagationResult propagate_universal(double mu_grav, double reduced_mass, const Vec3& q0, const Vec3& p0, double dt) {
     if (reduced_mass <= 0.0 || mu_grav <= 0.0 || q0.norm() < 1e-14) {
         return {{}, {}, false, 0};
     }
@@ -50,11 +49,17 @@ CanonicalStateVector propagate_universal(double mu_grav, double reduced_mass, co
     Vec3 q = (f * q0) + (g * v0);
 
     const double r_mag = norm(q);
+    if (!q.is_finite() || !std::isfinite(r_mag) || r_mag <= 0.0) {
+        return {{}, {}, false, chi_res.iterations};
+    }
     const double fdot = (std::sqrt(mu_grav) / (r_mag * r0_mag)) * chi * (z * S - 1.0);
     const double gdot = 1.0 - (chi * chi / r_mag) * C;
 
     Vec3 v = (fdot * q0) + (gdot * v0);
     Vec3 p = reduced_mass * v;
+    if (!v.is_finite() || !p.is_finite()) {
+        return {{}, {}, false, chi_res.iterations};
+    }
 
     return{q, p, true, chi_res.iterations};
 }

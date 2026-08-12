@@ -41,7 +41,7 @@ HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies
 
     const Vec3 relative_momentum = pair.reduced_mass * pair.relative_velocity;
 
-    CanonicalStateVector propagated = propagate_universal(pair.gravitational_parameter(G), pair.reduced_mass, pair.relative_position, relative_momentum, dt);
+    KeplerPropagationResult propagated = propagate_universal(pair.gravitational_parameter(G), pair.reduced_mass, pair.relative_position, relative_momentum, dt);
 
     if (!propagated.converged) {
         return {false, propagated.iterations};

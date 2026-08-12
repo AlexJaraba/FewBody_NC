@@ -12,7 +12,6 @@ struct Pair {
 Pair canonicalize_pair(int i, int j);
 
 double pair_strength(const std::vector<Body>& bodies, const Pair& pair);
-double strongest_pair_strength_ratio(const std::vector<Pair>& pairs, const std::vector<Body>& bodies);
 
 std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs);
 std::vector<Pair> canonicalize_pairs_preserve_order(const std::vector<Pair>& pairs);

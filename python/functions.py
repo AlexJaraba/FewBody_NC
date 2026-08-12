@@ -24,7 +24,6 @@ The C++ code writes physical Cartesian body states to output.csv.
 
 """
 
-
 # ============================================================
 # Paths
 # ============================================================
@@ -59,60 +58,6 @@ class SimulationRunError(RuntimeError):
         self.returncode = returncode
 
 # ============================================================
-# Convergence Cases
-# ============================================================
-
-CONVERGENCE_TESTS = [
-    {
-        "name": "D1_BinaryShort",
-        "dt_ref": 0.00625,
-        "dts": (0.1, 0.05, 0.025, 0.0125),
-        "runtime": 1000,
-        "output_frequency": 100,
-        "initial_conditions": [
-            (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
-            (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
-        ],
-    },
-    {
-        "name": "D2_HierarchicalTripleShort",
-        "dt_ref": 0.00125,
-        "dts": (0.02, 0.01, 0.005, 0.0025),
-        "runtime": 1000,
-        "output_frequency": 100,
-        "initial_conditions": [
-            (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
-            (1.0,   0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
-            (1e-3,  5.0, 0.0, 0.0, 0.0,  0.01089,  0.0),
-        ],
-    },
-    {
-        "name": "D3_Figure8Short",
-        "dt_ref": 0.00025,
-        "dts": (0.004, 0.002, 0.001, 0.0005),
-        "runtime": 20,
-        "output_frequency": 10,
-        "initial_conditions": [
-            (1.0, -0.97000436,  0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
-            (1.0,  0.97000436, -0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
-            (1.0,  0.0,         0.0,        0.0, -0.016038058, -0.014872872, 0.0),
-        ],
-    },
-    {
-        "name": "D4_CloseBinaryPerturberShort",
-        "dt_ref": 0.000625,
-        "dts": (0.01, 0.005, 0.0025, 0.00125),
-        "runtime": 200,
-        "output_frequency": 50,
-        "initial_conditions": [
-            (1.0,  -0.5, 0.0, 0.0,  0.0,    -0.012166, 0.0),
-            (1.0,   0.5, 0.0, 0.0,  0.0,     0.012166, 0.0),
-            (0.01,  1.2, 0.2, 0.0, -0.0020,  0.0040,   0.0),
-        ],
-    },
-]
-
-# ============================================================
 # Default Benchmark Tests
 # ============================================================
 # Benchmark Tests:
@@ -142,7 +87,7 @@ BENCHMARK_TESTS = [
     {
         "name": "Test1_Binary",
         "dt": 0.1,
-        "runtime": 100000,
+        "runtime": 258230.8,
         "output_frequency": 1000,
         "initial_conditions": [
             (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
@@ -151,8 +96,8 @@ BENCHMARK_TESTS = [
     },
     {
         "name": "Test2_CircumbinaryTriple",
-        "dt": 0.02,
-        "runtime": 100000,
+        "dt": 0.001,
+        "runtime": 258230.82,
         "output_frequency": 1000,
         "initial_conditions": [
             (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
@@ -162,9 +107,9 @@ BENCHMARK_TESTS = [
     },
     {
         "name": "Test3_StrongerPerturbedTriple",
-        "dt": 0.01,
-        "runtime": 50000,
-        "output_frequency": 500,
+        "dt": 0.001,
+        "runtime": 258230.82,
+        "output_frequency": 1000,
         "initial_conditions": [
             (1.0,  -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
             (1.0,   0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
@@ -174,7 +119,7 @@ BENCHMARK_TESTS = [
     {
         "name": "Test4_ScatteringEscape",
         "dt": 0.02,
-        "runtime": 100000,
+        "runtime": 129115.42,
         "output_frequency": 1000,
         "initial_conditions": [
             (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
@@ -184,9 +129,9 @@ BENCHMARK_TESTS = [
     },
     {
         "name": "Test5_Figure8",
-        "dt": 0.001,
-        "runtime": 1000,
-        "output_frequency": 10,
+        "dt": 0.02,
+        "runtime": 367677.02,
+        "output_frequency": 10000,
         "initial_conditions": [
             (1.0, -0.97000436,  0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
             (1.0,  0.97000436, -0.24308753, 0.0,  0.008019029,  0.007436436, 0.0),
@@ -196,52 +141,52 @@ BENCHMARK_TESTS = [
     {
         "name": "Test6_CloseEncounter",
         "dt": 0.002,
-        "runtime": 10000,
-        "output_frequency": 100,
+        "runtime": 10329.232,
+        "output_frequency": 10000,
         "initial_conditions": [
             (1.0,  -0.5, 0.0, 0.0,  0.0,    -0.012166, 0.0),
             (1.0,   0.5, 0.0, 0.0,  0.0,     0.012166, 0.0),
             (0.01,  1.2, 0.2, 0.0, -0.0020,  0.0040,   0.0),
         ],
     },
-    {
-        "name": "Test7_SolarSystem",
-        "dt": 1.0,
-        "runtime": 36525,
-        "output_frequency": 100,
-        "initial_conditions": [
-            (1.0,        0.0,            0.0,            0.0,  0.0,            0.0,            0.0),
-            (1.6601e-7,  0.3637531341,   0.1323953134,   0.0, -0.0094579726,  0.0259855662,  0.0),
-            (2.4478e-6,  0.1872120975,   0.6986850598,   0.0, -0.0195403467,  0.0052358201,  0.0),
-            (3.0035e-6, -0.6427876097,   0.7660444431,   0.0, -0.0131798787, -0.0110592314,  0.0),
-            (3.2272e-7, -1.3195447212,  -0.7618395000,   0.0,  0.0069691551, -0.0120709307,  0.0),
-            (9.5458e-4,  2.6022000000,  -4.5071426115,   0.0,  0.0065344536,  0.0037726685,  0.0),
-            (2.8588e-4,  7.3406974806,   6.1595765486,   0.0, -0.0035730960,  0.0042582500,  0.0),
-            (4.3662e-5, -18.0593886633,  6.5730799225,   0.0, -0.0013423302, -0.0036880218,  0.0),
-            (5.1514e-5, -5.2285466296, -29.6525614432,   0.0,  0.0030879059, -0.0005444811,  0.0),
-        ],
-    },
-    {
-        "name": "Test8_SolarSystemInnerPlanets",
-        "dt": 0.1,
-        "runtime": 36525,
-        "output_frequency": 10,
-        "initial_conditions": [
-            (1.0,        0.0,            0.0,           0.0,  0.0,            0.0,            0.0),
-            (1.6601e-7,  0.3637531341,   0.1323953134,  0.0, -0.0094579726,  0.0259855662,  0.0),
-            (2.4478e-6,  0.1872120975,   0.6986850598,  0.0, -0.0195403467,  0.0052358201,  0.0),
-            (3.0035e-6, -0.6427876097,   0.7660444431,  0.0, -0.0131798787, -0.0110592314,  0.0),
-            (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
-        ],
-    },
+    # {
+    #     "name": "Test7_SolarSystem",
+    #     "dt": 1.0,
+    #     "runtime": 1668096750000.0,
+    #     "output_frequency": 100000,
+    #     "initial_conditions": [
+    #         (1.0,        0.0,            0.0,            0.0,  0.0,            0.0,            0.0),
+    #         (1.6601e-7,  0.3637531341,   0.1323953134,   0.0, -0.0094579726,  0.0259855662,  0.0),
+    #         (2.4478e-6,  0.1872120975,   0.6986850598,   0.0, -0.0195403467,  0.0052358201,  0.0),
+    #         (3.0035e-6, -0.6427876097,   0.7660444431,   0.0, -0.0131798787, -0.0110592314,  0.0),
+    #         (3.2272e-7, -1.3195447212,  -0.7618395000,   0.0,  0.0069691551, -0.0120709307,  0.0),
+    #         (9.5458e-4,  2.6022000000,  -4.5071426115,   0.0,  0.0065344536,  0.0037726685,  0.0),
+    #         (2.8588e-4,  7.3406974806,   6.1595765486,   0.0, -0.0035730960,  0.0042582500,  0.0),
+    #         (4.3662e-5, -18.0593886633,  6.5730799225,   0.0, -0.0013423302, -0.0036880218,  0.0),
+    #         (5.1514e-5, -5.2285466296, -29.6525614432,   0.0,  0.0030879059, -0.0005444811,  0.0),
+    #     ],
+    # },
+    # {
+    #     "name": "Test8_SolarSystemInnerPlanets",
+    #     "dt": 1.0,
+    #     "runtime": 1668096750000.0,
+    #     "output_frequency": 100000,
+    #     "initial_conditions": [
+    #         (1.0,        0.0,            0.0,           0.0,  0.0,            0.0,            0.0),
+    #         (1.6601e-7,  0.3637531341,   0.1323953134,  0.0, -0.0094579726,  0.0259855662,  0.0),
+    #         (2.4478e-6,  0.1872120975,   0.6986850598,  0.0, -0.0195403467,  0.0052358201,  0.0),
+    #         (3.0035e-6, -0.6427876097,   0.7660444431,  0.0, -0.0131798787, -0.0110592314,  0.0),
+    #         (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
+    #     ],
+    # },
     {
         "name": "Test9_HernandezTest1",
         "dt": 0.0008718353300301555,
         "runtime": 81.3712974694812,
         "output_frequency": 20,
         "initial_conditions": [
-            (0.5, -0.0595, 0.0, 0.0, 0.0, -0.0582073219045089, 0.0),
-            (0.5, -0.0405, 0.0, 0.0, 0.0, -0.0187361524126806, 0.0),
+            (0.5, -0.0595, 0.0, 0.0, 0.0, -0.0582073046905078, 0.0),
+            (0.5, -0.0405, 0.0, 0.0, 0.0, -0.0187361351991833, 0.0),
             (1.0, 0.05,   0.0, 0.0, 0.0,  0.0384717371585948, 0.0),
         ],
     },
@@ -262,111 +207,6 @@ BENCHMARK_TESTS = [
 ]
 
 # ============================================================
-# Pair-Order Policy Benchmark Tests
-# ============================================================
-
-PAIR_ORDER_POLICY_MODES = [
-    {
-        "name": "pair_order_canonical_fixed",
-        "integrator": "hernandez",
-        "pair_order": "canonical",
-        "pair_order_policy_status": "production_default",
-        "expected_effective_pair_order": "canonical",
-    },
-    {
-        "name": "pair_order_strength_fixed",
-        "integrator": "hernandez",
-        "pair_order": "strength",
-        "pair_order_policy_status": "optional_fixed_step_diagnostic",
-        "expected_effective_pair_order": "strength",
-    },
-    {
-        "name": "pair_order_auto_fixed",
-        "integrator": "hernandez",
-        "pair_order": "auto",
-        "pair_order_policy_status": "conservative_auto_expected_canonical",
-        "expected_effective_pair_order": "canonical",
-    },
-]
-
-PAIR_ORDER_POLICY_TESTS = [
-    BENCHMARK_TESTS[0],  # Binary
-    BENCHMARK_TESTS[2],  # Stronger perturbed triple
-    BENCHMARK_TESTS[3],  # Scattering escape
-    BENCHMARK_TESTS[5],  # Close encounter
-]
-
-# ============================================================
-# Energy Boundedness Tests
-# ============================================================
-
-ENERGY_BOUNDEDNESS_MODES = [
-    {
-        "name": "hernandez_canonical_fixed",
-        "integrator": "hernandez",
-        "pair_order": "canonical",
-    },
-]
-
-ENERGY_BOUNDEDNESS_CASES = [
-    {
-        "name": "E1_LongBinary_CartesianHernandez",
-        "description": "Long isolated binary boundedness test for Cartesian Hernandez canonical fixed.",
-        "modes": [ENERGY_BOUNDEDNESS_MODES[0]],
-        "test": {
-            "name": "E1_LongBinary",
-            "dt": 0.1,
-            "runtime": 100000,
-            "output_frequency": 1000,
-            "initial_conditions": [
-                (1.0, -0.5, 0.0, 0.0, 0.0, -0.012166, 0.0),
-                (1.0,  0.5, 0.0, 0.0, 0.0,  0.012166, 0.0),
-            ],
-        },        
-    },
-    {
-        "name": "E2_FullSolarSystem_Secular",
-        "description": "Long solar-system secular boundedness comparison.",
-        "modes": ENERGY_BOUNDEDNESS_MODES,
-        "test": {
-            "name": "E2_FullSolarSystem",
-            "dt": 1.0,
-            "runtime": 36525,
-            "output_frequency": 100,
-            "initial_conditions": [
-                (1.0,        0.0,            0.0,            0.0,  0.0,            0.0,            0.0),
-                (1.6601e-7,  0.3637531341,   0.1323953134,   0.0, -0.0094579726,  0.0259855662,  0.0),
-                (2.4478e-6,  0.1872120975,   0.6986850598,   0.0, -0.0195403467,  0.0052358201,  0.0),
-                (3.0035e-6, -0.6427876097,   0.7660444431,   0.0, -0.0131798787, -0.0110592314,  0.0),
-                (3.2272e-7, -1.3195447212,  -0.7618395000,   0.0,  0.0069691551, -0.0120709307,  0.0),
-                (9.5458e-4,  2.6022000000,  -4.5071426115,   0.0,  0.0065344536,  0.0037726685,  0.0),
-                (2.8588e-4,  7.3406974806,   6.1595765486,   0.0, -0.0035730960,  0.0042582500,  0.0),
-                (4.3662e-5, -18.0593886633,  6.5730799225,   0.0, -0.0013423302, -0.0036880218,  0.0),
-                (5.1514e-5, -5.2285466296, -29.6525614432,   0.0,  0.0030879059, -0.0005444811,  0.0),
-            ],
-        },        
-    },
-    {
-        "name": "E3_InnerPlanets_Secular",
-        "description": "Inner-planets boundedness comparison.",
-        "modes": ENERGY_BOUNDEDNESS_MODES,
-        "test": {
-            "name": "E3_InnerPlanets",
-            "dt": 0.1,
-            "runtime": 36525,
-            "output_frequency": 10,
-            "initial_conditions": [
-                (1.0,        0.0,            0.0,           0.0,  0.0,            0.0,            0.0),
-                (1.6601e-7,  0.3637531341,   0.1323953134,  0.0, -0.0094579726,  0.0259855662,  0.0),
-                (2.4478e-6,  0.1872120975,   0.6986850598,  0.0, -0.0195403467,  0.0052358201,  0.0),
-                (3.0035e-6, -0.6427876097,   0.7660444431,  0.0, -0.0131798787, -0.0110592314,  0.0),
-                (3.2272e-7, -1.3195447212,  -0.7618395000,  0.0,  0.0069691551, -0.0120709307,  0.0),
-            ],
-        },        
-    }
-]
-
-# ============================================================
 # Reading data
 # ============================================================
 
@@ -376,19 +216,18 @@ def read_param(param_path: Path = DEFAULT_PARAM_PATH) -> dict:
     
     params = {}
 
-    for line in param_path.read_text().splitlines():
+    for line_number, line in enumerate(param_path.read_text().splitlines(), start=1):
         stripped = line.strip()
 
         if not stripped or stripped.startswith("#"):
             continue
         
         parts = stripped.split()
-
-        if len(parts) < 2:
-            continue
-
-        key = parts[0]
-        value = parts[1]
+        if len(parts) != 2:
+            raise ValueError(f"Param file line {line_number} must have exactly 2 values: key value")
+        key, value = parts
+        if key in params:
+            raise ValueError(f"Duplicate key '{key!r}' found in param file at line {line_number}.")
         params[key] = value
     
     return params
@@ -403,9 +242,7 @@ def read_initial_conditions(path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> lis
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
-
         parts = stripped.split()
-
         if len(parts) not in (7, 8):
             raise ValueError(f"Initial-conditions line {line_number} must have 7 or 8 values: mass x y z vx vy vz [radius]")
         
@@ -449,8 +286,6 @@ def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | No
         df["kinetic_energy"] = np.nan
     if "potential_energy" not in df.columns:
         df["potential_energy"] = np.nan
-    if "shadow_energy" not in df.columns:
-        df["shadow_energy"] = df["total_energy"]
     if "timestep" not in df.columns:
         time = df["time"].to_numpy(dtype=float)
         if len(time) >= 2:
@@ -480,98 +315,11 @@ def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | No
             else:
                 df[column] = np.nan
     
-    diagnostics = df.sort_values(by="time").reset_index(drop=True)
-    diagnostics = add_diagnostics_error_columns(diagnostics, PlotConfig())
-    return diagnostics
-
-# ============================================================
-# REBOUND comparison helpers
-# ============================================================
-
-def rebound_require():
-    try:
-        import rebound
-    except ImportError as exc:
-        raise RuntimeError("REBOUND is not installed. Install it with: pip install rebound") from exc
-    return rebound
-
-def rebound_run_simulation(initial_conditions: list[tuple[float, float, float, float, float, float, float]], 
-                            dt: float, runtime: float, 
-                            output_frequency: int, 
-                            G: float = 0.000296014912,
-                            rebound_integrator: str = "whfast",
-                            move_to_com: bool = False,
-                            config: PlotConfig | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Run the same physical Cartesian initial conditions wiht REBOUND.
-    The returned output DataFrame uses the same columns as FewBodyNC output.csv:
-        time, id, x, y, z, vx, vy, vz, mass
-    Diagnostics are recomputed with this file's diagnostics routine.
-    The benchmark table compares REBOUND and FewBodyNC using the same metric code.
-    """
-
-    rebound = rebound_require()
-
-    if config is None:
-        config = PlotConfig(G=G)
-    else: config = PlotConfig(G=G, epsilon=config.epsilon, figure_size=config.figure_size, orbit_marker_size=config.orbit_marker_size, start_marker_size=config.start_marker_size)
-    
-    sim = rebound.Simulation()
-    sim.G = G
-    sim.integrator = rebound_integrator
-    sim.dt = dt
-    
-    for row in initial_conditions:
-        mass, x, y, z, vx, vy, vz = row
-        sim.add(m=mass, x=x, y=y, z=z, vx=vx, vy=vy, vz=vz)
-
-    if move_to_com:
-        sim.move_to_com()
-
-    times = benchmark_output_times(dt=dt, runtime=runtime, output_frequency=output_frequency)
-    output_rows = []
-    
-    for time_value in times:
-        if abs(float(time_value) - sim.t) > 1e-15:
-            try:
-                sim.integrate(float(time_value), exact_finish_time=1)
-            except:
-                sim.integrate(float(time_value))
-        for body_id, particle in enumerate(sim.particles):
-            output_rows.append({"time": float(time_value),
-                                "id": body_id,
-                                "x": particle.x,
-                                "y": particle.y,
-                                "z": particle.z,
-                                "vx": particle.vx,
-                                "vy": particle.vy,
-                                "vz": particle.vz,
-                                "mass": particle.m,})
-    
-    output = pd.DataFrame(output_rows)
-    output = output.sort_values(by=["time", "id"]).reset_index(drop=True)
-    diagnostics = compute_diagnostics_from_output(output, config)
-
-    return output, diagnostics
+    return df.sort_values(by=["time"]).reset_index(drop=True)
 
 # ============================================================
 # Helper Functions
 # ============================================================
-
-def benchmark_output_times(dt: float, runtime: float, output_frequency: int) -> np.ndarray:
-    if dt <= 0.0:
-        raise ValueError("dt must be positive for REBOUND comparison")
-    if runtime < 0.0:
-        raise ValueError("runtime must be non-negative for REBOUND comparison")
-    
-    output_frequency = max(int(output_frequency), 1)
-    total_steps = int(np.ceil(runtime / dt))
-    step_numbers = list(range(0, total_steps + 1, output_frequency))
-
-    if not step_numbers or step_numbers[-1] != total_steps:
-        step_numbers.append(total_steps)
-    
-    return np.array(step_numbers, dtype=float) * float(dt)
 
 def append_benchmark_row(benchmark_rows: list[dict],
                          run_number: int,
@@ -597,7 +345,6 @@ def append_benchmark_row(benchmark_rows: list[dict],
         config = PlotConfig()
     body_count = len(test.get("initial_conditions", []))
     row = {"run_number": run_number,
-           "engine": engine,
            "mode": mode["name"],
            "integrator": mode["integrator"],
            "pair_order": mode.get("pair_order", "canonical"),
@@ -648,11 +395,7 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "initial_com_drift": np.nan,
            "final_com_drift": np.nan,
            "max_dRcm": np.nan,
-           "final_dRcm": np.nan,
-           "rebound_compare": False,
-           "rebound_integrator": "",
-           "rebound_status": "not_requested",
-           "rebound_error": ""}
+           "final_dRcm": np.nan}
     
     if failure_details is not None:
         row.update(failure_details)
@@ -685,18 +428,9 @@ def append_benchmark_row(benchmark_rows: list[dict],
                     "final_com_drift": xcm[-1] if len(xcm) else np.nan,
                     "max_dRcm": metric_summary["max_dRcm"],
                     "final_dRcm": metric_summary["final_dRcm"],})
-        row.update(energy_boundedness_summary(diagnostics, config))
-    if rebound_comparison is not None:
-        row.update(rebound_comparison)
-    
-    benchmark_rows.append(row)
+        row.update(energy_drift_summary(diagnostics, config))
 
-def _safe_ratio(numerator: float, denominator: float, epsilon:float = 1e-300) -> float:
-    if not np.isfinite(numerator) or not np.isfinite(denominator):
-        return float("nan")
-    if abs(denominator) <= epsilon:
-        return float("nan")
-    return float(numerator / denominator)
+    benchmark_rows.append(row)
 
 def finite_log2_ratio(coarse_error: float, fine_error: float) -> float:
     if not np.isfinite(coarse_error) or not np.isfinite(fine_error):
@@ -704,118 +438,6 @@ def finite_log2_ratio(coarse_error: float, fine_error: float) -> float:
     if coarse_error <= 0.0 or fine_error <= 0.0:
         return float("nan")
     return float(np.log2(coarse_error / fine_error))
-
-def compare_diagnostics_to_rebound(fewbody_diagnostics: pd.DataFrame, rebound_diagnostics: pd.DataFrame, config: PlotConfig, rebound_integrator: str) -> dict:
-    comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "success", "rebound_error": ""}
-
-    few = fewbody_diagnostics.copy()
-    ref = rebound_diagnostics.copy()
-    few["time_key"] = np.round(few["time"].to_numpy(dtype=float), 12)
-    ref["time_key"] = np.round(ref["time"].to_numpy(dtype=float), 12)
-    merged = few.merge(ref, on="time_key", suffixes=("_fewbody", "_rebound"))
-
-    comparison["rebound_matched_diagnostic_rows"] = int(len(merged))
-
-    if merged.empty:
-        comparison["rebound_status"] = "warning"
-        comparison["rebound_error"] = "No matching diagnostic output times"
-        return comparison
-    
-    def add_series_comparison(metric:str, label:str) -> None:
-        few_values = merged[f"{metric}_fewbody"].to_numpy(dtype=float)
-        ref_values = merged[f"{metric}_rebound"].to_numpy(dtype=float)
-        diff = few_values - ref_values
-        abs_diff = np.abs(diff)
-        rel_diff = abs_diff / np.maximum(np.abs(ref_values), config.epsilon)
-
-        comparison[f"rms_{label}_difference_vs_rebound"] = float(np.sqrt(np.nanmean(diff * diff)))
-        comparison[f"max_abs_{label}_difference_vs_rebound"] = compute_finite_max(abs_diff)
-        comparison[f"max_rel_{label}_difference_vs_rebound"] = compute_finite_max(rel_diff)
-        comparison[f"final_{label}_difference_vs_rebound"] = float(diff[-1])
-        comparison[f"final_abs_{label}_difference_vs_rebound"] = float(abs_diff[-1])
-        comparison[f"final_rel_{label}_difference_vs_rebound"] = float(rel_diff[-1])
-    
-    add_series_comparison("total_energy", "energy")
-    add_series_comparison("angular_momentum", "angular_momentum")
-    add_series_comparison("linear_momentum", "linear_momentum")
-    add_series_comparison("com_drift", "com_drift")
-
-    rebound_summary = error_diagnostic_metric_summary(rebound_diagnostics, config)
-    few_summary = error_diagnostic_metric_summary(fewbody_diagnostics, config)
-
-    for key, value in rebound_summary.items():
-        comparison[f"rebound_{key}"] = value
-    for key, few_value in few_summary.items():
-        rebound_value = rebound_summary.get(key, np.nan)
-        comparison[f"difference_{key}_vs_rebound"] = (float(few_value - rebound_value)
-                                                      if np.isfinite(few_value) and np.isfinite(rebound_value) else float("nan"))
-        comparison[f"ratio_{key}_to_rebound"] = _safe_ratio(few_value, rebound_value, config.epsilon)
-
-    return comparison
-
-def compare_output_to_rebound(fewbody_output: pd.DataFrame, rebound_output: pd.DataFrame, comparison: dict) -> dict:
-    few = fewbody_output.copy()
-    ref = rebound_output.copy()
-    few["time_key"] = np.round(few["time"].to_numpy(dtype=float), 12)
-    ref["time_key"] = np.round(ref["time"].to_numpy(dtype=float), 12)
-    merged = few.merge(ref, on=["time_key", "id"], suffixes=("_fewbody", "_rebound"))
-    comparison["rebound_matched_diagnostic_rows"] = int(len(merged))
-
-    if merged.empty:
-        comparison["rebound_status"] = "warning"
-        comparison["rebound_error"] = "No matching output rows for position/velocity comparison"
-        return comparison
-    
-    dx = merged["x_fewbody"].to_numpy(dtype=float) - merged["x_rebound"].to_numpy(dtype=float)
-    dy = merged["y_fewbody"].to_numpy(dtype=float) - merged["y_rebound"].to_numpy(dtype=float)
-    dz = merged["z_fewbody"].to_numpy(dtype=float) - merged["z_rebound"].to_numpy(dtype=float)
-    dvx = merged["vx_fewbody"].to_numpy(dtype=float) - merged["vx_rebound"].to_numpy(dtype=float)
-    dvy = merged["vy_fewbody"].to_numpy(dtype=float) - merged["vy_rebound"].to_numpy(dtype=float)
-    dvz = merged["vz_fewbody"].to_numpy(dtype=float) - merged["vz_rebound"].to_numpy(dtype=float)
-    
-    position_error = np.sqrt(dx * dx + dy * dy + dz * dz)
-    velocity_error = np.sqrt(dvx * dvx + dvy * dvy + dvz * dvz)
-
-    comparison["rms_position_error_vs_rebound_all_outputs"] = float(np.sqrt(np.nanmean(position_error * position_error)))
-    comparison["max_position_error_vs_rebound_all_outputs"] = compute_finite_max(position_error)
-    comparison["rms_velocity_error_vs_rebound_all_outputs"] = float(np.sqrt(np.nanmean(velocity_error * velocity_error)))
-    comparison["max_velocity_error_vs_rebound_all_outputs"] = compute_finite_max(velocity_error)
-
-    final_time_key = merged["time_key"].max()
-    final_rows = merged[merged["time_key"] == final_time_key]
-
-    fdx = final_rows["x_fewbody"].to_numpy(dtype=float) - final_rows["x_rebound"].to_numpy(dtype=float)
-    fdy = final_rows["y_fewbody"].to_numpy(dtype=float) - final_rows["y_rebound"].to_numpy(dtype=float)
-    fdz = final_rows["z_fewbody"].to_numpy(dtype=float) - final_rows["z_rebound"].to_numpy(dtype=float)
-    fdvx = final_rows["vx_fewbody"].to_numpy(dtype=float) - final_rows["vx_rebound"].to_numpy(dtype=float)
-    fdvy = final_rows["vy_fewbody"].to_numpy(dtype=float) - final_rows["vy_rebound"].to_numpy(dtype=float)
-    fdvz = final_rows["vz_fewbody"].to_numpy(dtype=float) - final_rows["vz_rebound"].to_numpy(dtype=float)
-
-    final_position_error = np.sqrt(fdx * fdx + fdy * fdy + fdz * fdz)
-    final_velocity_error = np.sqrt(fdvx * fdvx + fdvy * fdvy + fdvz * fdvz)
-
-    comparison["final_rms_position_error_vs_rebound"] = float(np.sqrt(np.nanmean(final_position_error * final_position_error)))
-    comparison["final_max_position_error_vs_rebound"] = compute_finite_max(final_position_error)
-    comparison["final_rms_velocity_error_vs_rebound"] = float(np.sqrt(np.nanmean(final_velocity_error * final_velocity_error)))
-    comparison["final_max_velocity_error_vs_rebound"] = compute_finite_max(final_velocity_error)
-
-
-    return comparison
-
-def compare_fewbody_to_rebound(fewbody_output: pd.DataFrame, 
-                               fewbody_diagnostics: pd.DataFrame, 
-                               rebound_output: pd.DataFrame, 
-                               rebound_diagnostics: pd.DataFrame, 
-                               config: PlotConfig, 
-                               rebound_integrator: str) -> dict:
-    comparison = compare_diagnostics_to_rebound(fewbody_diagnostics=fewbody_diagnostics, rebound_diagnostics=rebound_diagnostics, config=config, rebound_integrator=rebound_integrator)
-    comparison = compare_output_to_rebound(fewbody_output=fewbody_output, rebound_output=rebound_output, comparison=comparison)
-    return comparison
-
-def tail_text(text: str | None, max_chars: int = 4000) -> str:
-    if text is None:
-        return ""
-    return str(text)[-max_chars:]
 
 def safe_filename(name: str) -> str:
     safe = []
@@ -871,11 +493,6 @@ def parse_benchmark_failure_details(stdout_tail: str, stderr_tail: str, mode_nam
     
     return details
 
-def parse_bool_text(value, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
-
 def compact_benchmark_table(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     existing_columns = [column for column in columns if column in df.columns]
     compact = df[existing_columns].copy()
@@ -910,23 +527,22 @@ def finite_linear_slope(x: np.ndarray, y: np.ndarray) -> float:
     
     return float(np.sum(x_centered * y_centered) / denominator)
 
-def classify_energy_boundedness(max_abs_dE: float, final_abs_dE: float, drift_over_run: float, drift_fraction_of_max: float) -> str:
-    if not (np.isfinite(max_abs_dE) and np.isfinite(final_abs_dE) and np.isfinite(drift_over_run) and np.isfinite(drift_fraction_of_max)):
-        return "undetermined"
-    if max_abs_dE <= 1e-14:
-        return "bounded_like_machine_precision"
-    if drift_fraction_of_max <= 0.25 and final_abs_dE <= 0.75 * max_abs_dE:
-        return "bounded_like"
-    return "mixed_unclear"
+# def classify_energy_boundedness(max_abs_dE: float, final_abs_dE: float, drift_over_run: float, drift_fraction_of_max: float) -> str:
+#     if not (np.isfinite(max_abs_dE) and np.isfinite(final_abs_dE) and np.isfinite(drift_over_run) and np.isfinite(drift_fraction_of_max)):
+#         return "undetermined"
+#     if max_abs_dE <= 1e-14:
+#         return "bounded_like_machine_precision"
+#     if drift_fraction_of_max <= 0.25 and final_abs_dE <= 0.75 * max_abs_dE:
+#         return "bounded_like"
+#     return "mixed_unclear"
 
-def energy_boundedness_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> dict:
+def energy_drift_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> dict:
     if diagnostics is None or diagnostics.empty:
         return {"energy_drift_slope": float("nan"), 
                 "energy_abs_drift_slope": float("nan"), 
                 "energy_drift_over_run": float("nan"), 
                 "energy_drift_fraction_of_max": float("nan"), 
-                "energy_rms_dE_over_E0": float("nan"),
-                "energy_boundedness_class": "undetermined"}
+                "energy_rms_dE_over_E0": float("nan")}
     
     time = diagnostics["time"].to_numpy(dtype=float)
     energy = diagnostics["total_energy"].to_numpy(dtype=float)
@@ -949,18 +565,13 @@ def energy_boundedness_summary(diagnostics: pd.DataFrame, config: PlotConfig) ->
         drift_fraction_of_max = float("nan")
 
     finite_abs_dE = abs_dE[np.isfinite(abs_dE)]
-
-    if finite_abs_dE.size:
-        rms_dE = float(np.sqrt(np.mean(finite_abs_dE * finite_abs_dE)))
-    else:
-        rms_dE = float("nan")
+    rms_dE = float(np.sqrt(np.mean(finite_abs_dE * finite_abs_dE))) if finite_abs_dE.size else float("nan")
     
     return {"energy_drift_slope": energy_drift_slope, 
             "energy_abs_drift_slope": energy_abs_drift_slope, 
             "energy_drift_over_run": drift_over_run,
             "energy_drift_fraction_of_max": drift_fraction_of_max,
-            "energy_rms_dE_over_E0": rms_dE,
-            "energy_boundedness_class": classify_energy_boundedness(max_abs_dE=max_abs_dE, final_abs_dE=final_abs_dE, drift_over_run=drift_over_run, drift_fraction_of_max=drift_fraction_of_max)}
+            "energy_rms_dE_over_E0": rms_dE}
 
 def add_test_rank(df: pd.DataFrame, metric: str = "max_dE_over_E0", rank_column: str = "rank_in_test") -> pd.DataFrame:
     ranked = df.copy()
@@ -1012,8 +623,7 @@ def add_diagnostics_error_columns(diagnostics: pd.DataFrame, config: PlotConfig)
     for column in ["angular_momentum_x", "angular_momentum_y", "angular_momentum_z", 
                    "linear_momentum_x", "linear_momentum_y", "linear_momentum_z", 
                    "com_x", "com_y", "com_z",
-                   "com_vx", "com_vy", "com_vz",
-                   "shadow_energy", "total_energy"]:
+                   "com_vx", "com_vy", "com_vz", "total_energy"]:
         ensure_column(column)
 
     time = df["time"].to_numpy(dtype=float)
@@ -1050,13 +660,6 @@ def add_diagnostics_error_columns(diagnostics: pd.DataFrame, config: PlotConfig)
     df["dPcm_y"] = df["dPy"]
     df["dXcm"] = df["dRcm_x"]
     df["dYcm"] = df["dRcm_y"]
-
-    nine_columns = ["dLx", "dLy", "dLz", "dPx", "dPy", "dPz", "dCcm_x", "dCcm_y", "dCcm_z",]
-    nine = np.abs(df[nine_columns].to_numpy(dtype=float))
-    df["nine_integral_of_motion_error_max"] = np.nanmax(nine, axis=1)
-
-    if "dShadow_over_Shadow0" not in df.columns:
-        df["dShadow_over_Shadow0"] = error_relative(df["shadow_energy"].to_numpy(dtype=float), config.epsilon)
     
     return df
 
@@ -1069,6 +672,37 @@ def thin_for_plotting(time: np.ndarray, values: np.ndarray, max_points: int = 10
     
     indices = np.linspace(0, len(time) - 1, max_points).astype(int)
     return time[indices], values[indices]
+
+def load_diagnostics(output_df: pd.DataFrame, config: PlotConfig, path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame:
+    diagnostics = read_diagnostics(path)
+    required_components = {"linear_momentum_x", "linear_momentum_y", "linear_momentum_z",
+                           "angular_momentum_x", "angular_momentum_y", "angular_momentum_z",
+                           "com_x", "com_y", "com_z", "com_vx", "com_vy", "com_vz"}
+    if diagnostics is None:
+        print("No useable diagnostics file found. Computing diagnostics from output...")
+        return compute_diagnostics_from_output(output_df, config)
+    missing = sorted(required_components - set(diagnostics.columns))
+    unusable = []
+    for column in sorted(required_components & set(diagnostics.columns)):
+        values = pd.to_numeric(diagnostics[column], errors="coerce")
+        if not np.isfinite(values.to_numpy(dtype=float)).any():
+            unusable.append(column)
+    
+    if missing or unusable:
+        print(f"Diagnostics file is missing or unusable columns: {missing + unusable}. Computing diagnostics from output...")
+        return compute_diagnostics_from_output(output_df, config)
+    
+    return diagnostics
+
+def snapshot_optional_file(path: Path) -> bytes | None:
+    return path.read_bytes() if path.exists() else None
+
+def restore_optional_file(path: Path, content: bytes | None) -> None:
+    if content is None:
+        if path.exists():
+            path.unlink()
+    else:
+        path.write_bytes(content)
 
 # ============================================================
 # Compute Functions
@@ -1139,8 +773,6 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
     
     diagnostics = pd.DataFrame(rows).sort_values(by="time").reset_index(drop=True)
 
-    if "shadow_energy" not in diagnostics.columns:
-        diagnostics["shadow_energy"] = diagnostics["total_energy"]
     if "timestep" not in diagnostics.columns:
         times = diagnostics["time"].to_numpy(dtype=float)
         if len(times) >= 2:
@@ -1151,8 +783,7 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
         else:
             diagnostics["timestep"] = np.nan
 
-    diagnostics = add_diagnostics_error_columns(diagnostics, config)
-    return diagnostics
+    return add_diagnostics_error_columns(diagnostics, config)
 
 def compute_final_positions(df: pd.DataFrame) -> dict[int, np.ndarray]:
     final_time = df["time"].max()
@@ -1238,16 +869,16 @@ def error_signed_relative_energy(energy: np.ndarray, epsilon: float = 1e-300) ->
 
     return result
 
-def error_safe_log_values(values: np.ndarray, floor: float = 1e-300, ceiling: float = 1e50) -> np.ndarray:
-    values = np.asarray(values, dtype=float)
+# def error_safe_log_values(values: np.ndarray, floor: float = 1e-300, ceiling: float = 1e50) -> np.ndarray:
+#     values = np.asarray(values, dtype=float)
     
-    safe = np.full_like(values, np.nan, dtype=float)
-    finite = np.isfinite(values)
+#     safe = np.full_like(values, np.nan, dtype=float)
+#     finite = np.isfinite(values)
 
-    safe[finite] = np.abs(values[finite])
-    safe[finite] = np.clip(safe[finite], floor, ceiling)
+#     safe[finite] = np.abs(values[finite])
+#     safe[finite] = np.clip(safe[finite], floor, ceiling)
 
-    return safe
+#     return safe
 
 def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     diagnostics = add_diagnostics_error_columns(diagnostics, config)
@@ -1259,8 +890,6 @@ def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)
     dYcm = diagnostics["dRcm_y"].to_numpy(dtype=float)
 
-    nine = diagnostics["nine_integral_of_motion_error_max"].to_numpy(dtype=float)
-
     print("Summary of Diagnostics:")
     print(f"Max |dE/E0|:", compute_finite_max(dE))
     print(f"Max |dLz|:", compute_finite_max(dLz))
@@ -1268,7 +897,6 @@ def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     print(f"Max |dPcm_y|:", compute_finite_max(dPy))
     print(f"Max |dXcm|:", compute_finite_max(dXcm))
     print(f"Max |dYcm|:", compute_finite_max(dYcm))
-    print(f"Max nine-integral-of-motion error:", compute_finite_max(nine))
     print(f"Final dE/E0:", float(dE[-1]) if len(dE) else np.nan)
     print(f"Final dLz:", float(dLz[-1]) if len(dLz) else np.nan)
     print(f"Final dPcm_x:", float(dPx[-1]) if len(dPx) else np.nan)
@@ -1283,7 +911,6 @@ def error_diagnostic_metric_summary(diagnostics: pd.DataFrame, config: PlotConfi
     dLz = diagnostics["dLz"].to_numpy(dtype=float)
     dP = np.nanmax(diagnostics[["dPx", "dPy", "dPz"]].to_numpy(dtype=float), axis=1)
     dRcm = np.nanmax(diagnostics[["dRcm_x", "dRcm_y", "dRcm_z"]].to_numpy(dtype=float), axis=1)
-    nine = diagnostics["nine_integral_of_motion_error_max"].to_numpy(dtype=float)
 
     summary = {"max_dE_over_E0": compute_finite_max(dE),
                "final_dE_over_E0": float(dE[-1]) if len(dE) else np.nan,
@@ -1302,10 +929,9 @@ def error_diagnostic_metric_summary(diagnostics: pd.DataFrame, config: PlotConfi
                "max_dCcm_x": compute_finite_max(diagnostics["dCcm_x"].to_numpy(dtype=float)),
                "max_dCcm_y": compute_finite_max(diagnostics["dCcm_y"].to_numpy(dtype=float)),
                "max_dCcm_z": compute_finite_max(diagnostics["dCcm_z"].to_numpy(dtype=float)),
-               "overall_max_nine_integral_of_motion_error": compute_finite_max(nine),
-               "final_nine_integral_of_motion_error": float(nine[-1]) if len(nine) else np.nan}
-               
-    summary.update(energy_boundedness_summary(diagnostics, config))
+               }
+
+    summary.update(energy_drift_summary(diagnostics, config))
 
     return summary
 
@@ -1343,7 +969,8 @@ def plot_error(ax, time, values, title, ylabel, floor=1e-300, ymin_fixed=None, m
     time = np.asarray(time, dtype=float)
     values = np.asarray(values, dtype=float)
     time, values = thin_for_plotting(time, values, max_points=max_points)
-    y = error_safe_log_values(values, floor=floor)
+    y = np.abs(values)
+    y[y <= 0.0] = np.nan
 
     valid = np.isfinite(time) & np.isfinite(y)
 
@@ -1359,10 +986,9 @@ def plot_error(ax, time, values, title, ylabel, floor=1e-300, ymin_fixed=None, m
             ymin = max(ymin * 0.5, floor)
             ymax = min(ymax * 2.0, 1e50)
         
-        if ymin_fixed is not None and np.isfinite(ymin_fixed) and ymin_fixed > 0.0:
-            ymin = ymin_fixed
         if not np.isfinite(ymin) or ymin <= 0.0:
-            ymin = floor
+            positive = y[valid & (y > 0.0)]
+            ymin = float(np.nanmin(positive)) if positive.size else np.finfo(float).tiny
         if not np.isfinite(ymax) or ymax <= ymin:
             ymax = ymin * 10.0
         ax.set_ylim(ymin, ymax)
@@ -1397,22 +1023,22 @@ def plot_verification_suite(output_df: pd.DataFrame,
     plot_orbits(ax_orbit, output_df, config)
 
     ax_energy = fig.add_subplot(gs[0, 2])
-    plot_error(ax_energy, time, dE, "Relative Energy Error", r"$|\Delta E/E|$", floor=1e-20, ymin_fixed=1e-11)
+    plot_error(ax_energy, time, dE, "Relative Energy Error", r"$|\Delta E/E|$")
 
     ax_angular = fig.add_subplot(gs[0, 3])
-    plot_error(ax_angular, time, dL, "Angular Momentum Error", r"$|\Delta L|$", floor=1e-20, ymin_fixed=1e-20)
+    plot_error(ax_angular, time, dL, "Angular Momentum Error", r"$|\Delta L|$")
 
     ax_px = fig.add_subplot(gs[1, 2])
-    plot_error(ax_px, time, dPcm_x, "COM Momentum X Error", r"$|\Delta p_{\rm cm,x}|$", floor=1e-20, ymin_fixed=1e-20)
+    plot_error(ax_px, time, dPcm_x, "COM Momentum X Error", r"$|\Delta p_{\rm cm,x}|$")
 
     ax_py = fig.add_subplot(gs[1, 3])
-    plot_error(ax_py, time, dPcm_y, "COM Momentum Y Error", r"$|\Delta p_{\rm cm,y}|$", floor=1e-20, ymin_fixed=1e-20)
+    plot_error(ax_py, time, dPcm_y, "COM Momentum Y Error", r"$|\Delta p_{\rm cm,y}|$")
 
     ax_xcm = fig.add_subplot(gs[2, 2])
-    plot_error(ax_xcm, time, dXcm, "COM Drift X Error", r"$|\Delta x_{\rm cm}|$", floor=1e-20, ymin_fixed=1e-20)
+    plot_error(ax_xcm, time, dXcm, "COM Drift X Error", r"$|\Delta x_{\rm cm}|$")
 
     ax_ycm = fig.add_subplot(gs[2, 3])
-    plot_error(ax_ycm, time, dYcm, "COM Drift Y Error", r"$|\Delta y_{\rm cm}|$", floor=1e-20, ymin_fixed=1e-20)
+    plot_error(ax_ycm, time, dYcm, "COM Drift Y Error", r"$|\Delta y_{\rm cm}|$")
 
     if save_path is not None:
         title = f"FewBodyNC Verification Suite: {save_path.parent.name} / {save_path.stem}"
@@ -1430,21 +1056,6 @@ def plot_verification_suite(output_df: pd.DataFrame,
         plt.show()
     else:
         plt.close(fig)
-
-def plot_shadow_hamiltonian(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> None:
-    diagnostics = read_diagnostics(path)
-
-    if diagnostics is None:
-        raise FileNotFoundError(f"No usable diagnostics.csv found.")
-
-    time = diagnostics["time"].to_numpy()
-    shadow = diagnostics["shadow_energy"].to_numpy()
-
-    dH = error_relative(shadow)
-
-    fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
-    plot_error(ax, time, dH, "Shadow Hamiltonian Conservation", r"$|(\tilde{H} - \tilde{H}_0) / \tilde{H}_0|$", floor=1e-18)
-    plt.show()
 
 # ============================================================
 # Rewrite param.txt and initial_conditions.txt
@@ -1475,37 +1086,19 @@ def rewrite_param(dt: float,
 
     param_path.write_text("\n".join(replacements[key] for key in ordered_keys) + "\n")
 
-def rewrite_timestep_only(dt: float, param_path: Path = DEFAULT_PARAM_PATH) -> None:
-    if not param_path.exists():
-        raise FileNotFoundError(f"Could not find param file: {param_path}")
-    lines = param_path.read_text().splitlines()
-    updated = []
-    found_timestep = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("timestep"):
-            updated.append(f"timestep {dt}")
-            found_timestep = True
-        else:
-            updated.append(line)
-    if not found_timestep:
-        updated.append(f"timestep {dt}")
-
-    param_path.write_text("\n".join(updated) + "\n")
-
 """
 Write initial conditions in the exact format expected by the C++ reader:
     mass x y z vx vy vz
 No header row is written
 """
-def rewrite_initial_conditions(rows: list[tuple[float, float, float, float, float, float, float]], output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
+def rewrite_initial_conditions(rows: list[tuple[float, ...]], output_path: Path = DEFAULT_INITIAL_CONDITIONS_PATH) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_path.open("w") as f:
         for row in rows:
-            if len(row) != 7:
-                raise ValueError("Each initial-condition row must have 7 values: mass, x, y, z, vx, vy, vz")
-            f.write(f"{row[0]:.16g} " f"{row[1]:.16g} {row[2]:.16g} {row[3]:.16g} " f"{row[4]:.16g} {row[5]:.16g} {row[6]:.16g}\n")
+            if len(row) not in (7, 8):
+                raise ValueError("Each initial-condition row must have 7 or 8 values: mass, x, y, z, vx, vy, vz, [radius]")
+            f.write(" ".join(f"{value:.16g}" for value in row) + "\n")
 
 # ============================================================
 # Run executable and other tests
@@ -1528,66 +1121,63 @@ Only the timestep is changed during the sweep.
 The original param.txt is restored afterward.
 """
 def run_convergence_case(case_name: str, 
-                         initial_conditions: list[tuple[float, float, float, float, float, float, float]], 
-                         dt_ref: float, 
-                         dts: tuple, 
+                         initial_conditions: list[tuple[float, ...]],  
+                         dts: tuple[float, ...], 
                          runtime: float, 
-                         output_frequency: int, 
+                         base_dt: float,
+                         base_output_frequency: int, 
                          integrator: str,
                          pair_order: str,
-                         G: float,
-                         use_diagnostics_csv: bool = True) -> pd.DataFrame:
+                         G: float) -> pd.DataFrame:
     config = PlotConfig(G=G)
     rows = []
+    final_positions_by_dt = {}
+    coarse_steps = max(1, int(round(runtime / base_dt)))
+    aligned_runtime = coarse_steps * base_dt
+    physical_output_interval = base_output_frequency * base_dt
 
     print("\n" + "-" * 90)
     print(f"Convergence case: {case_name}")
     print(f"integrator           = {integrator}")
     print(f"pair_order           = {pair_order}")
-    print(f"runtime              = {runtime}")
-    print(f"output_frequency     = {output_frequency}")
+    print(f"runtime              = {aligned_runtime}")
+    print(f"output_frequency     = {physical_output_interval}")
     print(f"G                    = {G}")
-    print(f"reference dt         = {dt_ref}")
     print(f"dt ladder            = {dts}")
     print("-" * 90)
 
     rewrite_initial_conditions(initial_conditions)
 
-    print(f"\nRunning reference solutions: dt = {dt_ref}")
-    rewrite_param(dt=dt_ref, runtime=runtime, output_frequency=output_frequency, integrator=integrator, G=G, pair_order=pair_order)
-    clear_simulation_outputs()
-    run_executable()
-    reference_output = read_output(DEFAULT_OUTPUT_PATH)
-    reference_positions = compute_final_positions(reference_output)
-
     for dt in dts:
-        print(f"\nRunning {case_name}: dt = {dt}")
-        rewrite_param(dt=dt, runtime=runtime, output_frequency=output_frequency, integrator=integrator, G=G, pair_order=pair_order)
+        refinement = base_dt / dt
+        step_count = int(round(coarse_steps * refinement))
+        run_runtime = step_count * dt
+        output_frequency = max(1, int(round(physical_output_interval / dt)))
+
+        print(f"\nRunning {case_name}: dt = {dt}, steps = {step_count}, final time = {run_runtime}")
+        rewrite_param(dt=dt, runtime=run_runtime, output_frequency=output_frequency, integrator=integrator, G=G, pair_order=pair_order)
         param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
         clear_simulation_outputs()
         try:
             run_executable()
             output = read_output(DEFAULT_OUTPUT_PATH)
-            if use_diagnostics_csv:
-                diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
-                if diagnostics is None:
-                    print("Falling back to recomputing diagnostics from output.csv")
-                    diagnostics = compute_diagnostics_from_output(output, config)
-            else:
-                diagnostics = compute_diagnostics_from_output(output, config)
-            final_positions = compute_final_positions(output)
-            rms_error = error_rms_position(final_positions, reference_positions)
+            diagnostics = load_diagnostics(output, config)
+            final_time = float(output["time"].max())
+            time_tolerance = 64.0 * np.finfo(float).eps * max(1.0, abs(aligned_runtime))
+            if not np.isclose(final_time, aligned_runtime, rtol=0.0, atol=time_tolerance):
+                raise ValueError(f"Convergence run ended at {final_time:.17g}, expected {aligned_runtime:.17g} (tolerance {time_tolerance:.17g})")
+            final_positions_by_dt[dt] = compute_final_positions(output)
             diagnostics_summary = error_diagnostic_metric_summary(diagnostics, config)
             row = {
                 "case": case_name,
                 "dt": dt,
-                "dt_ref": dt_ref,
-                "runtime": runtime,
+                "runtime": aligned_runtime,
+                "steps": step_count,
                 "output_frequency": output_frequency,
                 "integrator": integrator,
                 "pair_order": pair_order,
                 "G": G,
-                "rms_final_position_error": rms_error,
+                "self_convergence_error": np.nan,
                 "error_ratio_to_next_finer": np.nan,
                 "observed_order_to_next_finer": np.nan,
                 "status": "success",
@@ -1599,13 +1189,13 @@ def run_convergence_case(case_name: str,
             row = {
                 "case": case_name,
                 "dt": dt,
-                "dt_ref": dt_ref,
-                "runtime": runtime,
+                "runtime": aligned_runtime,
+                "steps": step_count,
                 "output_frequency": output_frequency,
                 "integrator": integrator,
                 "pair_order": pair_order,
                 "G": G,
-                "rms_final_position_error": np.nan,
+                "self_convergence_error": np.nan,
                 "error_ratio_to_next_finer": np.nan,
                 "observed_order_to_next_finer": np.nan,
                 "max_dE_over_E0": np.nan,
@@ -1621,43 +1211,54 @@ def run_convergence_case(case_name: str,
                 "param_snapshot": param_snapshot if "param_snapshot" in locals() else "",
             }
             print(f"Convergence run failed: {exc}")
-        
         rows.append(row)
     rows = sorted(rows, key=lambda item: item["dt"], reverse=True)
 
     for i in range(len(rows) - 1):
         coarse = rows[i]
         fine = rows[i + 1]
-        coarse_error = coarse["rms_final_position_error"]
-        fine_error = fine["rms_final_position_error"]
-
-        if (coarse["status"] == "success" and fine["status"] == "success" and np.isfinite(coarse_error) and np.isfinite(fine_error) and fine_error > 0.0):
-            coarse["error_ratio_to_next_finer"] = coarse_error / fine_error
-            coarse["observed_order_to_next_finer"] = finite_log2_ratio(coarse_error, fine_error)
+        if coarse["status"] == "success" and fine["status"] == "success":
+            coarse_positions = final_positions_by_dt[coarse["dt"]]
+            fine_positions = final_positions_by_dt[fine["dt"]]
+            if coarse_positions is not None and fine_positions is not None:
+                coarse["self_convergence_error"] = error_rms_position(coarse_positions, fine_positions)
+    for i in range(len(rows) - 1):
+        coarse_error = rows[i]["self_convergence_error"]
+        fine_error = rows[i + 1]["self_convergence_error"]
+        if np.isfinite(coarse_error) and np.isfinite(fine_error) and coarse_error > 0.0 and fine_error > 0.0:
+            rows[i]["error_ratio_to_next_finer"] = coarse_error / fine_error
+            rows[i]["observed_order_to_next_finer"] = finite_log2_ratio(coarse_error, fine_error)
         
-    print("\nConvergence ratios:")
+    print("\nSelf-convergence ratios:")
     for row in rows:
         print(f"   dt = {row['dt']:.8g}, "
-                f"error = {row['rms_final_position_error']:.6e}, "
-                f"ratio = {row['error_ratio_to_next_finer']:.6e}, "
-                f"order = {row['observed_order_to_next_finer']:.6e}")
+              f"error = {row['self_convergence_error']:.6e}, "
+              f"ratio = {row['error_ratio_to_next_finer']:.6e}, "
+              f"order = {row['observed_order_to_next_finer']:.6e}")
         
     return pd.DataFrame(rows)
 
-def run_timestep_scaling_study(dt_ref: float = 0.00025,  
-                               dts: tuple = (0.01, 0.005, 0.0025, 0.00125),  
+def run_timestep_scaling_study(dts_multiples: tuple[float, ...] = (1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125),
                                param_path: Path = DEFAULT_PARAM_PATH,
-                               use_diagnostics_csv: bool = True,
                                output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "convergence") -> pd.DataFrame:
     params = read_param(param_path)
-
-    runtime = float(params.get("runtime", 1.0))
-    output_frequency = int(params.get("output_frequency", 10))
-    integrator = params.get("integrator", "hernandez")
-    pair_order = params.get("pair_order", "canonical")
-    G = float(params.get("gravitational_constant", 0.000296014912))
-
+    dt = float(params["timestep"])
+    runtime = float(params["runtime"])
+    output_frequency = int(params["output_frequency"])
+    integrator = params["integrator"]
+    pair_order = params["pair_order"]
+    G = float(params["gravitational_constant"])
     initial_conditions = read_initial_conditions(DEFAULT_INITIAL_CONDITIONS_PATH)
+
+    if dt <= 0.0 or runtime <= 0.0 or output_frequency <= 0:
+        raise ValueError("Convergence requires positive timestep, runtime, and output_frequency.")
+    if not dts_multiples or dts_multiples[0] != 1.0:
+        raise ValueError("The convergence ladder must begin with 1.0 times the current timestep.")
+    if any(not np.isfinite(m) or m <= 0.0 for m in dts_multiples):
+        raise ValueError("All convergence ladder multiples must be positive finite numbers.")
+    for previous, current in zip(dts_multiples, dts_multiples[1:]):
+        if not np.isclose(current, 0.5 * previous, rtol=0.0, atol=16.0 * np.finfo(float).eps):
+            raise ValueError("Convergence ladder multiples must be strictly halve at each refinement step.")
 
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
@@ -1665,16 +1266,19 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
     readable_dir.mkdir(parents=True, exist_ok=True)
 
     original_param_text = param_path.read_text()
-    original_initial_conditions_text = (DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None)
+    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text()
+    original_output = snapshot_optional_file(DEFAULT_OUTPUT_PATH)
+    original_diagnostics = snapshot_optional_file(DEFAULT_DIAGNOSTICS_PATH)
 
     convergence_readable_columns = [
         "case",
         "dt",
-        "dt_ref",
         "runtime",
+        "steps",
+        "output_frequency",
         "integrator",
         "pair_order",
-        "rms_final_position_error",
+        "self_convergence_error",
         "error_ratio_to_next_finer",
         "observed_order_to_next_finer",
         "max_dE_over_E0",
@@ -1693,133 +1297,45 @@ def run_timestep_scaling_study(dt_ref: float = 0.00025,
         print(f"integrator           = {integrator}")
         print(f"pair_order           = {pair_order}")
         print(f"gravitational_constant = {G}")
+        print(f"dts_multiples         = {dts_multiples}")
 
+        dts = tuple(float(dt * multiple) for multiple in dts_multiples)
         results = run_convergence_case(case_name="CurrentParamScalingStudy",
                                        initial_conditions=initial_conditions,
-                                       dt_ref=dt_ref,
                                        dts=dts,
                                        runtime=runtime,
-                                       output_frequency=output_frequency,
+                                       base_dt=dt,
+                                       base_output_frequency=output_frequency,
                                        integrator=integrator,
                                        pair_order=pair_order,
-                                       G=G,
-                                       use_diagnostics_csv=use_diagnostics_csv)
+                                       G=G)
         
         save_raw_table(results, raw_dir / "current_param_scaling_study.csv")
         readable = compact_benchmark_table(results, convergence_readable_columns)
         save_readable_table(readable, readable_dir / "current_param_scaling_study_readable.csv")
 
-        dts_array = results["dt"].to_numpy(dtype=float)
-        errors_array = results["rms_final_position_error"].to_numpy(dtype=float)
-
-        plt.figure(figsize=(7, 5), constrained_layout=True)
-        plt.loglog(dts_array, errors_array, marker="o")
-        plt.gca().invert_xaxis()
-        plt.xlabel("Timestep dt")
-        plt.ylabel(f"Timestep convergence: {integrator}")
-        plt.grid(True, which="both", ls="--", alpha=0.4)
-        plt.show()
-
+        successful = results[(results["status"] == "success") & (np.isfinite(results["self_convergence_error"])) & (results["self_convergence_error"] > 0.0)].sort_values("dt", ascending=False)
+        if not successful.empty:
+            plt.figure(figsize=(7, 5), constrained_layout=True)
+            x = successful["dt"].to_numpy(dtype=float)
+            y = successful["self_convergence_error"].to_numpy(dtype=float)
+            plt.loglog(x, y, marker="o", label="Measured self-convergence")
+            plt.gca().invert_xaxis()
+            plt.xlabel("Timestep dt")
+            plt.ylabel(f"RMS final-position self-convergence error")
+            plt.title(f"Timestep convergence study: {integrator}, {pair_order}")
+            plt.grid(True, which="both", ls="--", alpha=0.4)
+            plt.legend()
+            plt.show()
         return results
     
     finally:
         param_path.write_text(original_param_text)
-
-        if original_initial_conditions_text is not None:
-            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
+        restore_optional_file(DEFAULT_OUTPUT_PATH, original_output)
+        restore_optional_file(DEFAULT_DIAGNOSTICS_PATH, original_diagnostics)
         
-        print("\nRestored original param.txt and initial_conditions.txt settings")
-
-def run_convergence_suite(tests: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "convergence", use_diagnostics_csv: bool = True) -> pd.DataFrame:
-    if tests is None:
-        tests = CONVERGENCE_TESTS
-    
-    raw_dir = output_dir / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    readable_dir = output_dir / "readable"
-    readable_dir.mkdir(parents=True, exist_ok=True)
-
-    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
-    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
-
-    all_results = []
-
-    summary_columns = [
-        "case",
-        "successful_runs",
-        "median_observed_order",
-        "min_observed_order",
-        "max_observed_order",
-        "max_rms_final_position_error",
-        "max_dE_over_E0",        
-    ]
-
-    try:
-        print("\n" + "=" * 90)
-        print("HERNANDEZ CONVERGENCE SUITE")
-        print("=" * 90)
-        print("Mode:")
-        print("  integrator           = hernandez")
-        print("  pair_order           = canonical")
-        print("  G                    = 0.000296014912")
-        for test in tests:
-            all_results.append(run_convergence_case(
-                case_name=test["name"],
-                initial_conditions=test["initial_conditions"],
-                dt_ref=test["dt_ref"],
-                dts=test["dts"],
-                runtime=test["runtime"],
-                output_frequency=test["output_frequency"],
-                integrator="hernandez",
-                pair_order="canonical",
-                G=0.000296014912,
-                use_diagnostics_csv=use_diagnostics_csv))
-                
-        results = pd.concat(all_results, ignore_index=True)
-        save_raw_table(results, raw_dir / "convergence.csv")
-        readable_columns = [
-            "case",
-            "dt",
-            "dt_ref",
-            "runtime",
-            "integrator",
-            "pair_order",
-            "rms_final_position_error",
-            "error_ratio_to_next_finer",
-            "observed_order_to_next_finer",
-            "max_dE_over_E0",
-            "final_dE_over_E0",
-            "max_dL_over_L0",
-            "max_dP",
-            "max_dRcm",
-            "status",
-            "error",
-        ]
-        save_readable_table(compact_benchmark_table(results, readable_columns), readable_dir / "convergence_readable.csv")
-
-        successful = results[results["status"] == "success"].copy()
-        if not successful.empty:
-            summary = (successful.groupby("case", as_index=False).agg(
-                median_observed_order=("observed_order_to_next_finer", "median"),
-                min_observed_order=("observed_order_to_next_finer", "min"),
-                max_observed_order=("observed_order_to_next_finer", "max"),
-                max_rms_final_position_error=("rms_final_position_error", "max"),
-                max_dE_over_E0=("max_dE_over_E0", "max"),
-                successful_runs=("status", "count")))
-            save_raw_table(summary, raw_dir / "convergence_summary.csv")
-            save_readable_table(compact_benchmark_table(summary, summary_columns), readable_dir / "convergence_summary_readable.csv")
-        
-        print("\nConvergence Suite Complete.")
-        print(f"Results saved under: {output_dir}")
-        return results
-    
-    finally:
-        if  original_param_text is not None:
-            DEFAULT_PARAM_PATH.write_text(original_param_text)
-        if original_initial_conditions_text is not None:
-            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
-        
-        print("\nRestored original param.txt and initial_conditions.txt settings.")
+        print("\nRestored original param.txt, initial_conditions.txt, output.csv, and diagnostics.csv settings")
 
 """
 # Run every benchmark test in every selected mode and save the resulting plots.
@@ -1827,13 +1343,7 @@ def run_convergence_suite(tests: list[dict] | None = None, output_dir: Path = DE
 # The original files should be restored at the end of the run.
 
 """
-def run_benchmark_suite(modes: list[dict] | None = None, 
-                        output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR, 
-                        use_diagnostics_csv: bool = True,
-                        rebound_compare: bool = False,
-                        rebound_integrator: str = "whfast",
-                        rebound_move_to_com: bool = False,
-                        save_rebound_reference_plots: bool = False) -> None:
+def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR) -> None:
     if modes is None:
         modes = DEFAULT_BENCHMARK_MODES
     
@@ -1846,56 +1356,13 @@ def run_benchmark_suite(modes: list[dict] | None = None,
 
     original_param_text = None
     original_initial_conditions_text = None
+    original_output = snapshot_optional_file(DEFAULT_OUTPUT_PATH)
+    original_diagnostics = snapshot_optional_file(DEFAULT_DIAGNOSTICS_PATH)
 
     if DEFAULT_PARAM_PATH.exists():
         original_param_text = DEFAULT_PARAM_PATH.read_text()
     if DEFAULT_INITIAL_CONDITIONS_PATH.exists():
         original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text()
-    
-    rebound_cache: dict[str, dict] = {}
-    rebound_reference_rows = []
-    def get_rebound_reference(test: dict) -> dict:
-        if test["name"] in rebound_cache:
-            return rebound_cache[test["name"]]
-        print("\n" + "-" * 70)
-        print(f"Computing REBOUND reference for {test['name']} using {rebound_integrator}")
-        print("-" * 70)
-
-        output, diagnostics = rebound_run_simulation(initial_conditions=test["initial_conditions"], 
-                                                     dt=test["dt"], 
-                                                     runtime=test["runtime"],
-                                                     output_frequency=test["output_frequency"],
-                                                     G=config.G,
-                                                     rebound_integrator=rebound_integrator,
-                                                     move_to_com=rebound_move_to_com,
-                                                     config=config)
-        reference = {"output": output, "diagnostics": diagnostics}
-        rebound_cache[test["name"]] = reference
-        summary = error_diagnostic_metric_summary(diagnostics, config)
-        reference_row = {"test": test["name"],
-                         "rebound_integrator": rebound_integrator,
-                         "dt": test["dt"],
-                         "runtime": test["runtime"],
-                         "output_frequency": test["output_frequency"],
-                         "initial_energy": diagnostics["total_energy"].iloc[0] if not diagnostics.empty else np.nan,
-                         "final_energy": diagnostics["total_energy"].iloc[-1] if not diagnostics.empty else np.nan,
-                         "initial_angular_momentum": diagnostics["angular_momentum"].iloc[0] if not diagnostics.empty else np.nan,
-                         "final_angular_momentum": diagnostics["angular_momentum"].iloc[-1] if not diagnostics.empty else np.nan,
-                         "initial_linear_momentum": diagnostics["linear_momentum"].iloc[0] if not diagnostics.empty else np.nan,
-                         "final_linear_momentum": diagnostics["linear_momentum"].iloc[-1] if not diagnostics.empty else np.nan,
-                         "initial_com_drift": diagnostics["com_drift"].iloc[0] if not diagnostics.empty else np.nan,
-                         "final_com_drift": diagnostics["com_drift"].iloc[-1] if not diagnostics.empty else np.nan}
-        reference_row.update({f"rebound_{key}": value for key, value in summary.items()})
-        rebound_reference_rows.append(reference_row)
-
-        if save_rebound_reference_plots:
-            rebound_dir = output_dir / f"rebound_reference_{safe_filename(rebound_integrator)}"
-            rebound_dir.mkdir(parents=True, exist_ok=True)
-            plot_path = rebound_dir / f"{safe_filename(test['name'])}.png"
-            plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False)
-            print(f"Saved REBOUND reference plot to {plot_path}")
-
-        return reference
 
     try:
         print("\nRunning benchmark suite...")
@@ -1917,15 +1384,6 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                 print(f"Test: {test['name']}")
                 print("=" * 70)
 
-                rebound_reference = None
-                rebound_comparison = None
-                if rebound_compare:
-                    try:
-                        rebound_reference = get_rebound_reference(test)
-                    except Exception as exc:
-                        print(f"REBOUND reference failed for {test['name']}: {exc}")
-                        rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
-
                 rewrite_initial_conditions(test["initial_conditions"])
                 rewrite_param(dt = test["dt"], 
                             runtime = test["runtime"], 
@@ -1937,10 +1395,7 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                 param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
                 initial_conditions_snapshot = (DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else "")
 
-                if DEFAULT_OUTPUT_PATH.exists():
-                    DEFAULT_OUTPUT_PATH.unlink()
-                if DEFAULT_DIAGNOSTICS_PATH.exists():
-                    DEFAULT_DIAGNOSTICS_PATH.unlink()
+                clear_simulation_outputs()
                 
                 try:
                     run_executable()
@@ -1960,10 +1415,8 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                                          returncode=returncode,
                                          stdout_tail=stdout_tail,
                                          stderr_tail=stderr_tail,
-                                         engine="fewbodync",
                                          failure_type=type(exc).__name__,
                                          failure_message=failure_message,
-                                         rebound_comparison=rebound_comparison,
                                          config=config,
                                          param_snapshot=param_snapshot,
                                          initial_conditions_snapshot=initial_conditions_snapshot,
@@ -1972,29 +1425,9 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                 
                 try:
                     output = read_output(DEFAULT_OUTPUT_PATH)
-
-                    if use_diagnostics_csv:
-                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
-                        if diagnostics is None:
-                            print("Falling back to recomputing diagnostics from output.csv.")
-                            diagnostics = compute_diagnostics_from_output(output, config)
-                    else:
-                        diagnostics = compute_diagnostics_from_output(output, config)
-                    if rebound_compare and rebound_reference is not None:
-                        try:
-                            rebound_comparison = compare_fewbody_to_rebound(
-                                fewbody_output=output,
-                                fewbody_diagnostics=diagnostics,
-                                rebound_output=rebound_reference["output"],
-                                rebound_diagnostics=rebound_reference["diagnostics"],
-                                config=config,
-                                rebound_integrator=rebound_integrator)
-                        except Exception as exc:
-                            print(f"Comparison to REBOUND failed: {exc}")
-                            rebound_comparison = {"rebound_compare": True, "rebound_integrator": rebound_integrator, "rebound_status": "failed", "rebound_error": str(exc)}
-                    
+                    diagnostics = load_diagnostics(output, config)
                     plot_path = mode_dir / f"{safe_filename(test['name'])}.png"
-                    plot_verification_suite(output_df = output, diagnostics = diagnostics, config = config, save_path = plot_path, show=False,)
+                    plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False,)
                     print(f"Saved plot to {plot_path}")
 
                     append_benchmark_row(benchmark_rows=benchmark_rows,
@@ -2004,8 +1437,6 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                                         status="success",
                                         plot_path=plot_path,
                                         diagnostics=diagnostics,
-                                        engine="fewbodync",
-                                        rebound_comparison=rebound_comparison,
                                         config=config,
                                         param_snapshot=param_snapshot,
                                         initial_conditions_snapshot=initial_conditions_snapshot)
@@ -2021,10 +1452,8 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                                          returncode=0,
                                          stdout_tail="",
                                          stderr_tail="",
-                                         engine="fewbodync",
                                          failure_type=type(exc).__name__,
                                          failure_message=failure_message,
-                                         rebound_comparison=rebound_comparison,
                                          config=config,
                                          param_snapshot=param_snapshot,
                                          initial_conditions_snapshot=initial_conditions_snapshot)
@@ -2041,10 +1470,7 @@ def run_benchmark_suite(modes: list[dict] | None = None,
         summary = pd.DataFrame(benchmark_rows)
         summary_path = raw_dir / "benchmark_summary.csv"
         save_raw_table(summary, summary_path)
-        if rebound_reference_rows:
-            rebound_reference_summary = pd.DataFrame(rebound_reference_rows)
-            rebound_reference_path = raw_dir / f"rebound_reference_{rebound_integrator}_summary.csv"
-            save_raw_table(rebound_reference_summary, rebound_reference_path)
+
         status_counts = summary["status"].value_counts(dropna=False)
         print("\n" + "=" * 90)
         print("BENCHMARK STATUS SUMMARY")
@@ -2075,55 +1501,11 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "max_dL_over_L0",
             "max_dP",
             "max_dRcm",
-            "rebound_status",
-            "ratio_max_dE_over_E0_to_rebound",
             "plot_path",
         ]
 
-        readable_best_columns = [
-            "test",
-            "mode",
-            "integrator",
-            "pair_order",
-            "dt",
-            "runtime",
-            "max_dE_over_E0",
-            "final_dE_over_E0",
-            "energy_drift_slope",
-            "energy_drift_over_run",
-            "energy_drift_fraction_of_max",
-            "energy_rms_dE_over_E0",
-            "energy_boundedness_class",
-            "max_dL_over_L0",
-            "max_dP",
-            "max_dRcm",
-            "rebound_status",
-            "ratio_max_dE_over_E0_to_rebound",
-            "plot_path",
-        ]
-
-        readable_worst_columns = [
-            "test",
-            "mode",
-            "integrator",
-            "pair_order",
-            "dt",
-            "runtime",
-            "max_dE_over_E0",
-            "final_dE_over_E0",
-            "energy_drift_slope",
-            "energy_drift_over_run",
-            "energy_drift_fraction_of_max",
-            "energy_rms_dE_over_E0",
-            "energy_boundedness_class",
-            "max_dL_over_L0",
-            "max_dP",
-            "max_dRcm",
-            "rebound_status",
-            "ratio_max_dE_over_E0_to_rebound",
-            "plot_path",
-        ]
-
+        readable_best_columns = [column for column in readable_comparison_columns if column != "rank_in_test"]
+        readable_worst_columns = readable_best_columns
         readable_mode_ranking_columns = [
             "mode",
             "successful_runs",
@@ -2134,16 +1516,13 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "median_max_dP",
             "median_max_dRcm",
             "median_abs_energy_drift_slope",
-            "median_energy_drift_fraction_of_max",
-            "bounded_like_runs",
-            "drifting_like_runs",
+            "median_energy_drift_fraction_of_max"
         ]        
 
         # Failure Summary
         failed_summary = summary[summary["status"] == "failed"].copy()
         if not failed_summary.empty:
-            failures_path = raw_dir / "benchmark_failures.csv"
-            save_raw_table(failed_summary, failures_path)
+            save_raw_table(failed_summary, raw_dir / "benchmark_failures.csv")
 
         # Sucess Summary
         successful_summary = summary[summary["status"] == "success"].copy()
@@ -2152,7 +1531,7 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             return
 
         # Raw Comparison Table
-        base_comparison_columns = [
+        comparison_columns = [
             "test",
             "mode",
             "integrator",
@@ -2181,7 +1560,6 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "energy_drift_over_run",
             "energy_drift_fraction_of_max",
             "energy_rms_dE_over_E0",
-            "energy_boundedness_class",
             "max_dL_over_L0",
             "final_dL_over_L0",
             "max_dP",
@@ -2191,96 +1569,27 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             "final_com_drift",
             "plot_path",
         ]
-        rebound_comparison_columns = [
-            "rebound_compare",
-            "rebound_integrator",
-            "rebound_status",
-            "rebound_error",
-            "final_rms_position_error_vs_rebound",
-            "final_max_position_error_vs_rebound",
-            "final_rms_velocity_error_vs_rebound",
-            "final_max_velocity_error_vs_rebound",
-            "rms_position_error_vs_rebound_all_outputs",
-            "max_position_error_vs_rebound_all_outputs",
-            "rms_velocity_error_vs_rebound_all_outputs",
-            "max_velocity_error_vs_rebound_all_outputs",
-            "final_abs_energy_difference_vs_rebound",
-            "final_rel_energy_difference_vs_rebound",
-            "max_abs_energy_difference_vs_rebound",
-            "max_rel_energy_difference_vs_rebound",
-            "rebound_max_dE_over_E0",
-            "ratio_max_dE_over_E0_to_rebound",
-            "rebound_final_dE_over_E0",
-            "ratio_final_dE_over_E0_to_rebound",
-            "rebound_max_dL_over_L0",
-            "ratio_max_dL_over_L0_to_rebound",
-            "rebound_max_dP",
-            "ratio_max_dP_to_rebound",
-            "rebound_max_dRcm",
-            "ratio_max_dRcm_to_rebound",
-        ]
-        comparison_columns = [column for column in base_comparison_columns + rebound_comparison_columns if column in summary.columns]
+
+        # Comparison Table
+        comparison_columns = [column for column in comparison_columns if column in summary.columns]
         comparison_table = summary[comparison_columns].copy()
         comparison_table = comparison_table.sort_values(["test", "status", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"], na_position="last")
-        comparison_path = raw_dir / "benchmark_comparison_table.csv"
-        save_raw_table(comparison_table, comparison_path)
+        save_raw_table(comparison_table, raw_dir / "benchmark_comparison_table.csv")
 
-        # Readable Comparison Table
         comparison_readable = add_test_rank(comparison_table, metric="max_dE_over_E0")
         comparison_readable = compact_benchmark_table(comparison_readable, readable_comparison_columns)
-        comparison_readable_path = readable_dir / "benchmark_comparison_table_readable.csv"
-        save_readable_table(comparison_readable, comparison_readable_path)
+        save_readable_table(comparison_readable, readable_dir / "benchmark_comparison_table_readable.csv")
 
-        # Raw Best Runs
+        # Best Runs
         best_rows = (successful_summary.sort_values(["test", "max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]).groupby("test", as_index=False).first())
-        best_path = raw_dir / "best_by_energy.csv"
-        save_raw_table(best_rows, best_path)
-
-        # Readable Best Runs
-        best_readable = compact_benchmark_table(best_rows, readable_best_columns)
-        best_readable_path = readable_dir / "best_by_energy_readable.csv"
-        save_readable_table(best_readable, best_readable_path)
+        save_raw_table(best_rows, raw_dir / "best_by_energy.csv")
+        save_readable_table(compact_benchmark_table(best_rows, readable_best_columns), readable_dir / "best_by_energy_readable.csv")
         
-        # Raw Worst Runs
+        # Worst Runs
         worst_rows = (successful_summary.sort_values("max_dE_over_E0", ascending=False).head(10))
-        worst_path = raw_dir / "worst_by_energy.csv"
-        save_raw_table(worst_rows, worst_path)
-
-        # Readable Worst Runs
-        worst_readable = compact_benchmark_table(worst_rows, readable_worst_columns)
-        worst_readable_path = readable_dir / "worst_by_energy_readable.csv"
-        save_readable_table(worst_readable, worst_readable_path)
+        save_raw_table(worst_rows, raw_dir / "worst_by_energy.csv")
+        save_readable_table(compact_benchmark_table(worst_rows, readable_worst_columns), readable_dir / "worst_by_energy_readable.csv")
         
-        # Rebound Comparison
-        if rebound_compare and "final_rms_position_error_vs_rebound" in successful_summary.columns:
-            valid_vs_rebound = successful_summary[np.isfinite(successful_summary["final_rms_position_error_vs_rebound"])].copy()
-            if not valid_vs_rebound.empty:
-                best_vs_rebound = (valid_vs_rebound.sort_values([
-                        "test",
-                        "final_rms_position_error_vs_rebound",
-                        "final_rms_velocity_error_vs_rebound",
-                        "max_rel_energy_difference_vs_rebound",
-                    ]).groupby("test", as_index=False).first())
-                
-                # Raw
-                best_vs_rebound_path = raw_dir / f"best_vs_rebound_{safe_filename(rebound_integrator)}.csv"
-                save_raw_table(best_vs_rebound, best_vs_rebound_path)
-
-                # Readable
-                best_vs_rebound_readable_columns = ["test",
-                                                    "mode",
-                                                    "integrator",
-                                                    "pair_order",
-                                                    "final_rms_position_error_vs_rebound",
-                                                    "final_rms_velocity_error_vs_rebound",
-                                                    "final_rel_energy_difference_vs_rebound",
-                                                    "ratio_max_dE_over_E0_to_rebound"]
-                best_vs_rebound_readable = compact_benchmark_table(best_vs_rebound, best_vs_rebound_readable_columns)
-                best_vs_rebound_readable_path = readable_dir / f"best_vs_rebound_{safe_filename(rebound_integrator)}_readable.csv"
-                save_readable_table(best_vs_rebound_readable, best_vs_rebound_readable_path)
-            else:
-                print("No finite REBOUND comparison rows were available.")
-
         # Raw Ranking by Median Max
         mode_rankings = (successful_summary.groupby("mode", as_index=False).agg(
             median_max_dE_over_E0 = ("max_dE_over_E0", "median"),
@@ -2291,371 +1600,18 @@ def run_benchmark_suite(modes: list[dict] | None = None,
             median_max_dL_over_L0 = ("max_dL_over_L0", "median"),
             median_max_dP = ("max_dP", "median"),
             median_max_dRcm = ("max_dRcm", "median"),
-            bounded_like_runs = ("energy_boundedness_class", lambda values: int(values.astype(str).str.contains("bounded_like", na=False).sum())),
-            drifting_like_runs = ("energy_boundedness_class", lambda values: int((values.astype(str) == "drifting_like").sum())),
             successful_runs = ("status", "count")).sort_values("median_max_dE_over_E0"))
-        mode_rankings_path = raw_dir / "mode_rankings.csv"
-        save_raw_table(mode_rankings, mode_rankings_path)
-
-        # Readable Ranking by Median Max
-        mode_rankings_readable = compact_benchmark_table(mode_rankings, readable_mode_ranking_columns)
-        mode_rankings_readable_path = readable_dir / "mode_rankings_readable.csv"
-        save_readable_table(mode_rankings_readable, mode_rankings_readable_path)
+        save_raw_table(mode_rankings, raw_dir / "mode_rankings.csv")
+        save_readable_table(compact_benchmark_table(mode_rankings, readable_mode_ranking_columns), readable_dir / "mode_rankings_readable.csv")
 
     finally:
         if original_param_text is not None:
             DEFAULT_PARAM_PATH.write_text(original_param_text)
         if original_initial_conditions_text is not None:
             DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
-        print("\nRestored original param.txt and initial_conditions.txt settings.")
-
-def run_pair_order_policy_suite(modes: list[dict] | None = None, tests: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "pair_order_policy", use_diagnostics_csv: bool = True) -> pd.DataFrame:
-    if modes is None:
-        modes = PAIR_ORDER_POLICY_MODES
-    if tests is None:
-        tests = PAIR_ORDER_POLICY_TESTS
-
-    config = PlotConfig()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    raw_dir = output_dir / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    readable_dir = output_dir / "readable"
-    readable_dir.mkdir(parents=True, exist_ok=True)
-    plot_dir = output_dir / "plots"
-    plot_dir.mkdir(parents=True, exist_ok=True)
-
-    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
-    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
-    rows = []
-    run_number = 0
-    total_runs = len(modes) * len(tests)
-
-    pair_order_policy_readable_columns = [
-        "test",
-        "mode",
-        "pair_order",
-        "pair_order_policy_status",
-        "expected_effective_pair_order",
-        "dt",
-        "runtime",
-        "status",
-        "max_dE_over_E0",
-        "final_dE_over_E0",
-        "max_dL_over_L0",
-        "max_dP",
-        "max_dRcm",
-        "ratio_max_dE_over_E0_to_canonical",
-        "ratio_max_dL_over_L0_to_canonical",
-        "ratio_max_dP_to_canonical",
-        "ratio_max_dRcm_to_canonical",
-        "pair_order_recommendation",
-        "plot_path",
-        "error",
-    ]
-
-    try:
-        print("\n" + "=" * 90)
-        print("PAIR-ORDER POLICY SUITE")
-        print("=" * 90)
-        print("Policy:")
-        print("  canonical = production default")
-        print("  strength  = optional fixed-step diagnostic mode")
-        print("  auto      = conservative; expected to resolve to canonical")
-
-        for test in tests:
-            for mode in modes:
-                run_number += 1
-
-                print("\n" + "-" * 90)
-                print(f"Run {run_number}/{total_runs}")
-                print(f"Test: {test['name']}")
-                print(f"Mode: {mode['name']}")
-                print(f"Pair order: {mode['pair_order']}")
-                print(f"Policy status: {mode['pair_order_policy_status']}")
-                print("-" * 90)    
-
-                rewrite_initial_conditions(test["initial_conditions"])
-                rewrite_param(
-                    dt=test["dt"],
-                    runtime=test["runtime"],
-                    output_frequency=test["output_frequency"],
-                    integrator=mode["integrator"],
-                    G=config.G,
-                    pair_order=mode.get("pair_order", "canonical"))
-                param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
-                initial_conditions_snapshot = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else ""
-
-                if DEFAULT_OUTPUT_PATH.exists():
-                    DEFAULT_OUTPUT_PATH.unlink()
-                if DEFAULT_DIAGNOSTICS_PATH.exists():
-                    DEFAULT_DIAGNOSTICS_PATH.unlink()
-
-                try:
-                    run_executable()
-                    output = read_output(DEFAULT_OUTPUT_PATH)
-                    if use_diagnostics_csv:
-                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
-                        if diagnostics is None:
-                            print("Falling back to recomputing diagnostics from output.csv.")
-                            diagnostics = compute_diagnostics_from_output(output, config)
-                    else:
-                        diagnostics = compute_diagnostics_from_output(output, config)
-
-                    case_plot_dir = plot_dir / safe_filename(test["name"])
-                    case_plot_dir.mkdir(parents=True, exist_ok=True)
-                    plot_path = case_plot_dir / f"{safe_filename(mode['name'])}.png"
-                    plot_verification_suite(output_df=output, diagnostics=diagnostics, config=config, save_path=plot_path, show=False)
-                    append_benchmark_row(benchmark_rows=rows, 
-                                         run_number=run_number, 
-                                         mode=mode, 
-                                         test=test, 
-                                         status="success", 
-                                         plot_path=plot_path, 
-                                         diagnostics=diagnostics, 
-                                         engine="fewbodync", 
-                                         config=config,
-                                         param_snapshot=param_snapshot,
-                                         initial_conditions_snapshot=initial_conditions_snapshot)
-                    rows[-1]["pair_order_policy_status"] = mode["pair_order_policy_status"]
-                    rows[-1]["expected_effective_pair_order"] = mode["expected_effective_pair_order"]
-
-                    print(f"max |dE/E0|: {rows[-1]['max_dE_over_E0']:.6e}")
-                    print(f"policy status: {rows[-1]['pair_order_policy_status']}")
-                except Exception as exc:
-                    failure_message = str(exc)
-                    append_benchmark_row(benchmark_rows=rows, 
-                                         run_number=run_number, 
-                                         mode=mode, 
-                                         test=test, 
-                                         status="failed", 
-                                         error=failure_message, 
-                                         engine="fewbodync",
-                                         failure_type=type(exc).__name__,
-                                         failure_message=failure_message, 
-                                         config=config,
-                                         param_snapshot=param_snapshot,
-                                         initial_conditions_snapshot=initial_conditions_snapshot)
-                    rows[-1]["pair_order_policy_status"] = mode["pair_order_policy_status"]
-                    rows[-1]["expected_effective_pair_order"] = mode["expected_effective_pair_order"]
-
-                    print(f"Pair-order policy run failed: {failure_message}")
-        results = pd.DataFrame(rows)
-        
-        # Compare each pair-order mode against canonical for the same test
-        for metric in ["max_dE_over_E0", "max_dL_over_L0", "max_dP", "max_dRcm"]:
-            ratio_column = f"ratio_{metric}_to_canonical"
-            results[ratio_column] = np.nan
-            if metric not in results.columns:
-                continue
-            results[metric] = pd.to_numeric(results[metric], errors="coerce")
-            canonical_reference = results[(results["pair_order"] == "canonical") & (results["status"] == "success")][["test", metric]].drop_duplicates(subset=["test"]).set_index("test")[metric]
-            canonical_values = results["test"].map(canonical_reference)
-            valid = results[metric].notna() & canonical_values.notna() & (canonical_values.abs() > config.epsilon)
-            results.loc[valid, ratio_column] = results.loc[valid, metric] / canonical_values.loc[valid]
-        
-        def recommendation(row: pd.Series) -> str:
-            if row["status"] != "success":
-                return "failed_do_not_use"
-            if row["pair_order"] == "canonical":
-                return "production_default"
-            if row["pair_order"] == "auto":
-                return "allowed_but_expected_to_resolve_to_canonical"
-            if row["pair_order"] == "strength":
-                ratio = row.get("ratio_max_dE_over_E0_to_canonical", np.nan)
-                if np.isfinite(ratio) and ratio <= 1.1:
-                    return "optional_fixed_step_only"
-                return "demoted_not_better_than_canonical"
-            return "unknown"
-        
-        results["pair_order_recommendation"] = results.apply(recommendation, axis=1)
-        raw_path = raw_dir / "pair_order_policy_summary.csv"
-        save_raw_table(results, raw_path)
-        readable = compact_benchmark_table(results, pair_order_policy_readable_columns)
-        readable_path = readable_dir / "pair_order_policy_summary_readable.csv"
-        save_readable_table(readable, readable_path)
-        
-        successful = results[results["status"] == "success"].copy()
-        if not successful.empty:
-            counts = successful.groupby(["pair_order", "pair_order_policy_status", "pair_order_recommendation"], as_index=False).size().rename(columns={"size": "run_count"})
-            counts_path = raw_dir / "pair_order_policy_counts.csv"
-            save_raw_table(counts, counts_path)
-            counts_readable_path = readable_dir / "pair_order_policy_counts_readable.csv"
-            save_readable_table(counts, counts_readable_path)
-        
-        print("\nPair-Order Policy Suite Complete.")
-        print(f"Results saved under: {output_dir}")
-
-        return results
-    
-    finally:
-        if original_param_text is not None:
-            DEFAULT_PARAM_PATH.write_text(original_param_text)
-
-        if original_initial_conditions_text is not None:
-            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
-
-        print("\nRestored original param.txt and initial_conditions.txt settings.")
-
-"""
-# Run energy boundedness tests and save the resulting plots.
-# This function temporarily overwrites data/initial_conditions.txt and data/param.txt.
-# The original files should be restored at the end of the run.
-
-"""
-def run_energy_boundedness_suite(cases: list[dict] | None = None, output_dir: Path = DEFAULT_BENCHMARK_PLOT_DIR / "energy_boundedness", use_diagnostics_csv: bool = True) -> pd.DataFrame:
-    if cases is None:
-        cases = ENERGY_BOUNDEDNESS_CASES
-
-    config = PlotConfig()
-    output_dir.mkdir(parents=True, exist_ok=True)
-    raw_dir = output_dir / "raw"
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    readable_dir = output_dir / "readable"
-    readable_dir.mkdir(parents=True, exist_ok=True)
-    original_param_text = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else None
-    original_initial_conditions_text = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else None
-    rows = []
-    run_number = 0
-    total_runs = sum(len(case["modes"]) for case in cases)
-
-    energy_boundedness_readable_columns = [
-        "case",
-        "test",
-        "mode",
-        "integrator",
-        "pair_order",
-        "dt",
-        "runtime",
-        "max_dE_over_E0",
-        "final_dE_over_E0",
-        "energy_drift_slope",
-        "energy_abs_drift_slope",
-        "energy_drift_over_run",
-        "energy_drift_fraction_of_max",
-        "energy_rms_dE_over_E0",
-        "energy_boundedness_class",
-        "max_dL_over_L0",
-        "max_dP",
-        "max_dRcm",
-        "status",
-        "error",
-    ]
-
-    try:
-        print("\n" + "=" * 90)
-        print("Energy Boundedness and Drift Suite")
-        print("=" * 90)
-
-        for case in cases:
-            test = case["test"]
-            for mode in case["modes"]:
-                run_number += 1
-                
-                print("\n" + "-" * 90)
-                print(f"Run {run_number}/{total_runs}")
-                print(f"Case: {case['name']}")
-                print(f"Mode: {mode['name']}")
-                print(f"Test: {test['name']}")
-                print("-" * 90)
-
-                rewrite_initial_conditions(test["initial_conditions"])
-                rewrite_param(dt=test["dt"],
-                              runtime=test["runtime"],
-                              output_frequency=test["output_frequency"],
-                              integrator=mode["integrator"],
-                              G=config.G,
-                              pair_order=mode.get("pair_order", "canonical"))
-                param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
-                initial_conditions_snapshot = DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else ""
-
-                clear_simulation_outputs()
-
-                try:
-                    run_executable()
-                    output = read_output(DEFAULT_OUTPUT_PATH)
-                    if use_diagnostics_csv:
-                        diagnostics = read_diagnostics(DEFAULT_DIAGNOSTICS_PATH)
-                        if diagnostics is None:
-                            print("Falling back to recomputing diagnostics from output.csv")
-                            diagnostics = compute_diagnostics_from_output(output, config)
-                    else:
-                        diagnostics = compute_diagnostics_from_output(output, config)
-                    
-                    append_benchmark_row(benchmark_rows=rows,
-                                         run_number=run_number,
-                                         mode=mode,
-                                         test=test,
-                                         status="success",
-                                         diagnostics=diagnostics,
-                                         engine="fewbodync",
-                                         config=config,
-                                         param_snapshot=param_snapshot,
-                                         initial_conditions_snapshot=initial_conditions_snapshot)
-                    rows[-1]["case"] = case["name"]
-                    rows[-1]["case_description"] = case.get("description", "")
-
-                    print(f"max |dE/E0|: {rows[-1]['max_dE_over_E0']:.6e}")
-                    print(f"final |dE/E0|: {rows[-1]['final_dE_over_E0']:.6e}")
-                    print(f"energy drift slope: {rows[-1]['energy_drift_slope']:.6e}")
-                    print(f"energy boundedness: {rows[-1]['energy_boundedness_class']}")     
-
-                except Exception as exc:
-                    failure_message = str(exc)
-                    append_benchmark_row(benchmark_rows=rows,
-                                         run_number=run_number,
-                                         mode=mode,
-                                         test=test,
-                                         status="failed",
-                                         error=failure_message,
-                                         engine="fewbodync",
-                                         failure_type=type(exc).__name__,
-                                         failure_message=failure_message,
-                                         config=config,
-                                         param_snapshot=param_snapshot,
-                                         initial_conditions_snapshot=initial_conditions_snapshot)
-                    rows[-1]["case"] = case["name"]
-                    rows[-1]["case_description"] = case.get("description", "")
-
-                    print(f"Energy Boundedness Run Failed: {failure_message}")
-        results = pd.DataFrame(rows)
-        raw_path = raw_dir / "energy_boundedness_summary.csv"
-        save_raw_table(results, raw_path)
-        readable = compact_benchmark_table(results, energy_boundedness_readable_columns)
-        readable_path = readable_dir / "energy_boundedness_summary_readable.csv"
-        save_readable_table(readable, readable_path)
-
-        successful = results[results["status"] == "success"].copy()
-
-        if not successful.empty:
-            ranking = successful.sort_values(["case", "energy_boundedness_class", "energy_drift_fraction_of_max", "max_dE_over_E0"], na_position="last").copy()
-            ranking_path = raw_dir / "energy_boundedness_rankings.csv"
-            save_raw_table(ranking, ranking_path)
-            ranking_readable = compact_benchmark_table(ranking, energy_boundedness_readable_columns)
-            ranking_readable_path = readable_dir / "energy_boundedness_rankings_readable.csv"
-            save_readable_table(ranking_readable, ranking_readable_path)
-        
-        print("\nEnergy Boundedness Suite Complete")
-        print(f"Results saved under: {output_dir}")
-
-        return results
-    
-    finally:
-        if original_param_text is not None:
-            DEFAULT_PARAM_PATH.write_text(original_param_text)
-        if original_initial_conditions_text is not None:
-            DEFAULT_INITIAL_CONDITIONS_PATH.write_text(original_initial_conditions_text)
-        print("\nRestored original param.txt and initial_conditions.txt settings")
-
-# ============================================================
-# Test Convergence and Benchmark
-# ============================================================
-
-def TestBenchmark(reboundcompare: bool = False, rebound_integrator: str = "whfast", rebound_move_to_com: bool = False, **kwargs) -> None:
-    run_benchmark_suite(rebound_compare=reboundcompare, rebound_integrator=rebound_integrator, rebound_move_to_com=rebound_move_to_com, **kwargs)
-
-def TestConvergence(**kwargs) -> None:
-    run_timestep_scaling_study( **kwargs)
-
+        restore_optional_file(DEFAULT_OUTPUT_PATH, original_output)
+        restore_optional_file(DEFAULT_DIAGNOSTICS_PATH, original_diagnostics)
+        print("\nRestored original param.txt, initial_conditions.txt, output.csv, and diagnostics.csv settings.")
 
 # ============================================================
 # Clear .csv files

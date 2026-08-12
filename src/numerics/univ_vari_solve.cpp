@@ -29,7 +29,8 @@ double stumpff_C(double z) {
     if (abs_z < 1e-12) {
         const double z2 = z * z;
         const double z3 = z2 * z;
-        return 0.5 - (z / 24.0) + (z2 / 720.0) - (z3 / 40320.0);
+        const double z4 = z3 * z;
+        return 0.5 - (z / 24.0) + (z2 / 720.0) - (z3 / 40320.0) + (z4 / 3628800.0);
     }
     if (z > 0) {
         const double sz =  std::sqrt(z);
@@ -46,7 +47,8 @@ double stumpff_S(double z) {
     if (abs_z < 1e-12) {
         const double z2 = z * z;
         const double z3 = z2 * z;
-        return (1.0 / 6.0) - (z / 120.0) + (z2 / 5040.0) - (z3 / 362880.0);
+        const double z4 = z3 * z;
+        return (1.0 / 6.0) - (z / 120.0) + (z2 / 5040.0) - (z3 / 362880.0) + (z4 / 39916800.0);
     }
     if (z > 0) {
         const double sz = std::sqrt(z);
@@ -121,11 +123,14 @@ ChiResult solve_chi(double mu, double alpha, const Vec3& r0, double vr, double d
         Fast path: use the reusable Newton solver first.
         If it converges with a residual below tolerance, return immediately.
     */
+   auto residual_tolerance = [&](double chi) {
+        return abs_tol + rel_tol * std::max(std::abs(sqrt_mu * dt), std::abs(r * chi));
+    };
     NewtonResult newton_result = Newton_Solver(F, dF, chi0, abs_tol, rel_tol, max_iter);
 
     if (newton_result.converged && std::isfinite(newton_result.root)) {
         const double residual = std::abs(F(newton_result.root));
-        const double tolerance = abs_tol + rel_tol * std::max(std::abs(newton_result.root), 1.0);
+        const double tolerance = residual_tolerance(newton_result.root);
         if (std::isfinite(residual) && residual <= tolerance) {
             return {newton_result.root, newton_result.iterations, true};
         }
@@ -166,7 +171,7 @@ ChiResult solve_chi(double mu, double alpha, const Vec3& r0, double vr, double d
     }
 
     if (!std::isfinite(f_upper) || f_upper < 0.0) {
-        return { newton_result.root, newton_result.iterations + bracket_iterations, false};
+        return {newton_result.root, newton_result.iterations + bracket_iterations, false};
     }
 
     double y = std::abs(chi0);

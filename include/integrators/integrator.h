@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include "core/canonical_state.h"
 #include "core/body.h"
 
 class Integrator {

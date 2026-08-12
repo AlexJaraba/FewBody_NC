@@ -1,4 +1,5 @@
 #include <cmath>
+#include <stdexcept>
 
 #include "core/body.h"
 
@@ -15,14 +16,12 @@ void Body::updateAcceleration(const std::vector<Body>& bodies, double G) {
         if (&other == this) continue;
 
         Vec3 dr = other.position - position;
-        double r2 = dr.norm2();
-        double r = dr.norm();
-
-        if (r < 1e-10) {
-            continue;
+        const double r2 = dr.norm2();
+        if (!std::isfinite(r2) || r2 <= 0.0) {
+            throw std::runtime_error("updateAcceleration requires a finite, non-zero pair separation.");
         }
-
-        double inv_r3 = 1.0 / (r * r2);
+        const double r = dr.norm();
+        const double inv_r3 = 1.0 / (r * r2);
         acceleration += G * other.mass * inv_r3 * dr;
     }
 }
@@ -44,14 +43,7 @@ void Body::updateMomentumFromVelocity() {
 }
 
 BodyState Body::toState(double time) const {
-    return BodyState{
-        time,
-        id,
-        {position.x, position.y, position.z},
-        {velocity.x, velocity.y, velocity.z},
-        mass,
-        radius
-    };
+    return BodyState{time, id, {position.x, position.y, position.z}, {velocity.x, velocity.y, velocity.z}, mass, radius};
 }
 
 double Body::kineticEnergy() const {

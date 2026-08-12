@@ -2,9 +2,6 @@
 
 #include <vector>
 
-#include "core/body.h"
-#include "core/canonical_state.h"
-#include "numerics/composition.h"
 #include "integrators/integrator.h"
 #include "integrators-helper/hernandez/body_stepper.h"
 #include "dynamics/pairing.h"
