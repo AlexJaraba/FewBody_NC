@@ -4,7 +4,7 @@
 
 #include "dynamics/pairing.h"
 
-Pair canonicalize_pair(int i, int j) {
+Pair canonicalizePair(int i, int j) {
     if (i < j) {
         return {i, j};
     } else {
@@ -12,7 +12,7 @@ Pair canonicalize_pair(int i, int j) {
     }
 }
 
-double pair_strength(const std::vector<Body>& bodies, const Pair& pair) {
+double pairStrength(const std::vector<Body>& bodies, const Pair& pair) {
     if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size())) {
         throw std::runtime_error("pair_strength received an out-of-range pair.");
     }
@@ -27,12 +27,12 @@ double pair_strength(const std::vector<Body>& bodies, const Pair& pair) {
     return (bodies[pair.i].mass * bodies[pair.j].mass) / r2;
 }
 
-std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs) {
+std::vector<Pair> canonicalizePairs(const std::vector<Pair>& pairs) {
     std::vector<Pair> canonical;
     canonical.reserve(pairs.size());
 
     for (const auto& p : pairs) {
-        canonical.push_back(canonicalize_pair(p.i, p.j));
+        canonical.push_back(canonicalizePair(p.i, p.j));
     }
 
     std::sort(canonical.begin(), canonical.end(), [](const Pair& a, const Pair& b) {
@@ -49,12 +49,12 @@ std::vector<Pair> canonicalize_pairs(const std::vector<Pair>& pairs) {
     return canonical;
 }
 
-std::vector<Pair> canonicalize_pairs_preserve_order(const std::vector<Pair>& pairs) {
+std::vector<Pair> canonicalizePairsPreserveOrder(const std::vector<Pair>& pairs) {
     std::vector<Pair> canonical;
     canonical.reserve(pairs.size());
 
     for (const Pair& pair : pairs) {
-        const Pair current = canonicalize_pair(pair.i, pair.j);
+        const Pair current = canonicalizePair(pair.i, pair.j);
 
         bool already_exists = false;
 
@@ -73,19 +73,19 @@ std::vector<Pair> canonicalize_pairs_preserve_order(const std::vector<Pair>& pai
     return canonical;
 }
 
-std::vector<Pair> order_pairs_by_strength(const std::vector<Pair>& pairs, const std::vector<Body>& bodies) {
+std::vector<Pair> orderPairsStrength(const std::vector<Pair>& pairs, const std::vector<Body>& bodies) {
     struct PairWithStrength {
         Pair pair;
         double strength;
     };
 
-    const std::vector<Pair> unique_pairs = canonicalize_pairs(pairs);
+    const std::vector<Pair> unique_pairs = canonicalizePairs(pairs);
 
     std::vector<PairWithStrength> ranked_pairs;
     ranked_pairs.reserve(unique_pairs.size());
 
     for (const Pair& pair : unique_pairs) {
-        ranked_pairs.push_back({pair, pair_strength(bodies, pair)});
+        ranked_pairs.push_back({pair, pairStrength(bodies, pair)});
     }
 
     std::stable_sort(ranked_pairs.begin(), ranked_pairs.end(), [](const PairWithStrength& a, const PairWithStrength& b) {return a.strength > b.strength;});

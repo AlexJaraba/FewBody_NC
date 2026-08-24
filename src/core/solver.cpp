@@ -33,7 +33,7 @@ The production solver advances one fixed global timestep at a time.
    ====================================================================== */
 
 namespace {
-    std::vector<Pair> make_all_physical_pairs(const std::vector<Body>& bodies) {
+    std::vector<Pair> makePhysicalPairs(const std::vector<Body>& bodies) {
         std::vector<Pair> pairs;
         const int body_count = static_cast<int>(bodies.size());
         for (int i = 0; i < body_count; ++i) {
@@ -43,7 +43,7 @@ namespace {
         }
         return pairs;
     }
-    void validate_finite_bodies(const std::vector<Body>& bodies, const char* context, std::uint64_t step, double time) {
+    void validateBodies(const std::vector<Body>& bodies, const char* context, std::uint64_t step, double time) {
         for (int i = 0; i < static_cast<int>(bodies.size()); ++i) {
             const Body& body = bodies[i];
             if (!std::isfinite(body.mass) || !body.position.is_finite() || !body.velocity.is_finite() || !body.momentum.is_finite() || !body.acceleration.is_finite()) {
@@ -68,18 +68,18 @@ namespace {
 Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), integrator(nullptr), writer(writer_) {
     const SolverParams params = readParams("data/param.txt");
     fixed_pairs.clear();
-    fixed_pairs = canonicalize_pairs(make_all_physical_pairs(bodies));
-
+    fixed_pairs = canonicalizePairs(makePhysicalPairs(bodies));
+    
     effective_pair_order = "canonical";
     if (params.integrator == "hernandez") {
         if (params.pair_order == "canonical") {
-            fixed_pairs = canonicalize_pairs(fixed_pairs);
+            fixed_pairs = canonicalizePairs(fixed_pairs);
             effective_pair_order = "canonical";
         } else if (params.pair_order == "strength") {
-            fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
+            fixed_pairs = orderPairsStrength(fixed_pairs, bodies);
             effective_pair_order = "strength";
         } else if (params.pair_order == "auto") { // Auto mode: default to canonical for now, can be improved later
-            fixed_pairs = canonicalize_pairs(fixed_pairs);
+            fixed_pairs = canonicalizePairs(fixed_pairs);
             effective_pair_order = "canonical";
         } else {
             throw std::runtime_error("Invalid pair_order. Use 'canonical', 'strength', or 'auto'.");
@@ -101,7 +101,7 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
         // Add more integrator options here as needed
 }
 
-void recenter_system(std::vector<Body>& bodies) {
+void recenterSystem(std::vector<Body>& bodies) {
     if (bodies.empty()) {
         throw std::runtime_error("Cannot recenter an empty system.");
     }
@@ -143,10 +143,10 @@ void Solver::run() {
     std::cout << "dt = " << params.timestep << std::endl;
     std::cout << "Loaded timestep: " << params.timestep << std::endl;
 
-    run_fixed_step(params);
+    runFixedStep(params);
 }
 
-void Solver::write_current_bodies(double time) {
+void Solver::writeCurrentBodies(double time) {
     std::vector<BodyState> states;
     states.reserve(bodies.size());
     for (const Body& body : bodies) {
@@ -160,7 +160,7 @@ void Solver::write_current_bodies(double time) {
 // Specific Steps for Specified Coordinate Modes
 // ==============================================================
 
-void Solver::run_fixed_step(const SolverParams& params) {
+void Solver::runFixedStep(const SolverParams& params) {
     const int output_frequency = params.output_frequency;
     const double runtime = params.runtime;
     const double dt = params.timestep;
@@ -198,13 +198,13 @@ void Solver::run_fixed_step(const SolverParams& params) {
     std::cout << "Integrator: " << params.integrator << '\n';
     std::cout << "Fixed timestep: " << dt << '\n';
 
-    validate_finite_bodies(bodies, "initial_state", 0, 0.0);
+    validateBodies(bodies, "initial_state", 0, 0.0);
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
     {
-        const Diagnostics diagnostics = compute_diagnostics(bodies, G, dt);
+        const Diagnostics diagnostics = computeDiagnostics(bodies, G, dt);
         diagnostics_writer.write(0.0, diagnostics);
-        write_current_bodies(0.0);
+        writeCurrentBodies(0.0);
     }
 
     for (std::uint64_t step = 1; step <= steps; ++step) {
@@ -224,12 +224,12 @@ void Solver::run_fixed_step(const SolverParams& params) {
             throw std::runtime_error(msg.str());
         }
         const double current_time = static_cast<double>(step) * dt;
-        validate_finite_bodies(bodies, "cartesian_after_step", step, current_time);
+        validateBodies(bodies, "cartesian_after_step", step, current_time);
 
         if (step % output_stride == 0 || step == steps) {
-            const Diagnostics diag = compute_diagnostics(bodies, G, dt);
+            const Diagnostics diag = computeDiagnostics(bodies, G, dt);
             diagnostics_writer.write(current_time, diag);
-            write_current_bodies(current_time);
+            writeCurrentBodies(current_time);
         }
     }
     diagnostics_writer.close();

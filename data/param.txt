@@ -1,6 +1,6 @@
 output_frequency 10
-runtime 81.3712974694812
-timestep 0.000871835330030156
+runtime 1.4
+timestep 0.000015
 integrator hernandez
-gravitational_constant 0.000296014912
+gravitational_constant 1
 pair_order canonical

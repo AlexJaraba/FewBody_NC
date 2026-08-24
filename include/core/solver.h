@@ -13,7 +13,7 @@
 
 class CSVOutputWriter;
 
-void recenter_system(std::vector<Body>& bodies);
+void recenterSystem(std::vector<Body>& bodies);
 
 class Solver {
 public:
@@ -29,6 +29,6 @@ private:
     
     std::string effective_pair_order = "canonical";
 
-    void run_fixed_step(const SolverParams& params);
-    void write_current_bodies(double time);
+    void runFixedStep(const SolverParams& params);
+    void writeCurrentBodies(double time);
 };

@@ -45,9 +45,9 @@ struct PairDiagnosticDeviation {
     double com_velocity_error = 0.0;
 };
 
-Diagnostics compute_diagnostics(const std::vector<Body>& bodies, double G, double dt);
-PairDiagnostics compute_pair_diagnostics(const std::vector<Body>& bodies, int i, int j, double G);
-PairDiagnosticDeviation compare_pair_diagnostics(const PairDiagnostics& current, const PairDiagnostics& reference);
+Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt);
+PairDiagnostics computePairDiagnostics(const std::vector<Body>& bodies, int i, int j, double G);
+PairDiagnosticDeviation comparePairDiagnostics(const PairDiagnostics& current, const PairDiagnostics& reference);
 
-void print_pair_diagnostics(std::ostream& os, const PairDiagnostics& diagnostics, const char* label);
-void print_pair_diagnostics_deviation(std::ostream& os, const PairDiagnosticDeviation& deviation, const char* label);
+void printPairDiagnostics(std::ostream& os, const PairDiagnostics& diagnostics, const char* label);
+void printPairDiagnosticsDeviation(std::ostream& os, const PairDiagnosticDeviation& deviation, const char* label);

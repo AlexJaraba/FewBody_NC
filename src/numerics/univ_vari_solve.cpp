@@ -126,7 +126,7 @@ ChiResult solve_chi(double mu, double alpha, const Vec3& r0, double vr, double d
    auto residual_tolerance = [&](double chi) {
         return abs_tol + rel_tol * std::max(std::abs(sqrt_mu * dt), std::abs(r * chi));
     };
-    NewtonResult newton_result = Newton_Solver(F, dF, chi0, abs_tol, rel_tol, max_iter);
+    NewtonResult newton_result = newtonSolver(F, dF, chi0, abs_tol, rel_tol, max_iter);
 
     if (newton_result.converged && std::isfinite(newton_result.root)) {
         const double residual = std::abs(F(newton_result.root));

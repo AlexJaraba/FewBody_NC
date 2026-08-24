@@ -11,7 +11,7 @@
 namespace {
     constexpr double PAIR_MAP_NEAR_ZERO_DISTANCE = 1e-14;
 
-    void validate_pair_before_map(const std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+    void validatePair(const std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
         if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size()) || pair.i == pair.j) {
             throw std::runtime_error("Hernandez pair map received invalid body indices.");
         }
@@ -64,8 +64,8 @@ namespace {
         }
     }
 
-    void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
-        validate_pair_before_map(bodies, pair, dt, G);
+    void keplerSolver(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        validatePair(bodies, pair, dt, G);
         const std::size_t i = static_cast<std::size_t>(pair.i);
         const std::size_t j = static_cast<std::size_t>(pair.j);
         const Vec3 relative_position = bodies[j].position - bodies[i].position;
@@ -74,7 +74,7 @@ namespace {
         const double relative_speed = relative_velocity.norm();
 
         try {
-            const HernandezPairMapResult result = apply_hernandez_pair_kepler_map(bodies, pair.i, pair.j, dt, G);
+            const HernandezPairMapResult result = propagatePairKepler(bodies, pair.i, pair.j, dt, G);
             if (result.converged) {
                 return;
             }
@@ -109,14 +109,14 @@ namespace {
         }
     }
 
-    void drift_all_bodies(std::vector<Body>& bodies, double drift_dt) {
+    void driftAllBodies(std::vector<Body>& bodies, double drift_dt) {
         for (Body& body : bodies) {
             body.position += drift_dt * body.velocity;
             body.updateMomentumFromVelocity();
         }
     }
 
-    void drift_pair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
+    void driftPair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
         const std::size_t i = static_cast<std::size_t>(pair.i);
         const std::size_t j = static_cast<std::size_t>(pair.j);
         bodies[i].position += drift_dt * bodies[i].velocity;
@@ -124,37 +124,30 @@ namespace {
         bodies[i].updateMomentumFromVelocity();
         bodies[j].updateMomentumFromVelocity();
     }
+} // namespace hernandez
 
-    void apply_phi(std::vector<Body>& bodies, const std::vector<Pair>& ordered_pairs, double h, double G) {
-        drift_all_bodies(bodies, h);
-        for (const Pair& pair : ordered_pairs) {
-            drift_pair(bodies, pair, -h);
-            apply_checked_pair_map(bodies, pair, h, G);
-        }
-    }
-
-    void apply_phi_adjoint(std::vector<Body>& bodies, const std::vector<Pair>& ordered_pairs, double h, double G) {
-        for (auto it = ordered_pairs.rbegin(); it != ordered_pairs.rend(); ++it) {
-            apply_checked_pair_map(bodies, *it, h, G);
-            drift_pair(bodies, *it, -h);
-        }
-        drift_all_bodies(bodies, h);
-    }
-}
-
-HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
+HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalizePairsPreserveOrder(fixed_pairs)) {}
 
 void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) {
     if (bodies.size() <= 1 || pairs_.empty()) {
         return;
     }
     if (pairs_.empty()) {
-        drift_all_bodies(bodies, dt);
+        driftAllBodies(bodies, dt);
         return;
     }
     const double half_dt = 0.5 * dt;
-    apply_phi(bodies, pairs_, half_dt, G);
-    apply_phi_adjoint(bodies, pairs_, half_dt, G);
+
+    driftAllBodies(bodies, half_dt);
+    for (const Pair& pair : pairs_) {
+        driftPair(bodies, pair, -half_dt);
+        keplerSolver(bodies, pair, half_dt, G);
+    }
+    for (auto it = pairs_.rbegin(); it != pairs_.rend(); ++it) {
+        keplerSolver(bodies, *it, half_dt, G);
+        driftPair(bodies, *it, -half_dt);
+    }
+    driftAllBodies(bodies, half_dt);
 }
 
 const std::vector<Pair>& HernandezBodyStepper::pairs() const {

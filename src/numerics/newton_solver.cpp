@@ -3,7 +3,7 @@
 
 #include "numerics/newton_solver.h"
 
-NewtonResult Newton_Solver(
+NewtonResult newtonSolver(
     std::function<double(double)> function,
     std::function<double(double)> d_function,
     double x0,
@@ -41,33 +41,3 @@ NewtonResult Newton_Solver(
     const double final_residual = function(x);
     return {x, maxIterations, false, std::isfinite(final_residual) ? std::abs(final_residual) : std::numeric_limits<double>::quiet_NaN()};
 }
-//         // Safeguarded Newton Damping
-//         const double max_step = 1.0;
-//         if (std::abs(step) > max_step) {
-//             const double step = std::copysign(max_step, step);
-//         }
-
-//         const double x_new = x -step;
-
-//         if (!std::isfinite(x_new)) {
-//             return {
-//                 std::numeric_limits<double>::quiet_NaN(), i, false, std::abs(f_x)
-//             };
-//         }
-
-//         // Relative scaled Tolerance
-//         const double scaled_tol = abs_tolerance + rel_tolerance * std::max(std::abs(x_new), 1.0);
-
-//         // Dual Convergence Criteria
-//         const bool step_converged = std::abs(step) < scaled_tol;
-//         const bool residual_converged = std::abs(f_x) < scaled_tol;
-
-//         if (step_converged && residual_converged) {
-//             return {
-//                 x_new, i + 1, true, std::abs(f_x)
-//             };
-//         }
-//         x = x_new;
-//     }
-//     return {std::numeric_limits<double>::quiet_NaN(), maxIterations, false, std::numeric_limits<double>::quiet_NaN()};
-// }

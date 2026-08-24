@@ -14,7 +14,7 @@ int main() {
         readInitialConditions("data/initial_conditions.txt", bodies);
 
         // Recenter system to the center of mass frame
-        recenter_system(bodies);
+        recenterSystem(bodies);
 
         // Create output writer
         std::string outputfilename = "output.csv";

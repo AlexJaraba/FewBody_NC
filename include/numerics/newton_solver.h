@@ -9,7 +9,7 @@ struct NewtonResult {
     double residual;
 };
 
-NewtonResult Newton_Solver(
+NewtonResult newtonSolver(
     std::function<double(double)> function,
     std::function<double(double)> d_function,
     double x0,

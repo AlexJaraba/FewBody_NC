@@ -33,13 +33,13 @@ struct HernandezPairState {
     Vec3 relative_position;
     Vec3 relative_velocity;
 
-    static HernandezPairState from_bodies(const std::vector<Body>& bodies, int i, int j);
+    static HernandezPairState pairState(const std::vector<Body>& bodies, int i, int j);
 
-    void write_to_bodies(std::vector<Body>& bodies) const;
+    void writeToBodies(std::vector<Body>& bodies) const;
 
-    double gravitational_parameter(double G) const;
-    double two_body_energy(double G) const;
+    double gravitationalParameter(double G) const;
+    double twoBodyEnergy(double G) const;
 
-    Vec3 two_body_angular_momentum() const;
-    Vec3 total_momentum() const;
+    Vec3 twoBodyAngularMomentum() const;
+    Vec3 totalMomentum() const;
 };

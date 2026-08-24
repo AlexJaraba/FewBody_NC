@@ -22,6 +22,6 @@ private:
     Vec3 reference_center_of_mass_;
     Vec3 reference_center_of_mass_velocity_;
 
-    void write_header_if_needed();
-    void set_reference(double time, const Diagnostics& diagnostics);
+    void writeHeader();
+    void setReference(double time, const Diagnostics& diagnostics);
 };

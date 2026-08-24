@@ -10,7 +10,6 @@ class Hernandez : public Integrator {
 public:
     explicit Hernandez(const std::vector<Pair>& fixed_pairs);
 
-    // Body-state Path: Used when the solver evolves physical Body objects directly.
     void step(std::vector<Body>& bodies, double dt, double G) override;
     const std::vector<Pair>& pairs() const;
 

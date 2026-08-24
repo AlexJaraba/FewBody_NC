@@ -11,7 +11,7 @@ struct KeplerPropagationResult {
     int iterations;
 };
 
-KeplerPropagationResult propagate_universal(
+KeplerPropagationResult propagateUniversal(
     double mu_grav,
     double reduced_mass,
     const Vec3& q0,

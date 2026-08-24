@@ -3,7 +3,7 @@
 #include "integrators-helper/hernandez/pair_state.h"
 
 namespace {
-    void validate_pair_indices(const std::vector<Body>& bodies, int i, int j) {
+    void validatePairIndices(const std::vector<Body>& bodies, int i, int j) {
         const int N = static_cast<int>(bodies.size());
 
         if (i < 0 || j < 0) {
@@ -23,8 +23,8 @@ namespace {
     }
 }
 
-HernandezPairState HernandezPairState::from_bodies(const std::vector<Body>& bodies, int i, int j) {
-    validate_pair_indices(bodies, i, j);
+HernandezPairState HernandezPairState::pairState(const std::vector<Body>& bodies, int i, int j) {
+    validatePairIndices(bodies, i, j);
 
     HernandezPairState pair;
     const std::size_t index_i = static_cast<std::size_t>(i);
@@ -44,8 +44,8 @@ HernandezPairState HernandezPairState::from_bodies(const std::vector<Body>& bodi
     return pair;
 }
 
-void HernandezPairState::write_to_bodies(std::vector<Body>& bodies) const {
-    validate_pair_indices(bodies, i, j);
+void HernandezPairState::writeToBodies(std::vector<Body>& bodies) const {
+    validatePairIndices(bodies, i, j);
 
     const std::size_t index_i = static_cast<std::size_t>(i);
     const std::size_t index_j = static_cast<std::size_t>(j);
@@ -61,10 +61,10 @@ void HernandezPairState::write_to_bodies(std::vector<Body>& bodies) const {
     bodies[index_j].updateMomentumFromVelocity();
 }
 
-double HernandezPairState::gravitational_parameter(double G) const {
+double HernandezPairState::gravitationalParameter(double G) const {
     return G * total_mass;
 }
-double HernandezPairState::two_body_energy(double G) const {
+double HernandezPairState::twoBodyEnergy(double G) const {
     const double r = relative_position.norm();
 
     if (r <= 0.0) {
@@ -77,9 +77,9 @@ double HernandezPairState::two_body_energy(double G) const {
     return kinetic + potential;
 }
 
-Vec3 HernandezPairState::two_body_angular_momentum() const {
+Vec3 HernandezPairState::twoBodyAngularMomentum() const {
     return reduced_mass * cross(relative_position, relative_velocity);
 }
-Vec3 HernandezPairState::total_momentum() const {
+Vec3 HernandezPairState::totalMomentum() const {
     return total_mass * com_velocity;
 }

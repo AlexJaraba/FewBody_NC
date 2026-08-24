@@ -24,7 +24,7 @@ namespace {
 
 DiagnosticsWriter::DiagnosticsWriter(const std::string& filename) : file_(filename) {file_ << std::setprecision(17);}
 
-void DiagnosticsWriter::write_header_if_needed() {
+void DiagnosticsWriter::writeHeader() {
     if (header_written_) {
         return;
     }
@@ -40,7 +40,7 @@ void DiagnosticsWriter::write_header_if_needed() {
     header_written_ = true;
 }
 
-void DiagnosticsWriter::set_reference(double time, const Diagnostics& diagnostics) {
+void DiagnosticsWriter::setReference(double time, const Diagnostics& diagnostics) {
     reference_time_ = time;
     reference_energy_ = diagnostics.total_energy;
     reference_angular_momentum_ = diagnostics.angular_momentum_vec;
@@ -51,9 +51,9 @@ void DiagnosticsWriter::set_reference(double time, const Diagnostics& diagnostic
 }
 
 void DiagnosticsWriter::write(double time, const Diagnostics& d) {
-    write_header_if_needed();
+    writeHeader();
     if (!reference_set_) {
-        set_reference(time, d);
+        setReference(time, d);
     }
 
     const double dt_from_reference = time - reference_time_;
