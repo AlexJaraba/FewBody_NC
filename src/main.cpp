@@ -12,8 +12,13 @@ int main() {
     std::vector<Body> bodies;
     readInitialConditions("data/initial_conditions.txt", bodies);
 
+<<<<<<< Updated upstream
     // Recenter system to the center of mass frame
     recenter_system(bodies);
+=======
+        // Recenter system to the center of mass frame
+        recenterSystem(bodies);
+>>>>>>> Stashed changes
 
     // Create output writer
     std::string outputfilename = "output.csv";

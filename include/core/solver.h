@@ -15,7 +15,7 @@
 
 class CSVOutputWriter;
 
-void recenter_system(std::vector<Body>& bodies);
+void recenterSystem(std::vector<Body>& bodies);
 
 class Solver {
 public:
@@ -31,8 +31,13 @@ private:
     std::string effective_pair_order = "canonical";
     double hierarchy_ratio = 0.0;
 
+<<<<<<< Updated upstream
     void run_jacobi(const SolverParams& params);
     void run_cartesian(const SolverParams& params);
     void cartesian_step(double dt, double G);
     void write_current_bodies(double time);
+=======
+    void runFixedStep(const SolverParams& params);
+    void writeCurrentBodies(double time);
+>>>>>>> Stashed changes
 };

@@ -53,6 +53,7 @@ Integrator Policy:
    ====================================================================== */
 
 namespace {
+<<<<<<< Updated upstream
     /*
     Pair-order policy:
         canonical = production default
@@ -62,6 +63,9 @@ namespace {
     constexpr double AUTO_HIERARCHY_RATIO_THRESHOLD = 100.0;
     constexpr bool AUTO_MAY_SELECT_STRENGTH = false;
     std::vector<Pair> make_all_physical_pairs(const std::vector<Body>& test_bodies) {
+=======
+    std::vector<Pair> makePhysicalPairs(const std::vector<Body>& bodies) {
+>>>>>>> Stashed changes
         std::vector<Pair> pairs;
         const int N = static_cast<int>(test_bodies.size());
         for (int i = 0; i < N; ++i) {
@@ -71,7 +75,11 @@ namespace {
         }
         return pairs;
     }
+<<<<<<< Updated upstream
     void validate_finite_bodies(const std::vector<Body>& bodies, const char* context, int step, double time) {
+=======
+    void validateBodies(const std::vector<Body>& bodies, const char* context, std::uint64_t step, double time) {
+>>>>>>> Stashed changes
         for (int i = 0; i < static_cast<int>(bodies.size()); ++i) {
             const Body& body = bodies[i];
             if (!std::isfinite(body.mass) || !body.position.is_finite() || !body.velocity.is_finite() || !body.momentum.is_finite() || !body.acceleration.is_finite()) {
@@ -94,6 +102,12 @@ namespace {
 }
 
 Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), integrator(nullptr), writer(writer_) {
+<<<<<<< Updated upstream
+=======
+    const SolverParams params = readParams("data/param.txt");
+    fixed_pairs.clear();
+    fixed_pairs = canonicalizePairs(makePhysicalPairs(bodies));
+>>>>>>> Stashed changes
 
     SolverParams params = readParams("data/param.txt");
     
@@ -108,8 +122,9 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
 
     if (use_hernandez_body_path) {
         if (params.pair_order == "canonical") {
-            fixed_pairs = canonicalize_pairs(fixed_pairs);
+            fixed_pairs = canonicalizePairs(fixed_pairs);
             effective_pair_order = "canonical";
+<<<<<<< Updated upstream
         }
         else if (params.pair_order == "strength") {
             fixed_pairs = order_pairs_by_strength(fixed_pairs, bodies);
@@ -126,6 +141,15 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
             }
         }
         else {
+=======
+        } else if (params.pair_order == "strength") {
+            fixed_pairs = orderPairsStrength(fixed_pairs, bodies);
+            effective_pair_order = "strength";
+        } else if (params.pair_order == "auto") { // Auto mode: default to canonical for now, can be improved later
+            fixed_pairs = canonicalizePairs(fixed_pairs);
+            effective_pair_order = "canonical";
+        } else {
+>>>>>>> Stashed changes
             throw std::runtime_error("Invalid pair_order. Use 'canonical', 'strength', or 'auto'.");
         }
     }
@@ -166,7 +190,14 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
         // Add more integrator options here as needed
 }
 
+<<<<<<< Updated upstream
 void recenter_system(std::vector<Body>& bodies) {
+=======
+void recenterSystem(std::vector<Body>& bodies) {
+    if (bodies.empty()) {
+        throw std::runtime_error("Cannot recenter an empty system.");
+    }
+>>>>>>> Stashed changes
     double total_mass = 0.0;
     Vec3 com;
     Vec3 com_velocity;
@@ -217,6 +248,7 @@ void Solver::run() {
     std::cout << "Coordinate Mode: " << params.coordinate_mode << std::endl;
     std::cout << "Adaptive Timesteps: " << (params.adaptive_timesteps ? "true" : "false") << std::endl;
 
+<<<<<<< Updated upstream
     if (params.adaptive_timesteps) {
         std::cout << "Timestep Levels: " << params.timestep_levels << std::endl;
         std::cout << "Timestep Eta: " << params.timestep_eta << std::endl;
@@ -238,6 +270,12 @@ void Solver::run() {
 */
 
 void Solver::write_current_bodies(double time) {
+=======
+    runFixedStep(params);
+}
+
+void Solver::writeCurrentBodies(double time) {
+>>>>>>> Stashed changes
     std::vector<BodyState> states;
     
     states.reserve(bodies.size());
@@ -252,6 +290,7 @@ void Solver::write_current_bodies(double time) {
 // Specific Steps for Specified Coordinate Modes
 // ==============================================================
 
+<<<<<<< Updated upstream
 /*
     Run the canonical Jacobi-coordinate integration path.
 
@@ -275,6 +314,13 @@ void Solver::run_jacobi(const SolverParams& params) {
     double dt = params.timestep;
     double G = params.gravitational_constant;
     const int steps = static_cast<int>(runtime / dt);
+=======
+void Solver::runFixedStep(const SolverParams& params) {
+    const int output_frequency = params.output_frequency;
+    const double runtime = params.runtime;
+    const double dt = params.timestep;
+    const double G = params.gravitational_constant;
+>>>>>>> Stashed changes
 
     if (!integrator) {
         throw std::runtime_error("Jacobi mode requires a CanonicalState integrator.");
@@ -291,6 +337,7 @@ void Solver::run_jacobi(const SolverParams& params) {
     int pending_lower_level = -1;
     int pending_lower_level_count = 0;
 
+<<<<<<< Updated upstream
     const int timestep_refresh_interval = std::max(1, params.timestep_refresh_interval);
     const int timestep_level_decrease_delay = std::max(1, params.timestep_level_decrease_delay);
 
@@ -401,6 +448,15 @@ void Solver::run_jacobi(const SolverParams& params) {
                 << std::endl;
         diagnostics_writer.write(0.0, diag);
         write_current_bodies(0.0);
+=======
+    validateBodies(bodies, "initial_state", 0, 0.0);
+
+    DiagnosticsWriter diagnostics_writer("diagnostics.csv");
+    {
+        const Diagnostics diagnostics = computeDiagnostics(bodies, G, dt);
+        diagnostics_writer.write(0.0, diagnostics);
+        writeCurrentBodies(0.0);
+>>>>>>> Stashed changes
     }
 
     for (int step = 1; step <= steps; ++step) {
@@ -426,6 +482,7 @@ void Solver::run_jacobi(const SolverParams& params) {
                 << "reason = " << exc.what();
             throw std::runtime_error(msg.str());
         }
+<<<<<<< Updated upstream
 
         reconstruct_bodies(state, bodies);
         validate_finite_bodies(bodies, "jacobi_after_step", step, step * dt);
@@ -608,6 +665,15 @@ void Solver::run_cartesian(const SolverParams& params) {
             //         << std::endl;
             diagnostics_writer.write(step * dt, diag);
             write_current_bodies(step * dt);
+=======
+        const double current_time = static_cast<double>(step) * dt;
+        validateBodies(bodies, "cartesian_after_step", step, current_time);
+
+        if (step % output_stride == 0 || step == steps) {
+            const Diagnostics diag = computeDiagnostics(bodies, G, dt);
+            diagnostics_writer.write(current_time, diag);
+            writeCurrentBodies(current_time);
+>>>>>>> Stashed changes
         }
     }
     diagnostics_writer.close();

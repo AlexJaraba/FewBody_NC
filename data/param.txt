@@ -1,6 +1,7 @@
 output_frequency 10
 runtime 1.4
 timestep 0.000015
+<<<<<<< Updated upstream
 coordinate_mode cartesian
 integrator hernandez
 gravitational_constant 1.0
@@ -11,3 +12,8 @@ timestep_levels 2
 timestep_eta 0.001
 timestep_refresh_interval 1
 timestep_level_decrease_delay 3
+=======
+integrator hernandez
+gravitational_constant 1
+pair_order canonical
+>>>>>>> Stashed changes

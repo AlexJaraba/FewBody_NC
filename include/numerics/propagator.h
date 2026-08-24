@@ -11,7 +11,11 @@ struct CanonicalStateVector {
     int iterations;
 };
 
+<<<<<<< Updated upstream
 CanonicalStateVector propagate_universal(
+=======
+KeplerPropagationResult propagateUniversal(
+>>>>>>> Stashed changes
     double mu_grav,
     double reduced_mass,
     const Vec3& q0,

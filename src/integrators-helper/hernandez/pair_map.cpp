@@ -23,7 +23,7 @@
 
     After Propagation:
         q_new = propagated relative position
-        p_new = propagated relative velocity
+        p_new = propagated relative momentum
         u_new = p_new / mu
 
     The COM evolves freely:
@@ -32,8 +32,8 @@
 
    ==================================================================================== */
 
-HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies, int i, int j, double dt, double G) {
-    HernandezPairState pair = HernandezPairState::from_bodies(bodies, i, j);
+HernandezPairMapResult propagatePairKepler(std::vector<Body>& bodies, int i, int j, double dt, double G) {
+    HernandezPairState pair = HernandezPairState::pairState(bodies, i, j);
 
     if (pair.relative_position.norm() <= 1e-14) {
         throw std::runtime_error("Hernandez pair Kepler map received a pair with near-zero separation.");
@@ -41,7 +41,11 @@ HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies
 
     const Vec3 relative_momentum = pair.reduced_mass * pair.relative_velocity;
 
+<<<<<<< Updated upstream
     CanonicalStateVector propagated = propagate_universal(pair.gravitational_parameter(G), pair.reduced_mass, pair.relative_position, relative_momentum, dt);
+=======
+    KeplerPropagationResult propagated = propagateUniversal(pair.gravitationalParameter(G), pair.reduced_mass, pair.relative_position, relative_momentum, dt);
+>>>>>>> Stashed changes
 
     if (!propagated.converged) {
         return {false, propagated.iterations};
@@ -50,7 +54,7 @@ HernandezPairMapResult apply_hernandez_pair_kepler_map(std::vector<Body>& bodies
     pair.relative_position = propagated.q;
     pair.relative_velocity = propagated.p / pair.reduced_mass;
     pair.com_position += dt * pair.com_velocity;
-    pair.write_to_bodies(bodies);
+    pair.writeToBodies(bodies);
 
     return {true, propagated.iterations};
 }

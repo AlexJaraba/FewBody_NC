@@ -1,3 +1,5 @@
+from os import read
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -45,7 +47,6 @@ DEFAULT_EXECUTABLE_PATH = PROJECT_ROOT / "few_body_nc.exe"
 
 @dataclass
 class PlotConfig:
-    G: float = 0.000296014912
     epsilon: float = 1e-300
     figure_size: tuple = (16, 10)
     orbit_marker_size: float = 4.0
@@ -622,10 +623,8 @@ def append_benchmark_row(benchmark_rows: list[dict],
                          stderr_tail: str = "",
                          plot_path: Path | None = None,
                          diagnostics: pd.DataFrame | None = None,
-                         engine: str = "fewbodync",
                          failure_type: str = "",
                          failure_message: str = "",
-                         rebound_comparison: dict | None = None,
                          config: PlotConfig | None = None,
                          param_snapshot: str = "",
                          initial_conditions_snapshot: str = "",
@@ -634,6 +633,7 @@ def append_benchmark_row(benchmark_rows: list[dict],
     if config is None:
         config = PlotConfig()
     body_count = len(test.get("initial_conditions", []))
+    params = read_param(DEFAULT_PARAM_PATH)
     row = {"run_number": run_number,
            "engine": engine,
            "mode": mode["name"],
@@ -649,7 +649,7 @@ def append_benchmark_row(benchmark_rows: list[dict],
            "dt": test["dt"],
            "runtime": test["runtime"],
            "output_frequency": test["output_frequency"],
-           "G": config.G,
+           "G": float(params.get("gravitational_constant", 0.000296014912)),
            "body_count": body_count,
            "param_snapshot": param_snapshot,
            "initial_conditions_snapshot": initial_conditions_snapshot,
@@ -1120,6 +1120,8 @@ def thin_for_plotting(time: np.ndarray, values: np.ndarray, max_points: int = 10
 
 def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.DataFrame:
     rows = []
+    params = read_param(DEFAULT_PARAM_PATH)
+    G = float(params.get("gravitational_constant", 0.000296014912))
 
     for time_values, group in df.groupby("time", sort=True):
         group = group.sort_values("id")
@@ -1140,7 +1142,7 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
             r = np.linalg.norm(dr, axis=1)
             valid = r > config.epsilon
             if np.any(valid):
-                potential -= np.sum(config.G * mass[i] * mass[i + 1:][valid] / r[valid])
+                potential -= np.sum(G * mass[i] * mass[i + 1:][valid] / r[valid])
         total_energy = kinetic + potential
         momentum_vec = np.sum(mass[:, None] * vel, axis=0)
         angular_vec = np.sum(np.cross(pos, mass[:, None] * vel), axis=0)
@@ -1498,8 +1500,12 @@ def rewrite_param(dt: float,
                   runtime: float, 
                   output_frequency: int, 
                   integrator: str, 
+<<<<<<< Updated upstream
                   coordinate_mode: str, 
                   G: float = 0.000296014912,
+=======
+                  G: float,
+>>>>>>> Stashed changes
                   pair_order: str = "canonical", 
                   adaptive_timesteps: bool | None = None,
                   timestep_levels: int | None = None,
@@ -1652,10 +1658,17 @@ def run_convergence_case(case_name: str,
                          integrator: str,
                          coordinate_mode: str,
                          pair_order: str,
+<<<<<<< Updated upstream
                          adaptive_timesteps: bool,
                          G: float,
                          use_diagnostics_csv: bool = True) -> pd.DataFrame:
     config = PlotConfig(G=G)
+=======
+                         G: float) -> pd.DataFrame:
+    params = read_param(DEFAULT_PARAM_PATH)
+    G = float(params.get("gravitational_constant", 0.000296014912))
+    config = PlotConfig()
+>>>>>>> Stashed changes
     rows = []
 
     print("\n" + "-" * 90)
@@ -1980,6 +1993,8 @@ def run_benchmark_suite(modes: list[dict] | None = None,
     original_param_text = None
     original_initial_conditions_text = None
 
+    params = read_param(DEFAULT_PARAM_PATH)
+
     if DEFAULT_PARAM_PATH.exists():
         original_param_text = DEFAULT_PARAM_PATH.read_text()
     if DEFAULT_INITIAL_CONDITIONS_PATH.exists():
@@ -2064,6 +2079,7 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                             runtime = test["runtime"], 
                             output_frequency = test["output_frequency"], 
                             integrator = mode["integrator"], 
+<<<<<<< Updated upstream
                             coordinate_mode = mode["coordinate_mode"],
                             G = config.G,
                             pair_order = mode.get("pair_order", "canonical"),
@@ -2072,6 +2088,10 @@ def run_benchmark_suite(modes: list[dict] | None = None,
                             timestep_eta = mode.get("timestep_eta"),
                             timestep_refresh_interval = mode.get("timestep_refresh_interval"),
                             timestep_level_decrease_delay = mode.get("timestep_level_decrease_delay"))
+=======
+                            G = float(params.get("gravitational_constant", 0.000296014912)),
+                            pair_order = mode.get("pair_order", "canonical"))
+>>>>>>> Stashed changes
                 
                 param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
                 initial_conditions_snapshot = (DEFAULT_INITIAL_CONDITIONS_PATH.read_text() if DEFAULT_INITIAL_CONDITIONS_PATH.exists() else "")

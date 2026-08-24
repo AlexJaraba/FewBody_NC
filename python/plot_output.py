@@ -123,7 +123,16 @@ def main() -> None:
     else:
         diagnostics = functions.compute_diagnostics_from_output(output_df, config)
 
+<<<<<<< Updated upstream
     functions.plot_verification_suite(output_df, diagnostics, config)
+=======
+    params = functions.read_param(functions.DEFAULT_PARAM_PATH)
+    G = float(params.get("gravitational_constant", 0.000296014912))
+    config = functions.PlotConfig()
+    output = functions.read_output(functions.DEFAULT_OUTPUT_PATH)
+    diagnostics = functions.load_diagnostics(output, config)
+    functions.plot_verification_suite(output, diagnostics, config)
+>>>>>>> Stashed changes
 
 # ====================================================
 

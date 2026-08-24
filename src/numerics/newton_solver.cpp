@@ -4,7 +4,7 @@
 
 #include "numerics/newton_solver.h"
 
-NewtonResult Newton_Solver(
+NewtonResult newtonSolver(
     std::function<double(double)> function,
     std::function<double(double)> d_function,
     double x0,
@@ -60,5 +60,11 @@ NewtonResult Newton_Solver(
         }
         x = x_new;
     }
+<<<<<<< Updated upstream
     return {std::numeric_limits<double>::quiet_NaN(), maxIterations, false, std::numeric_limits<double>::quiet_NaN()};
+=======
+
+    const double final_residual = function(x);
+    return {x, maxIterations, false, std::isfinite(final_residual) ? std::abs(final_residual) : std::numeric_limits<double>::quiet_NaN()};
+>>>>>>> Stashed changes
 }

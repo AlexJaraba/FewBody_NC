@@ -47,10 +47,16 @@ namespace {
     constexpr double PAIR_MAP_TIMESCALE_FRACTION = 0.25;
     constexpr double PAIR_MAP_NEAR_ZERO_DISTANCE = 1e-14;
 
+<<<<<<< Updated upstream
     int next_power_of_two_substeps(int requested) {
         int substeps = 1;
         while (substeps < requested && substeps < PAIR_MAP_MAX_SUBSTEPS) {
             substeps *= 2;
+=======
+    void validatePair(const std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size()) || pair.i == pair.j) {
+            throw std::runtime_error("Hernandez pair map received invalid body indices.");
+>>>>>>> Stashed changes
         }
         return std::max(1, std::min(substeps, PAIR_MAP_MAX_SUBSTEPS));
     }
@@ -155,6 +161,7 @@ namespace {
             return true;
         }
 
+<<<<<<< Updated upstream
     void apply_checked_pair_map(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
         validate_pair_before_map(bodies, pair, dt, G);
 
@@ -163,6 +170,22 @@ namespace {
         const Vec3 dv = bodies[pair.j].velocity - bodies[pair.i].velocity;
         const double distance = dr.norm();
         const double relative_speed = dv.norm();
+=======
+    void keplerSolver(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
+        validatePair(bodies, pair, dt, G);
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        const Vec3 relative_position = bodies[j].position - bodies[i].position;
+        const Vec3 relative_velocity = bodies[j].velocity - bodies[i].velocity;
+        const double distance = relative_position.norm();
+        const double relative_speed = relative_velocity.norm();
+
+        try {
+            const HernandezPairMapResult result = propagatePairKepler(bodies, pair.i, pair.j, dt, G);
+            if (result.converged) {
+                return;
+            }
+>>>>>>> Stashed changes
 
         int last_iterations = 0;
         std::string last_error = "unknown pair-map failure";
@@ -245,13 +268,14 @@ namespace {
         throw std::runtime_error(make_failure_message("maximum pair-local substeps exhausted"));
     }
 
-    void drift_all_bodies(std::vector<Body>& bodies, double drift_dt) {
+    void driftAllBodies(std::vector<Body>& bodies, double drift_dt) {
         for (Body& body : bodies) {
             body.position += drift_dt * body.velocity;
             body.updateMomentumFromVelocity();
         }
     }
 
+<<<<<<< Updated upstream
     void drift_pair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
         bodies[pair.i].position += drift_dt * bodies[pair.i].velocity;
         bodies[pair.j].position += drift_dt * bodies[pair.j].velocity;
@@ -300,9 +324,19 @@ namespace {
         hernandez.apply_pair_group(bodies, active_pairs, 0.5 * dt, G);
     }
 
+=======
+    void driftPair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        bodies[i].position += drift_dt * bodies[i].velocity;
+        bodies[j].position += drift_dt * bodies[j].velocity;
+        bodies[i].updateMomentumFromVelocity();
+        bodies[j].updateMomentumFromVelocity();
+    }
+>>>>>>> Stashed changes
 }
 
-HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalize_pairs_preserve_order(fixed_pairs)) {}
+HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalizePairsPreserveOrder(fixed_pairs)) {}
 
 void HernandezBodyStepper::apply_pair_group(std::vector<Body>& bodies, const std::vector<Pair>& active_pairs, double dt, double G) const {
     const std::vector<Pair> ordered_pairs = canonicalize_pairs_preserve_order(active_pairs);
@@ -316,6 +350,7 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) 
     if (bodies.size() <= 1 || pairs_.empty()) {
         return;
     }
+<<<<<<< Updated upstream
     apply_pair_group(bodies, pairs_, dt, G);
 }
 
@@ -325,6 +360,24 @@ void HernandezBodyStepper::step_block(std::vector<Body>& bodies, const Hernandez
     }
     const int max_level = deepest_nonempty_level(schedule);
     apply_block_level(*this, bodies, schedule, 0, max_level, dt, G);
+=======
+    if (pairs_.empty()) {
+        driftAllBodies(bodies, dt);
+        return;
+    }
+    const double half_dt = 0.5 * dt;
+
+    driftAllBodies(bodies, half_dt);
+    for (const Pair& pair : pairs_) {
+        driftPair(bodies, pair, -half_dt);
+        keplerSolver(bodies, pair, half_dt, G);
+    }
+    for (auto it = pairs_.rbegin(); it != pairs_.rend(); ++it) {
+        keplerSolver(bodies, *it, half_dt, G);
+        driftPair(bodies, *it, -half_dt);
+    }
+    driftAllBodies(bodies, half_dt);
+>>>>>>> Stashed changes
 }
 
 const std::vector<Pair>& HernandezBodyStepper::pairs() const {
