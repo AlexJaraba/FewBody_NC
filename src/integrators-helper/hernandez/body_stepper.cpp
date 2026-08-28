@@ -6,7 +6,10 @@
 
 #include "integrators-helper/hernandez/body_stepper.h"
 #include "integrators-helper/hernandez/pair_map.h"
+#include "integrators-helper/hernandez/pair_state.h"
 #include "dynamics/pairing.h"
+#include "dynamics/external_potential.h"
+#include "core/body.h"
 
 namespace {
     constexpr double PAIR_MAP_NEAR_ZERO_DISTANCE = 1e-14;
@@ -109,6 +112,14 @@ namespace {
         }
     }
 
+    void externalPotentialKick(std::vector<Body>& bodies, const potential::ExternalPotential& potential, double G, double dt) {
+        for (auto& body : bodies) {
+            const Vec3 acceleration = potential.accelerationAt(body.position, G);
+            body.velocity += dt * acceleration;
+            body.updateMomentumFromVelocity();
+        }
+    }
+
     void driftAllBodies(std::vector<Body>& bodies, double drift_dt) {
         for (Body& body : bodies) {
             body.position += drift_dt * body.velocity;
@@ -124,6 +135,17 @@ namespace {
         bodies[i].updateMomentumFromVelocity();
         bodies[j].updateMomentumFromVelocity();
     }
+
+    void driftCOM(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
+        HernandezPairState pair_state = HernandezPairState::pairState(bodies, pair.i, pair.j);
+        pair_state.com_position += drift_dt * pair_state.com_velocity;
+        pair_state.writeToBodies(bodies);
+    }
+
+        // pair.relative_position = propagated.q;
+        // pair.relative_velocity = propagated.p / pair.reduced_mass;
+        // pair.com_position += dt * pair.com_velocity;
+        // pair.writeToBodies(bodies);
 } // namespace hernandez
 
 HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalizePairsPreserveOrder(fixed_pairs)) {}
@@ -137,17 +159,28 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) 
         return;
     }
     const double half_dt = 0.5 * dt;
+    const double potential_mass = 10.0; // Replace with the actual mass value as needed
+    const Vec3 scale_length(1.0, 2.0, 3.0); // Replace with the actual vector as needed
+    potential::ExternalPotential external_potential(potential_mass, scale_length);
+    double total_mass = 0.0;
+    for (const auto& body : bodies) {
+        total_mass += body.mass;
+    }
 
+    externalPotentialKick(bodies, external_potential, G, half_dt);
     driftAllBodies(bodies, half_dt);
     for (const Pair& pair : pairs_) {
         driftPair(bodies, pair, -half_dt);
         keplerSolver(bodies, pair, half_dt, G);
+        driftCOM(bodies, pair, half_dt);
     }
     for (auto it = pairs_.rbegin(); it != pairs_.rend(); ++it) {
+        driftCOM(bodies, *it, half_dt);
         keplerSolver(bodies, *it, half_dt, G);
         driftPair(bodies, *it, -half_dt);
     }
     driftAllBodies(bodies, half_dt);
+    externalPotentialKick(bodies, external_potential, G, half_dt);
 }
 
 const std::vector<Pair>& HernandezBodyStepper::pairs() const {

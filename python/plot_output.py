@@ -21,6 +21,7 @@ def parse_args() -> argparse.Namespace:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--benchmark", action="store_true", help="Run benchmark suite instead of plotting.",)
     mode.add_argument("--convergence", action="store_true", help="Run timestep scaling study using the current parameters.",)
+    mode.add_argument("--animate", action="store_true", help="Run the animation of the simulation.",)
     return parser.parse_args()
 
 def main() -> None:
@@ -37,7 +38,10 @@ def main() -> None:
     config = functions.PlotConfig(G=params.get("gravitational_constant", 0.000296014912))
     output = functions.read_output(functions.DEFAULT_OUTPUT_PATH)
     diagnostics = functions.load_diagnostics(output, config)
-    functions.plot_verification_suite(output, diagnostics, config)
+    if args.animate:
+        functions.plot_animation()
+    else:
+        functions.plot_verification_suite(output, diagnostics, config)
 
 # ====================================================
 

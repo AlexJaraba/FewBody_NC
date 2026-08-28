@@ -1,7 +1,9 @@
 #include <cmath>
 #include <stdexcept>
+#include <numbers>
 
 #include "core/body.h"
+#include "dynamics/external_potential.h"
 
 Body::Body(double m, Vec3 pos, Vec3 vel, double r)
     : Body(-1, m, pos, vel, r) {}
@@ -11,7 +13,7 @@ Body::Body(int id_, double m, Vec3 pos, Vec3 vel, double r)
 
 void Body::updateAcceleration(const std::vector<Body>& bodies, double G) {
     acceleration = Vec3();
-    
+
     for (const auto& other : bodies) {
         if (&other == this) continue;
 

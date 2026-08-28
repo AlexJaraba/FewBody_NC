@@ -4,6 +4,7 @@
 
 #include "core/body_state.h"
 #include "math/vec3.h"
+#include "dynamics/external_potential.h"
 
 struct Body {
     int id;

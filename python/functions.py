@@ -7,6 +7,8 @@ import re
 
 from dataclasses import dataclass
 from pathlib import Path
+from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Slider
 
 """
 FewBodyNC plotting and benchmark utilities
@@ -1056,6 +1058,45 @@ def plot_verification_suite(output_df: pd.DataFrame,
         plt.show()
     else:
         plt.close(fig)
+
+def plot_animation():
+    data = read_output(DEFAULT_OUTPUT_PATH)
+    times = data["time"].unique()
+    body_ids = data["id"].unique()
+
+    base_interval = 20
+
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
+    bodies_plot = ax.scatter([], [])
+    trails = {body_id: ax.plot([], [])[0] for body_id in body_ids}
+
+    ax.set_aspect("equal")
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_xlim(data["x"].min() - 0.01, data["x"].max() + 0.01)
+    ax.set_ylim(data["y"].min() - 0.01, data["y"].max() + 0.01)
+
+    def update(frame):
+        time = times[frame]
+        current = data[data["time"] == time]
+        bodies_plot.set_offsets(current[["x", "y"]].values)
+        past = data[data["time"] <= time]
+        for body_id in body_ids:
+            trajectory = past[past["id"] == body_id]
+            trails[body_id].set_data(trajectory["x"],  trajectory["y"])
+        ax.set_title(f"Time: {time:.6f}")
+        return [bodies_plot, *trails.values()]
+
+    ani = FuncAnimation(fig, update, frames=len(times), interval=base_interval, blit=False)
+    # slider_ax = fig.add_axes((0.2, 0.07, 0.6, 0.03))
+    # speed_slider = Slider(ax=slider_ax, label="Speed", valmin=0.25, valmax=2.0, valinit=1.0, valstep=0.25)
+    # def change_speed(speed):
+    #     new_interval = base_interval / speed
+    #     ani._interval = new_interval
+    #     ani.event_source.interval = new_interval
+    # speed_slider.on_changed(change_speed)
+    plt.show()
 
 # ============================================================
 # Rewrite param.txt and initial_conditions.txt

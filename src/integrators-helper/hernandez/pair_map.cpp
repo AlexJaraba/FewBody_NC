@@ -5,7 +5,6 @@
 #include "numerics/propagator.h"
 
 /* ====================================================================================
-
     Apply one physical pairwise Kepler map.
 
     The universal-variable propagator expects canonical relative momentum:
@@ -21,15 +20,15 @@
 
         G * (m_i + m_j)
 
-    After Propagation:
+    After propagation:
         q_new = propagated relative position
-        p_new = propagated relative velocity
+        p_new = propagated canonical relative momentum
         u_new = p_new / mu
 
-    The COM evolves freely:
-        R_new = R + dt * V
-        V_new = V
-
+    This map updates only the relative two-body state. The pair COM is
+    deliberately left unchanged here; HernandezBodyStepper applies the
+    corresponding COM drift as a separate operator so the complete
+    composition can be time symmetric.
    ==================================================================================== */
 
 HernandezPairMapResult propagatePairKepler(std::vector<Body>& bodies, int i, int j, double dt, double G) {
@@ -46,10 +45,9 @@ HernandezPairMapResult propagatePairKepler(std::vector<Body>& bodies, int i, int
     if (!propagated.converged) {
         return {false, propagated.iterations};
     }
-
+    
     pair.relative_position = propagated.q;
     pair.relative_velocity = propagated.p / pair.reduced_mass;
-    pair.com_position += dt * pair.com_velocity;
     pair.writeToBodies(bodies);
 
     return {true, propagated.iterations};
