@@ -29,7 +29,7 @@ KeplerPropagationResult propagateUniversal(double mu_grav, double reduced_mass, 
 
     const Vec3 v0 = p0 / reduced_mass;
     const double r0_mag = norm(q0);
-    const double v0_mag = norm(v0);
+    const double v0_mag = norm(p0) / reduced_mass;
     const double vr0 = dot(q0, v0) / r0_mag;
     const double alpha = 2.0 / r0_mag - (v0_mag * v0_mag) / mu_grav;
 
@@ -46,18 +46,29 @@ KeplerPropagationResult propagateUniversal(double mu_grav, double reduced_mass, 
     const double f = 1.0 - (chi * chi / r0_mag) * C;
     const double g = dt - (chi * chi * chi * S) / std::sqrt(mu_grav);
 
-    Vec3 q = (f * q0) + (g * v0);
+    Vec3 q = (f * q0) + (g / reduced_mass) * p0;
 
     const double r_mag = norm(q);
     if (!q.is_finite() || !std::isfinite(r_mag) || r_mag <= 0.0) {
         return {{}, {}, false, chi_res.iterations};
     }
-    const double fdot = (std::sqrt(mu_grav) / (r_mag * r0_mag)) * chi * (z * S - 1.0);
-    const double gdot = 1.0 - (chi * chi / r_mag) * C;
+    double fdot = (std::sqrt(mu_grav) / (r_mag * r0_mag)) * chi * (z * S - 1.0);
+    double gdot = 1.0 - (chi * chi / r_mag) * C;
 
-    Vec3 v = (fdot * q0) + (gdot * v0);
-    Vec3 p = reduced_mass * v;
-    if (!v.is_finite() || !p.is_finite()) {
+    const double f_tolerance = 16.0 * std::numeric_limits<double>::epsilon();
+    const double g_tolerance = 16.0 * std::numeric_limits<double>::epsilon() * std::max(1.0, std::abs(dt));
+    const double fdot_identity = (std::abs(g) > g_tolerance) ? (f * gdot - 1.0) / g : fdot;
+    const double gdot_identity = (std::abs(f) > f_tolerance) ? (g * fdot + 1.0) / f : gdot;
+    const double fdot_vel_correction = std::abs(fdot_identity - fdot) * r0_mag;
+    const double gdot_vel_correction = std::abs(gdot_identity - gdot) * v0_mag;
+    if (std::isfinite(gdot_identity) && (!std::isfinite(fdot_identity) || gdot_vel_correction <= fdot_vel_correction)) {
+        gdot = gdot_identity;
+    } else if (std::isfinite(fdot_identity)) {
+        fdot = fdot_identity;
+    }
+
+    Vec3 p = (reduced_mass * fdot * q0) + (gdot * p0);
+    if (!p.is_finite()) {
         return {{}, {}, false, chi_res.iterations};
     }
 

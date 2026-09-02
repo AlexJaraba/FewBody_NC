@@ -45,10 +45,12 @@ HernandezPairMapResult propagatePairKepler(std::vector<Body>& bodies, int i, int
     if (!propagated.converged) {
         return {false, propagated.iterations};
     }
+
+    pair.applyRelativeKick(bodies, propagated.q, propagated.p);
     
-    pair.relative_position = propagated.q;
-    pair.relative_velocity = propagated.p / pair.reduced_mass;
-    pair.writeToBodies(bodies);
+    // pair.relative_position = propagated.q;
+    // pair.relative_velocity = propagated.p / pair.reduced_mass;
+    // pair.writeToBodies(bodies);
 
     return {true, propagated.iterations};
 }

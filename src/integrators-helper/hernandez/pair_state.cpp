@@ -61,6 +61,32 @@ void HernandezPairState::writeToBodies(std::vector<Body>& bodies) const {
     bodies[index_j].updateMomentumFromVelocity();
 }
 
+void HernandezPairState::applyRelativeKick(std::vector<Body>& bodies, const Vec3& new_relative_position, const Vec3& new_relative_momentum) const {
+    validatePairIndices(bodies, i, j);
+
+    const std::size_t index_i = static_cast<std::size_t>(i);
+    const std::size_t index_j = static_cast<std::size_t>(j);
+    const double coeff_i = mass_j / total_mass;
+    const double coeff_j = mass_i / total_mass;
+
+    // Update relative velocity and momentum
+    const Vec3 old_relative_momentum = reduced_mass * relative_velocity;
+    const Vec3 relative_position_change = new_relative_position - relative_position;
+    const Vec3 relative_momentum_change = new_relative_momentum - old_relative_momentum;
+
+    // Update the velocities of the individual bodies based on the new relative velocity
+    bodies[index_i].position += coeff_i * relative_position_change;
+    bodies[index_j].position -= coeff_j * relative_position_change;
+
+    // Update the momenta of the individual bodies based on the new relative momentum
+    const Vec3 pair_momentum = bodies[index_i].momentum + bodies[index_j].momentum;
+    bodies[index_i].momentum += relative_momentum_change;
+    bodies[index_j].momentum = pair_momentum - bodies[index_i].momentum;
+
+    bodies[index_i].updateVelocityFromMomentum();
+    bodies[index_j].updateVelocityFromMomentum();
+}
+
 double HernandezPairState::gravitationalParameter(double G) const {
     return G * total_mass;
 }

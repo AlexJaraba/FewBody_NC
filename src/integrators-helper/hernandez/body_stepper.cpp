@@ -9,6 +9,7 @@
 #include "integrators-helper/hernandez/pair_state.h"
 #include "dynamics/pairing.h"
 #include "dynamics/external_potential.h"
+#include "numerics/propagator.h"
 #include "core/body.h"
 
 namespace {
@@ -69,33 +70,38 @@ namespace {
 
     void keplerSolver(std::vector<Body>& bodies, const Pair& pair, double dt, double G) {
         validatePair(bodies, pair, dt, G);
-        const std::size_t i = static_cast<std::size_t>(pair.i);
-        const std::size_t j = static_cast<std::size_t>(pair.j);
-        const Vec3 relative_position = bodies[j].position - bodies[i].position;
-        const Vec3 relative_velocity = bodies[j].velocity - bodies[i].velocity;
-        const double distance = relative_position.norm();
-        const double relative_speed = relative_velocity.norm();
+        // const std::size_t i = static_cast<std::size_t>(pair.i);
+        // const std::size_t j = static_cast<std::size_t>(pair.j);
+        // const Vec3 relative_position = bodies[j].position - bodies[i].position;
+        // const Vec3 relative_velocity = bodies[j].velocity - bodies[i].velocity;
+        // const double distance = relative_position.norm();
+        // const double relative_speed = relative_velocity.norm();
 
         try {
-            const HernandezPairMapResult result = propagatePairKepler(bodies, pair.i, pair.j, dt, G);
-            if (result.converged) {
-                return;
+            HernandezPairState pair_ = HernandezPairState::pairState(bodies, pair.i, pair.j);
+            if (pair_.relative_position.norm() <= 1e-14) {
+                throw std::runtime_error("Hernandez pair Kepler map received a pair with near-zero separation.");
             }
+            const Vec3 relative_momentum = pair_.reduced_mass * pair_.relative_velocity;
+            KeplerPropagationResult propagated = propagateUniversal(pair_.gravitationalParameter(G), pair_.reduced_mass, pair_.relative_position, relative_momentum, dt);
+            if (!propagated.converged) {
+                std::ostringstream msg;
+                msg << std::setprecision(17)
+                    << "Hernandez pair Kepler map failed. "
+                    << "converged = false, "
+                    << "pair=(" << pair.i << "," << pair.j << "), "
+                    << "failed_pair_i = " << pair.i << ", "
+                    << "failed_pair_j = " << pair.j << ", "
+                    << "failed_dt = " << dt << ", "
+                    << "failed_iterations = " << propagated.iterations << ", "
+                    << "reason = universal-variable solve did not converge";
+                throw std::runtime_error(msg.str());;
+            }
+            pair_.applyRelativeKick(bodies, propagated.q, propagated.p);
 
-            std::ostringstream msg;
-            msg << std::setprecision(17)
-                << "Hernandez pair Kepler map failed. "
-                << "converged = false, "
-                << "pair=(" << pair.i << "," << pair.j << "), "
-                << "failed_pair_i = " << pair.i << ", "
-                << "failed_pair_j = " << pair.j << ", "
-                << "failed_dt = " << dt << ", "
-                << "G = " << G << ", "
-                << "failed_distance = " << distance << ", "
-                << "failed_relative_speed = " << relative_speed << ", "
-                << "failed_iterations = " << result.iterations << ", "
-                << "reason = universal-variable solve did not converge";
-            throw std::runtime_error(msg.str());
+            // pair_.relative_position = propagated.q;
+            // pair_.relative_velocity = propagated.p / pair_.reduced_mass;
+            // pair_.writeToBodies(bodies);
         } catch (const std::exception& exc) {
             std::ostringstream msg;
             msg << std::setprecision(17)
@@ -104,9 +110,6 @@ namespace {
                 << "failed_pair_i = " << pair.i << ", "
                 << "failed_pair_j = " << pair.j << ", "
                 << "failed_dt = " << dt << ", "
-                << "G = " << G << ", "
-                << "failed_distance = " << distance << ", "
-                << "failed_relative_speed = " << relative_speed << ", "
                 << "reason = " << exc.what();
             throw std::runtime_error(msg.str());
         }
@@ -115,15 +118,14 @@ namespace {
     void externalPotentialKick(std::vector<Body>& bodies, const potential::ExternalPotential& potential, double G, double dt) {
         for (auto& body : bodies) {
             const Vec3 acceleration = potential.accelerationAt(body.position, G);
-            body.velocity += dt * acceleration;
-            body.updateMomentumFromVelocity();
+            body.momentum += dt * acceleration * body.mass;
+            body.updateVelocityFromMomentum();
         }
     }
 
     void driftAllBodies(std::vector<Body>& bodies, double drift_dt) {
         for (Body& body : bodies) {
             body.position += drift_dt * body.velocity;
-            body.updateMomentumFromVelocity();
         }
     }
 
@@ -132,20 +134,20 @@ namespace {
         const std::size_t j = static_cast<std::size_t>(pair.j);
         bodies[i].position += drift_dt * bodies[i].velocity;
         bodies[j].position += drift_dt * bodies[j].velocity;
-        bodies[i].updateMomentumFromVelocity();
-        bodies[j].updateMomentumFromVelocity();
     }
 
     void driftCOM(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
-        HernandezPairState pair_state = HernandezPairState::pairState(bodies, pair.i, pair.j);
-        pair_state.com_position += drift_dt * pair_state.com_velocity;
-        pair_state.writeToBodies(bodies);
+        const std::size_t i = static_cast<std::size_t>(pair.i);
+        const std::size_t j = static_cast<std::size_t>(pair.j);
+        const double total_mass = bodies[i].mass + bodies[j].mass;
+        const Vec3 com_velocity = (bodies[i].momentum + bodies[j].momentum) / total_mass;
+        const Vec3 com_drift = drift_dt * com_velocity;
+        bodies[i].position += com_drift;
+        bodies[j].position += com_drift;
+        // HernandezPairState pair_state = HernandezPairState::pairState(bodies, pair.i, pair.j);
+        // pair_state.com_position += drift_dt * pair_state.com_velocity;
+        // pair_state.writeToBodies(bodies);
     }
-
-        // pair.relative_position = propagated.q;
-        // pair.relative_velocity = propagated.p / pair.reduced_mass;
-        // pair.com_position += dt * pair.com_velocity;
-        // pair.writeToBodies(bodies);
 } // namespace hernandez
 
 HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalizePairsPreserveOrder(fixed_pairs)) {}
@@ -160,14 +162,14 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) 
     }
     const double half_dt = 0.5 * dt;
     const double potential_mass = 10.0; // Replace with the actual mass value as needed
-    const Vec3 scale_length(1.0, 2.0, 3.0); // Replace with the actual vector as needed
+    const double scale_length = 1.0; // Replace with the actual scale length as needed
     potential::ExternalPotential external_potential(potential_mass, scale_length);
     double total_mass = 0.0;
     for (const auto& body : bodies) {
         total_mass += body.mass;
     }
 
-    externalPotentialKick(bodies, external_potential, G, half_dt);
+    //externalPotentialKick(bodies, external_potential, G, half_dt);
     driftAllBodies(bodies, half_dt);
     for (const Pair& pair : pairs_) {
         driftPair(bodies, pair, -half_dt);
@@ -180,7 +182,7 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) 
         driftPair(bodies, *it, -half_dt);
     }
     driftAllBodies(bodies, half_dt);
-    externalPotentialKick(bodies, external_potential, G, half_dt);
+    //externalPotentialKick(bodies, external_potential, G, half_dt);
 }
 
 const std::vector<Pair>& HernandezBodyStepper::pairs() const {

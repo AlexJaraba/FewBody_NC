@@ -36,6 +36,7 @@ struct HernandezPairState {
     static HernandezPairState pairState(const std::vector<Body>& bodies, int i, int j);
 
     void writeToBodies(std::vector<Body>& bodies) const;
+    void applyRelativeKick(std::vector<Body>& bodies, const Vec3& new_relative_velocity, const Vec3& new_relative_momentum) const;
 
     double gravitationalParameter(double G) const;
     double twoBodyEnergy(double G) const;
