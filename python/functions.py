@@ -657,7 +657,7 @@ def add_diagnostics_error_columns(diagnostics: pd.DataFrame, config: PlotConfig)
         df[f"dL{component}"] = dL
         df[f"dP{component}"] = dP
 
-    df["dL"] = df["dLz"]
+    df["dL"] = np.sqrt(np.square(df["dLx"]) + np.square(df["dLy"]) + np.square(df["dLz"]))
     df["dPcm_x"] = df["dPx"]
     df["dPcm_y"] = df["dPy"]
     df["dXcm"] = df["dRcm_x"]
@@ -886,7 +886,7 @@ def error_print_summary(diagnostics: pd.DataFrame, config: PlotConfig) -> None:
     diagnostics = add_diagnostics_error_columns(diagnostics, config)
 
     dE = diagnostics["dE_over_E0"].to_numpy(dtype=float)
-    dLz = diagnostics["dLz"].to_numpy(dtype=float)
+    dLz = diagnostics["dL"].to_numpy(dtype=float)
     dPx = diagnostics["dPx"].to_numpy(dtype=float)
     dPy = diagnostics["dPy"].to_numpy(dtype=float)
     dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)
@@ -993,7 +993,9 @@ def plot_error(ax, time, values, title, ylabel, floor=1e-300, ymin_fixed=None, m
             ymin = float(np.nanmin(positive)) if positive.size else np.finfo(float).tiny
         if not np.isfinite(ymax) or ymax <= ymin:
             ymax = ymin * 10.0
-        ax.set_ylim(ymin, ymax)
+        test_min = 1e-20
+        test_max = 1e-3
+        ax.set_ylim(test_min, test_max)
     else:
         ax.text(0.5, 0.5, "No finite diagnostic values", ha="center", va="center", transform=ax.transAxes,)
 
@@ -1010,7 +1012,7 @@ def plot_verification_suite(output_df: pd.DataFrame,
     diagnostics = add_diagnostics_error_columns(diagnostics, config)
     time = diagnostics["time"].to_numpy(dtype=float)
     dE = diagnostics["dE_over_E0"].to_numpy(dtype=float)
-    dL = diagnostics["dLz"].to_numpy(dtype=float)
+    dL = diagnostics["dL"].to_numpy(dtype=float)
     dPcm_x = diagnostics["dPx"].to_numpy(dtype=float)
     dPcm_y = diagnostics["dPy"].to_numpy(dtype=float)
     dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)

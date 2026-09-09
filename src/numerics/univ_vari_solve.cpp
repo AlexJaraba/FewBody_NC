@@ -194,15 +194,13 @@ ChiResult solve_chi(double mu, double alpha, const Vec3& r0, double vr, double d
             best_residual = residual;
             best_y = y;
         }
-        const double tolerance =
-            abs_tol + rel_tol * std::max(std::abs(y), 1.0);
+        const double tolerance = residual_tolerance(direction * y);
         if (residual <= tolerance) {
             return { direction * y, newton_result.iterations + bracket_iterations + i + 1, true};
         }
         if (f_y < 0.0) {
             lower = y;
-        }
-        else {
+        } else {
             upper = y;
         }
         const double df_y = signed_dF(y);

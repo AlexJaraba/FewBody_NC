@@ -14,6 +14,7 @@ struct Body {
     Vec3 velocity;
     Vec3 acceleration;
     Vec3 momentum;
+    Vec3 momentum_compensation;
 
     BodyState toState(double time) const;
 
@@ -25,5 +26,6 @@ struct Body {
     void updateVelocity(double dt);
     void updateVelocityFromMomentum();
     void updateMomentumFromVelocity();
+    void addMomentumIncrement(const Vec3& delta);
     double kineticEnergy() const;
 };

@@ -35,7 +35,7 @@ void DiagnosticsWriter::writeHeader() {
           << "angular_momentum,angular_momentum_x,angular_momentum_y,angular_momentum_z,dLx,dLy,dLz,"
           << "com_drift,com_x,com_y,com_z,com_vx,com_vy,com_vz,"
           << "com_integral_x,com_integral_y,com_integral_z,dCcm_x,dCcm_y,dCcm_z,dRcm_x,dRcm_y,dRcm_z,"
-          << "nine_integral_error_max,shadow_energy,dShadow_over_Shadow0,timestep\n";
+          << "timestep\n";
         
     header_written_ = true;
 }

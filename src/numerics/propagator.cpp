@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "numerics/univ_vari_solve.h"
 #include "numerics/propagator.h"
@@ -46,7 +48,7 @@ KeplerPropagationResult propagateUniversal(double mu_grav, double reduced_mass, 
     const double f = 1.0 - (chi * chi / r0_mag) * C;
     const double g = dt - (chi * chi * chi * S) / std::sqrt(mu_grav);
 
-    Vec3 q = (f * q0) + (g / reduced_mass) * p0;
+    const Vec3 q = (f * q0) + (g / reduced_mass) * p0;
 
     const double r_mag = norm(q);
     if (!q.is_finite() || !std::isfinite(r_mag) || r_mag <= 0.0) {

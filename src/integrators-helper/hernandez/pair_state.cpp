@@ -37,9 +37,9 @@ HernandezPairState HernandezPairState::pairState(const std::vector<Body>& bodies
     pair.total_mass = pair.mass_i + pair.mass_j;
     pair.reduced_mass = (pair.mass_i * pair.mass_j) / pair.total_mass;
     pair.com_position = ((pair.mass_i * bodies[index_i].position) + (pair.mass_j * bodies[index_j].position)) / pair.total_mass;
-    pair.com_velocity = ((pair.mass_i * bodies[index_i].velocity) + (pair.mass_j * bodies[index_j].velocity)) / pair.total_mass;
+    pair.com_velocity = (bodies[index_i].momentum + bodies[index_j].momentum) / pair.total_mass;
     pair.relative_position = bodies[index_i].position - bodies[index_j].position;
-    pair.relative_velocity = bodies[index_i].velocity - bodies[index_j].velocity;
+    pair.relative_velocity = (bodies[index_i].momentum / pair.mass_i) - (bodies[index_j].momentum / pair.mass_j);
 
     return pair;
 }
@@ -61,7 +61,7 @@ void HernandezPairState::writeToBodies(std::vector<Body>& bodies) const {
     bodies[index_j].updateMomentumFromVelocity();
 }
 
-void HernandezPairState::applyRelativeKick(std::vector<Body>& bodies, const Vec3& new_relative_position, const Vec3& new_relative_momentum) const {
+void HernandezPairState::applyRelativeState(std::vector<Body>& bodies, const Vec3& new_relative_position, const Vec3& new_relative_momentum) const {
     validatePairIndices(bodies, i, j);
 
     const std::size_t index_i = static_cast<std::size_t>(i);
@@ -79,9 +79,12 @@ void HernandezPairState::applyRelativeKick(std::vector<Body>& bodies, const Vec3
     bodies[index_j].position -= coeff_j * relative_position_change;
 
     // Update the momenta of the individual bodies based on the new relative momentum
-    const Vec3 pair_momentum = bodies[index_i].momentum + bodies[index_j].momentum;
-    bodies[index_i].momentum += relative_momentum_change;
-    bodies[index_j].momentum = pair_momentum - bodies[index_i].momentum;
+    bodies[index_i].addMomentumIncrement(relative_momentum_change);
+    bodies[index_j].addMomentumIncrement((-1.0) * relative_momentum_change);
+
+    // const Vec3 pair_momentum = bodies[index_i].momentum + bodies[index_j].momentum;
+    // bodies[index_i].momentum += relative_momentum_change;
+    // bodies[index_j].momentum = pair_momentum - bodies[index_i].momentum;
 
     bodies[index_i].updateVelocityFromMomentum();
     bodies[index_j].updateVelocityFromMomentum();

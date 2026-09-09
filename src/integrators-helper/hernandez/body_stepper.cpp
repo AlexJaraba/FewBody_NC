@@ -97,7 +97,7 @@ namespace {
                     << "reason = universal-variable solve did not converge";
                 throw std::runtime_error(msg.str());;
             }
-            pair_.applyRelativeKick(bodies, propagated.q, propagated.p);
+            pair_.applyRelativeState(bodies, propagated.q, propagated.p);
 
             // pair_.relative_position = propagated.q;
             // pair_.relative_velocity = propagated.p / pair_.reduced_mass;
@@ -118,22 +118,22 @@ namespace {
     void externalPotentialKick(std::vector<Body>& bodies, const potential::ExternalPotential& potential, double G, double dt) {
         for (auto& body : bodies) {
             const Vec3 acceleration = potential.accelerationAt(body.position, G);
-            body.momentum += dt * acceleration * body.mass;
+            body.addMomentumIncrement(dt * acceleration * body.mass);
             body.updateVelocityFromMomentum();
         }
     }
 
     void driftAllBodies(std::vector<Body>& bodies, double drift_dt) {
         for (Body& body : bodies) {
-            body.position += drift_dt * body.velocity;
+            body.position += drift_dt * (body.momentum / body.mass);
         }
     }
 
     void driftPair(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
         const std::size_t i = static_cast<std::size_t>(pair.i);
         const std::size_t j = static_cast<std::size_t>(pair.j);
-        bodies[i].position += drift_dt * bodies[i].velocity;
-        bodies[j].position += drift_dt * bodies[j].velocity;
+        bodies[i].position += drift_dt * (bodies[i].momentum / bodies[i].mass);
+        bodies[j].position += drift_dt * (bodies[j].momentum / bodies[j].mass);
     }
 
     void driftCOM(std::vector<Body>& bodies, const Pair& pair, double drift_dt) {
@@ -153,23 +153,24 @@ namespace {
 HernandezBodyStepper::HernandezBodyStepper(const std::vector<Pair>& fixed_pairs) : pairs_(canonicalizePairsPreserveOrder(fixed_pairs)) {}
 
 void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) {
-    if (bodies.size() <= 1 || pairs_.empty()) {
+    if (bodies.empty()) {
         return;
     }
-    if (pairs_.empty()) {
+    if (bodies.size() == 1) {
         driftAllBodies(bodies, dt);
         return;
     }
+    const std::size_t expected_pairs = bodies.size() * (bodies.size() - 1) / 2;
+    if (pairs_.size() != expected_pairs) {
+        throw std::runtime_error("Unexpected number of pairs in HernandezBodyStepper");
+    }
+
     const double half_dt = 0.5 * dt;
     const double potential_mass = 10.0; // Replace with the actual mass value as needed
     const double scale_length = 1.0; // Replace with the actual scale length as needed
     potential::ExternalPotential external_potential(potential_mass, scale_length);
-    double total_mass = 0.0;
-    for (const auto& body : bodies) {
-        total_mass += body.mass;
-    }
 
-    //externalPotentialKick(bodies, external_potential, G, half_dt);
+    externalPotentialKick(bodies, external_potential, G, half_dt);
     driftAllBodies(bodies, half_dt);
     for (const Pair& pair : pairs_) {
         driftPair(bodies, pair, -half_dt);
@@ -182,7 +183,7 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G) 
         driftPair(bodies, *it, -half_dt);
     }
     driftAllBodies(bodies, half_dt);
-    //externalPotentialKick(bodies, external_potential, G, half_dt);
+    externalPotentialKick(bodies, external_potential, G, half_dt);
 }
 
 const std::vector<Pair>& HernandezBodyStepper::pairs() const {
