@@ -92,6 +92,7 @@ SolverParams readParams(const std::string& filename) {
     bool have_integrator = false;
     bool have_gravitational_constant = false;
     bool have_pair_order = false;
+    bool have_external_potential = false;
 
     if (!infile) {
         throw std::runtime_error("Could not open " + filename);
@@ -131,6 +132,11 @@ SolverParams readParams(const std::string& filename) {
                 throw std::runtime_error(filename + ": line " + std::to_string(line_number) + " has an invalid gravitational_constant.");
             }
             have_gravitational_constant = true;
+        } else if (param == "external_potential") {
+            if (!(iss >> params.external_potential)) {
+                throw std::runtime_error(filename + ": line " + std::to_string(line_number) + " has an invalid external_potential.");
+            }
+            have_external_potential = true;
         } else if (param == "pair_order") {
             if (!(iss >> params.pair_order)) {
                 throw std::runtime_error(filename + ": line " + std::to_string(line_number) + " has an invalid pair_order.");
@@ -148,6 +154,7 @@ SolverParams readParams(const std::string& filename) {
     if (!have_integrator) missing.push_back("integrator");
     if (!have_gravitational_constant) missing.push_back("gravitational_constant");
     if (!have_pair_order) missing.push_back("pair_order");
+    if (!have_external_potential) missing.push_back("external_potential");
     if (!missing.empty()) {
         std::ostringstream msg;
         msg << filename << " is missing required parameters: ";

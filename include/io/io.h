@@ -10,6 +10,7 @@ struct SolverParams {
   double runtime;
   double timestep;
   std::string integrator;
+  std::string external_potential;
   double gravitational_constant;
   std::string pair_order;
 };

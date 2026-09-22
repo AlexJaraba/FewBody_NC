@@ -5,6 +5,8 @@
 #include "analysis/diagnostics.h"
 #include "math/vec3.h"
 #include "integrators-helper/hernandez/pair_state.h"
+#include "integrators-helper/hernandez/body_stepper.h"
+#include "dynamics/extern_potentials.h"
 
 /* ====================================================================================================
 
@@ -20,7 +22,8 @@
 
    ==================================================================================================== */
 
-Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt) {
+
+Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt, const ExternalPotential* external_potential) {
     Diagnostics d{};
     d.timestep = dt;
     double total_mass = 0.0;
@@ -48,6 +51,13 @@ Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double
                 throw std::runtime_error("computeDiagnostics encountered a non-finite or zero pair separation.");
             }
             d.potential_energy -= (G * bodies[i].mass * bodies[j].mass) / r;
+        }
+    }
+    
+    // Compute external potential energy
+    if (external_potential) {
+        for (const Body& body : bodies) {
+            d.external_potential_energy += body.mass * external_potential->computePotentialEnergy(body.position, G);
         }
     }
 

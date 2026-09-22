@@ -3,7 +3,7 @@
 #include <numbers>
 
 #include "core/body.h"
-#include "dynamics/external_potential.h"
+#include "dynamics/extern_potentials.h"
 
 namespace {
     void compensatedAdd(double& value, double& compensation, double increment) {

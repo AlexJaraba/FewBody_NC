@@ -16,6 +16,7 @@
 #include "integrators/leapfrog.h"
 #include "integrators/hernandez.h"
 #include "math/vec3.h"
+#include "dynamics/plummer_sphere.h"
 
 /* ======================================================================
 Solver
@@ -65,7 +66,10 @@ namespace {
     }
 }
 
-Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), integrator(nullptr), writer(writer_) {
+Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), 
+                                                                       integrator(nullptr), 
+                                                                       external_potential(nullptr), 
+                                                                       writer(writer_) {
     const SolverParams params = readParams("data/param.txt");
     fixed_pairs.clear();
     fixed_pairs = canonicalizePairs(makePhysicalPairs(bodies));
@@ -91,14 +95,22 @@ Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bo
     // Integrators
     if (params.integrator == "leapfrog") {
         integrator = std::make_unique<Leapfrog>();
-    }
-    else if (params.integrator == "hernandez") {
+    } else if (params.integrator == "hernandez") {
         integrator = std::make_unique<Hernandez>(fixed_pairs);
-    }
-    else {
+    } else {
         throw std::runtime_error("Invalid integrator specified");
     }
         // Add more integrator options here as needed
+    
+    // External Potentials
+    if (params.external_potential == "none") {
+        external_potential = nullptr;
+    } else if (params.external_potential == "plummer") {
+        external_potential = std::make_unique<Plummer>(10.0, 0.1);
+    } else {
+        throw std::runtime_error("Invalid external potential specified");
+    }
+        // Add more external potential options here as needed
 }
 
 void recenterSystem(std::vector<Body>& bodies) {
@@ -196,20 +208,21 @@ void Solver::runFixedStep(const SolverParams& params) {
     const std::uint64_t output_stride = static_cast<std::uint64_t>(output_frequency);
 
     std::cout << "Integrator: " << params.integrator << '\n';
+    std::cout << "External Potential: " << params.external_potential << '\n';
     std::cout << "Fixed timestep: " << dt << '\n';
 
     validateBodies(bodies, "initial_state", 0, 0.0);
 
     DiagnosticsWriter diagnostics_writer("diagnostics.csv");
     {
-        const Diagnostics diagnostics = computeDiagnostics(bodies, G, dt);
+        const Diagnostics diagnostics = computeDiagnostics(bodies, G, dt, external_potential.get());
         diagnostics_writer.write(0.0, diagnostics);
         writeCurrentBodies(0.0);
     }
 
     for (std::uint64_t step = 1; step <= steps; ++step) {
         try {
-            integrator->step(bodies, dt, G);
+            integrator->step(bodies, dt, G, external_potential.get());
         } catch (const std::exception& exc) {
             std::ostringstream msg;
             msg << std::setprecision(17);
@@ -227,7 +240,7 @@ void Solver::runFixedStep(const SolverParams& params) {
         validateBodies(bodies, "cartesian_after_step", step, current_time);
 
         if (step % output_stride == 0 || step == steps) {
-            const Diagnostics diag = computeDiagnostics(bodies, G, dt);
+            const Diagnostics diag = computeDiagnostics(bodies, G, dt, external_potential.get());
             diagnostics_writer.write(current_time, diag);
             writeCurrentBodies(current_time);
         }

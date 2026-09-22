@@ -6,5 +6,5 @@
 
 class Leapfrog : public Integrator {
 public:
-    void step(std::vector<Body>& bodies, double dt, double G) override;
+    void step(std::vector<Body>& bodies, double dt, double G, const ExternalPotential* external_potential) override;
 };

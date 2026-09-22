@@ -1,6 +1,6 @@
 #include "integrators/leapfrog.h"
 
-void Leapfrog::step(std::vector<Body>& bodies, double dt, double G) {
+void Leapfrog::step(std::vector<Body>& bodies, double dt, double G, const ExternalPotential* external_potential) {
     for (auto& body : bodies) {
         body.updateAcceleration(bodies, G);
     }

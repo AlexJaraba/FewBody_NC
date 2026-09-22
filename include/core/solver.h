@@ -8,6 +8,7 @@
 #include "io/csv_output_writer.h"
 #include "io/io.h"
 #include "dynamics/pairing.h"
+#include "dynamics/extern_potentials.h"
 #include "integrators/integrator.h"
 
 
@@ -23,6 +24,7 @@ public:
 private:
     std::vector<Body>& bodies;
     std::unique_ptr<Integrator> integrator;
+    std::unique_ptr<ExternalPotential> external_potential;
     std::vector<Pair> fixed_pairs;
     CSVOutputWriter& writer;
     SolverParams params_;
