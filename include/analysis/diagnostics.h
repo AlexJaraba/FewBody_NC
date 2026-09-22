@@ -10,6 +10,7 @@
 struct Diagnostics {
     double kinetic_energy = 0.0;
     double potential_energy = 0.0;
+    double potential_energy_external = 0.0;
     double total_energy = 0.0;
 
     Vec3 linear_momentum_vec;

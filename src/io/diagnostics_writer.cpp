@@ -74,7 +74,7 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
     const double dRcm_z = absolute_difference(d.center_of_mass.z, reference_center_of_mass_.z);
 
     file_ << time << ","
-          << d.total_energy << "," << d.kinetic_energy << "," << d.potential_energy << "," << dE_rel << "," << dE_abs << ","
+          << d.total_energy << "," << d.kinetic_energy << "," << d.potential_energy << "," << d.potential_energy_external << "," << dE_rel << "," << dE_abs << ","
           << d.linear_momentum << "," << d.linear_momentum_vec.x << "," << d.linear_momentum_vec.y << "," << d.linear_momentum_vec.z << "," << dPx << "," << dPy << "," << dPz << ","
           << d.angular_momentum << "," << d.angular_momentum_vec.x << "," << d.angular_momentum_vec.y << "," << d.angular_momentum_vec.z << "," << dLx << "," << dLy << "," << dLz << ","
           << d.com_drift << "," << d.center_of_mass.x << "," << d.center_of_mass.y << "," << d.center_of_mass.z << ","

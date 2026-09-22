@@ -57,11 +57,11 @@ Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double
     // Compute external potential energy
     if (external_potential) {
         for (const Body& body : bodies) {
-            d.external_potential_energy += body.mass * external_potential->computePotentialEnergy(body.position, G);
+            d.potential_energy_external += body.mass * external_potential->computePotentialEnergy(body.position, G);
         }
     }
 
-    d.total_energy = d.kinetic_energy + d.potential_energy;
+    d.total_energy = d.kinetic_energy + d.potential_energy + d.potential_energy_external;
 
     if (total_mass > 0.0) {
         d.center_of_mass = mass_weighted_position / total_mass;

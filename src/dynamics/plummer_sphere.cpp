@@ -1,6 +1,6 @@
 #include <cmath>
 
-#include "dynamics/external_potential.h"
+#include "dynamics/plummer_sphere.h"
 
 Plummer::Plummer(double mass, double scale_length) : mass_(mass), scale_length_(scale_length) {}
 
