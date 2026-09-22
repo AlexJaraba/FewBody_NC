@@ -14,7 +14,7 @@ Pair canonicalizePair(int i, int j) {
 
 double pairStrength(const std::vector<Body>& bodies, const Pair& pair) {
     if (pair.i < 0 || pair.j < 0 || pair.i >= static_cast<int>(bodies.size()) || pair.j >= static_cast<int>(bodies.size())) {
-        throw std::runtime_error("pair_strength received an out-of-range pair.");
+        throw std::runtime_error("pairStrength received an out-of-range pair.");
     }
     const std::size_t i = static_cast<std::size_t>(pair.i);
     const std::size_t j = static_cast<std::size_t>(pair.j);

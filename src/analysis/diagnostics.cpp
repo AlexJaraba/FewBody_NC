@@ -101,7 +101,7 @@ PairDiagnostics computePairDiagnostics(const std::vector<Body>& bodies, int i, i
     diagnostics.com_velocity_norm = diagnostics.com_velocity.norm();
 
     return diagnostics;
-};
+}
 
 PairDiagnosticDeviation comparePairDiagnostics(const PairDiagnostics& current, const PairDiagnostics& reference) {
     PairDiagnosticDeviation deviation;
@@ -113,7 +113,7 @@ PairDiagnosticDeviation comparePairDiagnostics(const PairDiagnostics& current, c
     deviation.com_velocity_error = (current.com_velocity - reference.com_velocity).norm();
 
     return deviation;
-};
+}
 
 void printPairDiagnostics(std::ostream& os, const PairDiagnostics& diagnostics, const char* label) {
     os << label << "\n";
@@ -123,7 +123,7 @@ void printPairDiagnostics(std::ostream& os, const PairDiagnostics& diagnostics, 
     os << "Pair total momentum norm: " << diagnostics.total_momentum_norm << "\n";
     os << "Pair COM position norm: " << diagnostics.com_position_norm << "\n";
     os << "Pair COM velocity norm: " << diagnostics.com_velocity_norm << "\n";
-};
+}
 
 void printPairDiagnosticsDeviation(std::ostream& os, const PairDiagnosticDeviation& deviation, const char* label) {
     os << label << "\n";
@@ -132,4 +132,4 @@ void printPairDiagnosticsDeviation(std::ostream& os, const PairDiagnosticDeviati
     os << "Pair total momentum error: " << deviation.total_momentum_error << "\n";
     os << "Pair COM position error: " << deviation.com_position_error << "\n";
     os << "Pair COM velocity error: " << deviation.com_velocity_error << "\n";    
-};
+}

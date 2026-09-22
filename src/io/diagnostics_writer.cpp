@@ -13,10 +13,10 @@
    ============================================================================================================= */
 
 namespace {
-    double absolute_difference(double value, double reference) {
+    double absoluteDifference(double value, double reference) {
         return std::abs(value - reference);
     }
-    double relative_energy_error(double value, double reference) {
+    double relativeEnergyError(double value, double reference) {
         const double scale = std::max(std::abs(reference), 1e-300);
         return std::abs(value - reference) / scale;
     }
@@ -58,6 +58,7 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
 
     const double dt_from_reference = time - reference_time_;
     const Vec3 com_integral = d.center_of_mass - reference_center_of_mass_ - dt_from_reference * reference_center_of_mass_velocity_;
+<<<<<<< Updated upstream
     const double dE_abs = absolute_difference(d.total_energy, reference_energy_);
     const double dE_rel = relative_energy_error(d.total_energy, reference_energy_);
     const double dPx = absolute_difference(d.linear_momentum_vec.x, reference_linear_momentum_.x);
