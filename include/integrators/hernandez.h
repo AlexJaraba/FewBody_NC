@@ -10,7 +10,7 @@ class Hernandez : public Integrator {
 public:
     explicit Hernandez(const std::vector<Pair>& fixed_pairs);
 
-    void step(std::vector<Body>& bodies, double dt, double G) override;
+    void step(std::vector<Body>& bodies, double dt, double G, const ExternalPotential* external_potential) override;
     const std::vector<Pair>& pairs() const;
 
 private:

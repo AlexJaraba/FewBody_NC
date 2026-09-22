@@ -4,11 +4,13 @@
 #include <vector>
 
 #include "core/body.h"
+#include "dynamics/extern_potentials.h"
 #include "math/vec3.h"
 
 struct Diagnostics {
     double kinetic_energy = 0.0;
     double potential_energy = 0.0;
+    double external_potential_energy = 0.0;
     double total_energy = 0.0;
 
     Vec3 linear_momentum_vec;
@@ -45,7 +47,7 @@ struct PairDiagnosticDeviation {
     double com_velocity_error = 0.0;
 };
 
-Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt);
+Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt, const ExternalPotential* external_potential);
 PairDiagnostics computePairDiagnostics(const std::vector<Body>& bodies, int i, int j, double G);
 PairDiagnosticDeviation comparePairDiagnostics(const PairDiagnostics& current, const PairDiagnostics& reference);
 
