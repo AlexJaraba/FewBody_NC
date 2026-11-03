@@ -47,7 +47,7 @@ struct PairDiagnosticDeviation {
     double com_velocity_error = 0.0;
 };
 
-Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt);
+Diagnostics computeDiagnostics(const std::vector<Body>& bodies, double G, double dt, const ExternalPotential* external_potential);
 PairDiagnostics computePairDiagnostics(const std::vector<Body>& bodies, int i, int j, double G);
 PairDiagnosticDeviation comparePairDiagnostics(const PairDiagnostics& current, const PairDiagnostics& reference);
 

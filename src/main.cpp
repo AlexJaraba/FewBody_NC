@@ -9,19 +9,24 @@
 
 int main() {
     try {
+        // Read simulation parameters
+        const SolverParams params = readParams("data/param.txt");
+
         // Read initial conditions and create bodies
         std::vector<Body> bodies;
         readInitialConditions("data/initial_conditions.txt", bodies);
 
-        // Recenter system to the center of mass frame
-        recenterSystem(bodies);
+        // Recenter system to the center of mass frame if no external potential is used
+        if (params.external_potential == "none") {
+            recenterSystem(bodies);
+        }
 
         // Create output writer
         std::string outputfilename = "output.csv";
         CSVOutputWriter output(outputfilename);
         
         // Create solver and run simulation
-        Solver sim(bodies, output);
+        Solver sim(bodies, output, params);
         sim.run();
 
         // Close output file

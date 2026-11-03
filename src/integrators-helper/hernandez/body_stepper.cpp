@@ -160,10 +160,6 @@ void HernandezBodyStepper::step(std::vector<Body>& bodies, double dt, double G, 
     if (bodies.empty()) {
         return;
     }
-    if (bodies.size() == 1) {
-        driftAllBodies(bodies, dt);
-        return;
-    }
     const std::size_t expected_pairs = bodies.size() * (bodies.size() - 1) / 2;
     if (pairs_.size() != expected_pairs) {
         throw std::runtime_error("Unexpected number of pairs in HernandezBodyStepper");

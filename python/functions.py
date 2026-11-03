@@ -6,6 +6,7 @@ import pandas as pd
 
 import subprocess
 import re
+import csv
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -276,47 +277,25 @@ def read_output(path: Path = DEFAULT_OUTPUT_PATH) -> pd.DataFrame:
 def read_diagnostics(path: Path = DEFAULT_DIAGNOSTICS_PATH) -> pd.DataFrame | None:
     if not path.exists():
         return None
-    
-    df = pd.read_csv(path)
-    required = {"time", "total_energy"}
-    missing = required - set(df.columns)
-
-    if missing:
-        print(f"Warning: Missing required columns in diagnostics: {sorted(missing)}")
+    # Read and validate the CSV before the Dataframe is created
+    with path.open(newline="") as file:
+        reader = csv.reader(file)
+        try:
+            header = next(reader)
+        except StopIteration:
+            return None
+        expected_columns = len(header)
+        rows = []
+        for line_number, row in enumerate(reader, start=2):
+            if len(row) != expected_columns:
+                print(f"Warning: diagnostics.csv line {line_number} has {len(row)} values but the header has {expected_columns} columns.")
+                return None
+            rows.append(row)
+    if not rows:
         return None
-    
-    if "kinetic_energy" not in df.columns:
-        df["kinetic_energy"] = np.nan
-    if "potential_energy" not in df.columns:
-        df["potential_energy"] = np.nan
-    if "timestep" not in df.columns:
-        time = df["time"].to_numpy(dtype=float)
-        if len(time) >= 2:
-            dt = np.diff(time, prepend=time[0])
-            if len(dt) > 1:
-                dt[0] = dt[1]
-            df["timestep"] = dt
-        else:
-            df["timestep"] = np.nan
-    
-    alias_default = {
-        "linear_momentum_x": "linear_momentum",
-        "linear_momentum_y": None,
-        "linear_momentum_z": None,
-        "angular_momentum_x": None,
-        "angular_momentum_y": None,
-        "angular_momentum_z": "angular_momentum",
-        "com_x": "com_drift",
-        "com_y": None,
-        "com_z": None,
-    }
-
-    for column, fallback in alias_default.items():
-        if column not in df.columns:
-            if fallback is not None and fallback in df.columns:
-                df[column] = df[fallback]
-            else:
-                df[column] = np.nan
+    # Convert CSV values to appropriate types
+    df = pd.DataFrame(rows, columns=header)
+    df = df.apply(pd.to_numeric, errors="raise")
     
     return df.sort_values(by=["time"]).reset_index(drop=True)
 
@@ -660,8 +639,8 @@ def add_diagnostics_error_columns(diagnostics: pd.DataFrame, config: PlotConfig)
     df["dL"] = np.sqrt(np.square(df["dLx"]) + np.square(df["dLy"]) + np.square(df["dLz"]))
     df["dPcm_x"] = df["dPx"]
     df["dPcm_y"] = df["dPy"]
-    df["dXcm"] = df["dRcm_x"]
-    df["dYcm"] = df["dRcm_y"]
+    df["dXcm"] = df["dCcm_x"]
+    df["dYcm"] = df["dCcm_y"]
     
     return df
 
@@ -693,7 +672,7 @@ def load_diagnostics(output_df: pd.DataFrame, config: PlotConfig, path: Path = D
     if missing or unusable:
         print(f"Diagnostics file is missing or unusable columns: {missing + unusable}. Computing diagnostics from output...")
         return compute_diagnostics_from_output(output_df, config)
-    
+
     return diagnostics
 
 def snapshot_optional_file(path: Path) -> bytes | None:
@@ -714,6 +693,10 @@ def compute_diagnostics_from_output(df: pd.DataFrame, config: PlotConfig) -> pd.
     rows = []
     params = read_param(DEFAULT_PARAM_PATH)
     G = float(params.get("gravitational_constant", 0.000296014912))
+    external_potential = params["external_potential"]
+    if external_potential != "none":
+        raise ValueError("Cannot recompute total energy from output when an external potential is used.")
+
 
     for time_values, group in df.groupby("time", sort=True):
         group = group.sort_values("id")
@@ -1017,8 +1000,8 @@ def plot_verification_suite(output_df: pd.DataFrame,
     dL = diagnostics["dL"].to_numpy(dtype=float)
     dPcm_x = diagnostics["dPx"].to_numpy(dtype=float)
     dPcm_y = diagnostics["dPy"].to_numpy(dtype=float)
-    dXcm = diagnostics["dRcm_x"].to_numpy(dtype=float)
-    dYcm = diagnostics["dRcm_y"].to_numpy(dtype=float)
+    dXcm = diagnostics["dCcm_x"].to_numpy(dtype=float)
+    dYcm = diagnostics["dCcm_y"].to_numpy(dtype=float)
 
     error_print_summary(diagnostics, config)
 
@@ -1041,10 +1024,10 @@ def plot_verification_suite(output_df: pd.DataFrame,
     plot_error(ax_py, time, dPcm_y, "COM Momentum Y Error", r"$|\Delta p_{\rm cm,y}|$")
 
     ax_xcm = fig.add_subplot(gs[2, 2])
-    plot_error(ax_xcm, time, dXcm, "COM Drift X Error", r"$|\Delta x_{\rm cm}|$")
+    plot_error(ax_xcm, time, dXcm, "COM Integral X Error", r"$|\Delta x_{\rm cm}|$")
 
     ax_ycm = fig.add_subplot(gs[2, 3])
-    plot_error(ax_ycm, time, dYcm, "COM Drift Y Error", r"$|\Delta y_{\rm cm}|$")
+    plot_error(ax_ycm, time, dYcm, "COM Integral Y Error", r"$|\Delta y_{\rm cm}|$")
 
     if save_path is not None:
         title = f"FewBodyNC Verification Suite: {save_path.parent.name} / {save_path.stem}"
@@ -1109,7 +1092,8 @@ def plot_animation():
 def rewrite_param(dt: float, 
                   runtime: float, 
                   output_frequency: int, 
-                  integrator: str, 
+                  integrator: str,
+                  external_potential: str = "none",
                   G: float = 0.000296014912,
                   pair_order: str = "canonical", 
                   param_path: Path = DEFAULT_PARAM_PATH) -> None:
@@ -1120,12 +1104,14 @@ def rewrite_param(dt: float,
                     "runtime": f"runtime {runtime}",  
                     "timestep": f"timestep {dt}", 
                     "integrator": f"integrator {integrator}",
+                    "external_potential": f"external_potential {external_potential}",
                     "gravitational_constant": f"gravitational_constant {G}",
                     "pair_order": f"pair_order {pair_order}"}
     ordered_keys = ["output_frequency", 
                     "runtime", 
                     "timestep", 
                     "integrator", 
+                    "external_potential",
                     "gravitational_constant", 
                     "pair_order"]
 
@@ -1174,9 +1160,10 @@ def run_convergence_case(case_name: str,
                          integrator: str,
                          pair_order: str,
                          G: float) -> pd.DataFrame:
-    config = PlotConfig(G=G)
+    config = PlotConfig()
     params = read_param(DEFAULT_PARAM_PATH)
     G = float(params.get("gravitational_constant", 0.000296014912))
+    external_potential = params.get("external_potential", "")
     rows = []
     final_positions_by_dt = {}
     coarse_steps = max(1, int(round(runtime / base_dt)))
@@ -1202,7 +1189,7 @@ def run_convergence_case(case_name: str,
         output_frequency = max(1, int(round(physical_output_interval / dt)))
 
         print(f"\nRunning {case_name}: dt = {dt}, steps = {step_count}, final time = {run_runtime}")
-        rewrite_param(dt=dt, runtime=run_runtime, output_frequency=output_frequency, integrator=integrator, G=G, pair_order=pair_order)
+        rewrite_param(dt=dt, runtime=run_runtime, output_frequency=output_frequency, integrator=integrator, G=G, pair_order=pair_order, external_potential=external_potential)
         param_snapshot = DEFAULT_PARAM_PATH.read_text() if DEFAULT_PARAM_PATH.exists() else ""
         clear_simulation_outputs()
         try:
@@ -1395,6 +1382,7 @@ def run_benchmark_suite(modes: list[dict] | None = None, output_dir: Path = DEFA
         modes = DEFAULT_BENCHMARK_MODES
     
     config = PlotConfig()
+    params = read_param(DEFAULT_PARAM_PATH)
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = output_dir / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)

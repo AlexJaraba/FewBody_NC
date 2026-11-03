@@ -18,7 +18,7 @@ void recenterSystem(std::vector<Body>& bodies);
 
 class Solver {
 public:
-    Solver(std::vector<Body>& bodies, CSVOutputWriter& writer);
+    Solver(std::vector<Body>& bodies, CSVOutputWriter& writer, const SolverParams& params);
     void run();
 
 private:

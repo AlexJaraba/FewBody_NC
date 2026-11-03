@@ -1,7 +1,6 @@
 output_frequency 10
 runtime 1.4
 timestep 0.000015
-coordinate_mode cartesian
 integrator hernandez
 external_potential plummer
 gravitational_constant 1

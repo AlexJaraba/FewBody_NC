@@ -66,11 +66,10 @@ namespace {
     }
 }
 
-Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_) : bodies(bodies_), 
+Solver::Solver(std::vector<Body>& bodies_, CSVOutputWriter& writer_, const SolverParams& params) : bodies(bodies_), 
                                                                        integrator(nullptr), 
                                                                        external_potential(nullptr), 
-                                                                       writer(writer_) {
-    const SolverParams params = readParams("data/param.txt");
+                                                                       writer(writer_), params_(params) {
     fixed_pairs.clear();
     fixed_pairs = canonicalizePairs(makePhysicalPairs(bodies));
     
@@ -150,12 +149,11 @@ void recenterSystem(std::vector<Body>& bodies) {
 */
 
 void Solver::run() {
-    const SolverParams params = readParams("data/param.txt");
     std::cout << "Reading param file..." << std::endl;
-    std::cout << "dt = " << params.timestep << std::endl;
-    std::cout << "Loaded timestep: " << params.timestep << std::endl;
+    std::cout << "dt = " << params_.timestep << std::endl;
+    std::cout << "Loaded timestep: " << params_.timestep << std::endl;
 
-    runFixedStep(params);
+    runFixedStep(params_);
 }
 
 void Solver::writeCurrentBodies(double time) {
@@ -180,17 +178,13 @@ void Solver::runFixedStep(const SolverParams& params) {
 
     if (output_frequency <= 0) {
         throw std::runtime_error("output_frequency must be positive.");
-    }
-    if (!(runtime >= 0.0)) {
+    } if (!(runtime >= 0.0)) {
         throw std::runtime_error("runtime must be non-negative.");
-    }
-    if (!(dt > 0.0)) {
+    } if (!(dt > 0.0)) {
         throw std::runtime_error("timestep must be positive.");
-    }
-    if (!(G > 0.0)) {
+    } if (!(G > 0.0)) {
         throw std::runtime_error("gravitational_constant must be positive.");
-    }
-    if (!integrator) {
+    } if (!integrator) {
         throw std::runtime_error("Integrator not initialized.");
     }
 
@@ -221,26 +215,31 @@ void Solver::runFixedStep(const SolverParams& params) {
     }
 
     for (std::uint64_t step = 1; step <= steps; ++step) {
+        const double previous_time = static_cast<double>(step - 1) * dt;
+        const double step_dt = (step == steps) ? runtime - previous_time : dt;
+        if (!(step_dt > 0.0) || !std::isfinite(step_dt)) {
+            throw std::runtime_error("Step size is not valid.");
+        }
         try {
-            integrator->step(bodies, dt, G, external_potential.get());
+            integrator->step(bodies, step_dt, G, external_potential.get());
         } catch (const std::exception& exc) {
             std::ostringstream msg;
             msg << std::setprecision(17);
             msg << "Integration failure. "
                 << "failed_step = " << step << ", "
                 << "failed_time = " << (step - 1) * dt << ", "
-                << "failed_dt = " << dt << ", "
+                << "failed_dt = " << step_dt << ", "
                 << "integrator = " << params.integrator << ", "
                 << "pair_order = " << params.pair_order << ", "
                 << "effective_pair_order = " << effective_pair_order << ", "
                 << "reason = " << exc.what();
             throw std::runtime_error(msg.str());
         }
-        const double current_time = static_cast<double>(step) * dt;
+        const double current_time = (step == steps) ? runtime : static_cast<double>(step) * dt;
         validateBodies(bodies, "cartesian_after_step", step, current_time);
 
         if (step % output_stride == 0 || step == steps) {
-            const Diagnostics diag = computeDiagnostics(bodies, G, dt, external_potential.get());
+            const Diagnostics diag = computeDiagnostics(bodies, G, step_dt, external_potential.get());
             diagnostics_writer.write(current_time, diag);
             writeCurrentBodies(current_time);
         }

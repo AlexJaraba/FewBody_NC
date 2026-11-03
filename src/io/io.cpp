@@ -61,6 +61,8 @@ void readInitialConditions(const std::string& filename, std::vector<Body>& bodie
         }
         if (iss >> radius) {
             require_no_extra_tokens(iss, filename, line_number);
+        } else if (!iss.eof()) {
+            throw std::runtime_error(filename + ": line " + std::to_string(line_number) + " contains unexpected extra data.");
         }
         if (!std::isfinite(mass) || mass <= 0.0) {
             throw std::runtime_error(filename + ": line " + std::to_string(line_number) + " mass must be finite and positive.");

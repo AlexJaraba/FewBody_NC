@@ -35,7 +35,7 @@ def main() -> None:
         return
 
     params = functions.read_param(functions.DEFAULT_PARAM_PATH)
-    config = functions.PlotConfig(G=params.get("gravitational_constant", 0.000296014912))
+    config = functions.PlotConfig()
     output = functions.read_output(functions.DEFAULT_OUTPUT_PATH)
     diagnostics = functions.load_diagnostics(output, config)
     if args.animate:

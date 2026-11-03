@@ -30,7 +30,7 @@ void DiagnosticsWriter::writeHeader() {
     }
 
     file_ << "time,"
-          << "total_energy,kinetic_energy,potential_energy,dE_over_E0,dE_abs,"
+          << "total_energy,kinetic_energy,potential_energy,potential_energy_external,dE_over_E0,dE_abs,"
           << "linear_momentum,linear_momentum_x,linear_momentum_y,linear_momentum_z,dPx,dPy,dPz,"
           << "angular_momentum,angular_momentum_x,angular_momentum_y,angular_momentum_z,dLx,dLy,dLz,"
           << "com_drift,com_x,com_y,com_z,com_vx,com_vy,com_vz,"
@@ -58,21 +58,20 @@ void DiagnosticsWriter::write(double time, const Diagnostics& d) {
 
     const double dt_from_reference = time - reference_time_;
     const Vec3 com_integral = d.center_of_mass - reference_center_of_mass_ - dt_from_reference * reference_center_of_mass_velocity_;
-<<<<<<< Updated upstream
-    const double dE_abs = absolute_difference(d.total_energy, reference_energy_);
-    const double dE_rel = relative_energy_error(d.total_energy, reference_energy_);
-    const double dPx = absolute_difference(d.linear_momentum_vec.x, reference_linear_momentum_.x);
-    const double dPy = absolute_difference(d.linear_momentum_vec.y, reference_linear_momentum_.y);
-    const double dPz = absolute_difference(d.linear_momentum_vec.z, reference_linear_momentum_.z);
-    const double dLx = absolute_difference(d.angular_momentum_vec.x, reference_angular_momentum_.x);
-    const double dLy = absolute_difference(d.angular_momentum_vec.y, reference_angular_momentum_.y);
-    const double dLz = absolute_difference(d.angular_momentum_vec.z, reference_angular_momentum_.z);
+    const double dE_abs = absoluteDifference(d.total_energy, reference_energy_);
+    const double dE_rel = relativeEnergyError(d.total_energy, reference_energy_);
+    const double dPx = absoluteDifference(d.linear_momentum_vec.x, reference_linear_momentum_.x);
+    const double dPy = absoluteDifference(d.linear_momentum_vec.y, reference_linear_momentum_.y);
+    const double dPz = absoluteDifference(d.linear_momentum_vec.z, reference_linear_momentum_.z);
+    const double dLx = absoluteDifference(d.angular_momentum_vec.x, reference_angular_momentum_.x);
+    const double dLy = absoluteDifference(d.angular_momentum_vec.y, reference_angular_momentum_.y);
+    const double dLz = absoluteDifference(d.angular_momentum_vec.z, reference_angular_momentum_.z);
     const double dCcm_x = std::abs(com_integral.x);
     const double dCcm_y = std::abs(com_integral.y);
     const double dCcm_z = std::abs(com_integral.z);
-    const double dRcm_x = absolute_difference(d.center_of_mass.x, reference_center_of_mass_.x);
-    const double dRcm_y = absolute_difference(d.center_of_mass.y, reference_center_of_mass_.y);
-    const double dRcm_z = absolute_difference(d.center_of_mass.z, reference_center_of_mass_.z);
+    const double dRcm_x = absoluteDifference(d.center_of_mass.x, reference_center_of_mass_.x);
+    const double dRcm_y = absoluteDifference(d.center_of_mass.y, reference_center_of_mass_.y);
+    const double dRcm_z = absoluteDifference(d.center_of_mass.z, reference_center_of_mass_.z);
 
     file_ << time << ","
           << d.total_energy << "," << d.kinetic_energy << "," << d.potential_energy << "," << d.potential_energy_external << "," << dE_rel << "," << dE_abs << ","
