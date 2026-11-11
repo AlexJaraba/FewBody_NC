@@ -34,7 +34,6 @@ def main() -> None:
         functions.run_timestep_scaling_study()
         return
 
-    params = functions.read_param(functions.DEFAULT_PARAM_PATH)
     config = functions.PlotConfig()
     output = functions.read_output(functions.DEFAULT_OUTPUT_PATH)
     diagnostics = functions.load_diagnostics(output, config)
